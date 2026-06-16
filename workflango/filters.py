@@ -238,7 +238,7 @@ def filter_by_owner(field, owners, request):
 
 def filter_by_state(field, states, request):
     status, lookup = _get_status_lookup(request)
-    req = build_Q(lookup, 'state__in', states)
+    req = build_Q(lookup, 'phase__in', states)
     return _fixed_filter(req, status)
 
 
@@ -317,7 +317,7 @@ class WorkflowFilter(BaseFilter):
         'search_fase': {
             'custom_query': filter_by_state,
             'multiple': True,
-            'fields': ['states__state'],
+            'fields': ['states__phase'],
             'description': 'Fase del workflow',
             'type': 'string',
         },

@@ -60,7 +60,7 @@ class WorkflowTestMixin(object):
 
     def ok_transition(self, user, new_state, owner):
         state = self.transition(user, new_state, owner)
-        self.assertEqual(state.state, new_state)
+        self.assertEqual(state.phase, new_state)
         return state
 
     # End test methods single instance
@@ -158,7 +158,7 @@ class GUITestMixin(object):
             data['message'] = msg
         if owner:
             data['owner'] = owner.id
-        elif (state != instance.wfm_state.state) or state in ('release', ):
+        elif (state != instance.wfm_state.phase) or state in ('release', ):
             data['owner'] = 0
         return self.post_view(
             reverse(f'{instance.view_base_name}_change_state', kwargs={'pk': instance.pk, 'nuovo_stato': state}),

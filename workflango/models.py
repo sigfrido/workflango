@@ -57,6 +57,9 @@ class State(models.Model):
     - transition_type: auto-derived category (new/assign/delegate/reject/…)
     - suspended: soft-lock that blocks further transitions until resumed
     - unread: True when the owner has not yet viewed the object in this state
+    - impersonating_user: set when an admin performed the transition impersonating another user;
+      `user` holds the impersonated identity, `impersonating_user` the real actor
+    - snapshot: optional JSON snapshot of the object at transition time (audit/rollback)
     """
 
     # object reference through GenericForeignKey
@@ -64,8 +67,7 @@ class State(models.Model):
     id_object = models.PositiveIntegerField()
     instance = GenericForeignKey('content_type_object', 'id_object')
 
-    # state TODO rename to phase
-    state = models.CharField(max_length=20)
+    phase = models.CharField(max_length=20)
 
     # datetime of transition from previous state
     state_date = models.DateTimeField(auto_now_add=True)
@@ -94,13 +96,20 @@ class State(models.Model):
     # The state record has not been read
     unread = models.BooleanField(default=False)
 
+    # When set, this transition was performed by an admin impersonating another user.
+    # user = the impersonated identity; impersonating_user = the real admin acting.
+    impersonating_user = models.ForeignKey(User, null=True, blank=True, related_name='+', on_delete=models.SET_NULL)
+
+    # Optional JSON snapshot of the object at the time of transition (audit/rollback).
+    snapshot = models.JSONField(null=True, blank=True)
+
 
     @classmethod
-    def state_str(cls, state, for_none=None):
+    def phase_str(cls, state, for_none=None):
         if state == None:
             return for_none
         if isinstance(state, State):
-            return state.state
+            return state.phase
         try:
             return str(state)
         except:
@@ -116,12 +125,7 @@ class State(models.Model):
         """
         Unicode should or should not be used as a shortcut to state.state?
         """
-        return f'State: {self.state}'
-
-
-    @property
-    def phase(self):
-        return self.state
+        return f'State: {self.phase}'
 
 
     def get_instance(self):
@@ -144,14 +148,14 @@ class State(models.Model):
         Returns previous state different from current one, ignoring all the delegate/suspend transitions in the current state
         """
         if not state_str:
-            state_str = self.state
-        elif self.state != state_str:
+            state_str = self.phase
+        elif self.phase != state_str:
             return None
         state = self
-        while state and state.state == state_str:
+        while state and state.phase == state_str:
             state = state.get_previous_state()
         if state:
-            return state.state
+            return state.phase
         return None
 
 
@@ -160,7 +164,7 @@ class State(models.Model):
         Returns the nearest instance's State before this one which has the given state
         """
         try:
-            return State.objects.filter(content_type_object=self.content_type_object, id_object=self.id_object, state=state, pk__lt=self.pk).order_by('-id')[0]
+            return State.objects.filter(content_type_object=self.content_type_object, id_object=self.id_object, phase=state, pk__lt=self.pk).order_by('-id')[0]
         except:
             return None
 
@@ -169,7 +173,7 @@ class State(models.Model):
         """
         Returns configuration for current state
         """
-        return self.get_instance().wfm_config[self.state]
+        return self.get_instance().wfm_config[self.phase]
 
 
     def get_state_order(self, relative_to=None):
@@ -177,7 +181,7 @@ class State(models.Model):
         Returns definition order for current state
         """
         inst = self.get_instance()
-        my_state_order = inst.wfm_config.get_state_order(self.state)
+        my_state_order = inst.wfm_config.get_state_order(self.phase)
         other_state_order = inst.wfm_config.get_state_order(relative_to) if relative_to else 0
         return my_state_order - other_state_order
 
@@ -247,13 +251,13 @@ class State(models.Model):
 
         prev_prev = previous_state.get_previous_state()
 
-        if prev_prev and self.owner == previous_state.user and self.user == previous_state.owner and self.state == prev_prev.state:
+        if prev_prev and self.owner == previous_state.user and self.user == previous_state.owner and self.phase == prev_prev.phase:
             if previous_state.transition_type == 'reject':
                 return 'resubmit'
             if previous_state.transition_type in ['delegate', 'change_assign', 'assign', 'reassign', 'resubmit']:
                 return 'reject'
 
-        if self.state != previous_state.state:
+        if self.phase != previous_state.phase:
             if not self.owner:
                 return 'change'
             return 'change_assign'
@@ -337,7 +341,7 @@ class WorkflowModel(models.Model):
         if hasattr(cls, 'wfm_config'):
             return
         if not config:
-            config = getattr(cls, 'workflow_states', None)
+            config = getattr(cls, 'workflow_phases', None)
         if not defaults:
             defaults = getattr(cls, 'workflow_defaults', {})
         # TODO we need a property accessible via both model and instance
@@ -393,7 +397,7 @@ class WorkflowModel(models.Model):
 
 
     def current_state_str(self, for_none=''):
-        return State.state_str(self.current_state, for_none)
+        return State.phase_str(self.current_state, for_none)
 
 
     def reload_current_state(self):
@@ -571,7 +575,7 @@ class InstanceWorkflowManager(object):
         Checks if a transition is allowed. Raises an exception if not.
         Returns model config if successful.
         """
-        new_state = State.state_str(new_state)
+        new_state = State.phase_str(new_state)
         if not new_state:
             raise TypeError("New state cannot be null or empty")
 
@@ -601,7 +605,7 @@ class InstanceWorkflowManager(object):
         else:
             if current_state.suspended and suspended:
                 self.raise_transition_error("Cannot have two consecutive suspended states")
-            source_state = current_state.state
+            source_state = current_state.phase
             current_owner = current_state.owner
             if source_state == new_state:
                 if new_owner == current_owner:
@@ -679,7 +683,7 @@ class InstanceWorkflowManager(object):
         Calls custom transition validators if defined:
         validators can raise ValidationError to prevent the status transition
         """
-        current_state = State.state_str(current_state, 'none')
+        current_state = State.phase_str(current_state, 'none')
         self._call_handler_if_exists('validate_state_transition', user, current_state, new_state, new_owner, suspended)
         if current_state != new_state:
             self._call_handler_if_exists(f'validate_any_to_{new_state}', user)
@@ -718,7 +722,7 @@ class InstanceWorkflowManager(object):
         # TODO anche le modifiche dei record diverse dalle transizioni dovrebbero bloccare il record (su POST)
         self.instance.lock_instance()
 
-        new_state = State.state_str(new_state)
+        new_state = State.phase_str(new_state)
 
         current_state = self.instance.reload_current_state()
         if current_state != self.instance.current_state:
@@ -730,17 +734,17 @@ class InstanceWorkflowManager(object):
             self.instance.full_clean()
         except Exception as e:
             if isinstance(e, (ValidationError, FileNotFoundError)):
-                if (user == new_owner) and current_state and (current_state.state == new_state) and self.can_admin(user):
+                if (user == new_owner) and current_state and (current_state.phase == new_state) and self.can_admin(user):
                     e = None
             if e:
                 raise e
 
 
         config = self.transition_allowed(user, new_state, new_owner, suspended=suspended)
-        next_state = State(instance=self.instance, user=user, state=new_state, owner=new_owner, message=message, suspended=suspended)
+        next_state = State(instance=self.instance, user=user, phase=new_state, owner=new_owner, message=message, suspended=suspended)
         if force_transition_type:
             next_state.transition_type = force_transition_type
-        elif current_state and current_state.state != new_state and config[current_state.state]['reachable_states'][new_state].get('reject', False):
+        elif current_state and current_state.phase != new_state and config[current_state.phase]['reachable_states'][new_state].get('reject', False):
             next_state.transition_type = 'reject'
         else:
             next_state.transition_type = next_state.get_transition_type(current_state)
@@ -772,7 +776,7 @@ class InstanceWorkflowManager(object):
         # TODO move this check into transition_allowed()
         if not current_state or not current_state.can_release:
             self.raise_transition_error("Cannot release record")
-        return self.transition(user, current_state.state, None, message=message)
+        return self.transition(user, current_state.phase, None, message=message)
 
 
     # TODO unused but in tests
@@ -782,7 +786,7 @@ class InstanceWorkflowManager(object):
             reject_to = current_state.get_previous_state()
             if reject_to:
                 # Should be current_state.user = reject_to.owner
-                return self.transition(user, reject_to.state, current_state.user, message=message)
+                return self.transition(user, reject_to.phase, current_state.user, message=message)
         self.raise_transition_error("Cannot reject record")
 
 
@@ -800,13 +804,13 @@ class InstanceWorkflowManager(object):
         cst = self.state_or_error()
         if cst.owner and cst.owner.pk == user.pk:
             return cst
-        return self.transition(user, cst.state, user, suspended=False, message=message)
+        return self.transition(user, cst.phase, user, suspended=False, message=message)
 
 
     def assign(self, new_owner, user=None, message=None):
         cst = self.state_or_error()
         user = user or cst.owner
-        return self.transition(user, cst.state, new_owner, suspended=False, message=message)
+        return self.transition(user, cst.phase, new_owner, suspended=False, message=message)
 
 
     def get_transition(self, dest_state, user, owner='auto'):

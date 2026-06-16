@@ -33,15 +33,15 @@ class WFTransitionDescriptor(object):
         self._owner = owner
         self._message = message
         self._suspended = suspended
-        dest_state = State.state_str(dest_state)
+        dest_state = State.phase_str(dest_state)
         if dest_state in ['release', 'delegate', 'assign', 'reject', 'take-ownership', 'suspend', 'resume']:
             self.command = dest_state
             if self.command == 'reject':
                 prev_state = self.state.get_previous_state()
-                self._destination = prev_state.state
+                self._destination = prev_state.phase
                 self._owner = self.state.user
             else:
-                self._destination = self.state_str
+                self._destination = self.phase_str
             if self.command == 'release':
                 self._owner = None
             elif self.command in ['take-ownership', 'suspend', 'resume']:
@@ -53,7 +53,7 @@ class WFTransitionDescriptor(object):
         else:
             self.command = ''
             self._destination = dest_state
-        self.config = self.wfconfig[self.state_str]['reachable_states'].get(self._destination, None)
+        self.config = self.wfconfig[self.phase_str]['reachable_states'].get(self._destination, None)
         if self._owner == 'auto':
             self.guess_owner()
 
@@ -144,7 +144,7 @@ class WFTransitionDescriptor(object):
 
     @property
     def transition(self):
-        return f'{self.state_str}_to_{self.destination}'
+        return f'{self.phase_str}_to_{self.destination}'
 
 
     @property
@@ -158,8 +158,8 @@ class WFTransitionDescriptor(object):
 
 
     @property
-    def state_str(self):
-        return State.state_str(self.state)
+    def phase_str(self):
+        return State.phase_str(self.state)
 
     def state_property(self, prop, defa=None):
         return self.state.wfm_state_config().get('properties', {}).get(prop, defa)
@@ -197,12 +197,12 @@ class WFTransitionDescriptor(object):
 
     @property
     def is_free(self):
-        return (self.destination == self.state_str) and (self.state.owner == self.user)
+        return (self.destination == self.phase_str) and (self.state.owner == self.user)
 
 
     @property
     def is_take_ownership(self):
-        return ((self.destination == self.state_str) and (self.state.owner is None))
+        return ((self.destination == self.phase_str) and (self.state.owner is None))
 
 
     @property

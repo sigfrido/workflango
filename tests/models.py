@@ -66,7 +66,7 @@ class WorkflowModelValid(WorkflowModel):
         'read' : [],
     }
 
-    workflow_states = (
+    workflow_phases = (
 
         (None, {
             'reachable_states' : {

@@ -13,6 +13,6 @@
             <span{% if st.owner == request.user %} style="font-weight:bold; color:orange"{% endif %}>RI-INVIATO</span><br \>
         {% endif %}
     {% endif %}
-    {% if st.suspended %}<span class="suspended" title="sospeso"><b>s:</b>{{ st.state }}</span>{% else %}{{ st.state }}{% endif %}{% if not hide_owner %} ({{ st.owner|default:"n/a" }}){% endif %}
+    {% if st.suspended %}<span class="suspended" title="sospeso"><b>s:</b>{{ st.phase }}</span>{% else %}{{ st.phase }}{% endif %}{% if not hide_owner %} ({{ st.owner|default:"n/a" }}){% endif %}
     </a><span><small>{{ st.state_date|date:"d/m/y" }}</small></span>
 {% endwith %}

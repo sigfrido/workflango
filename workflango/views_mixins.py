@@ -100,13 +100,13 @@ class _WorkflowContextMixin:
         cfg = cur_state.wfm_state_config()
         transitions = []
         reachable_states = cfg['reachable_states'].keys()
-        if cur_state.can_reject and prev_state.state == cur_state.state:
-            rej_trans = obj.wfm.get_transition(cur_state.state, self.request.user, cur_state.user)
+        if cur_state.can_reject and prev_state.phase == cur_state.phase:
+            rej_trans = obj.wfm.get_transition(cur_state.phase, self.request.user, cur_state.user)
         else:
             rej_trans = None
         for dest_state in reachable_states:
             transition = obj.wfm.get_transition(dest_state, self.request.user)
-            if transition.is_reject and prev_state and (transition.destination == prev_state.state):
+            if transition.is_reject and prev_state and (transition.destination == prev_state.phase):
                 if cur_state.can_reject:
                     rej_trans = transition
             elif not transition.is_reject or cur_state.find_last_state(transition.destination):
@@ -178,7 +178,7 @@ class _BaseWorkflowTransitionMixin:
         pass
 
     def after_transition(self, new_state):
-        messages.add_message(self.request, messages.INFO, f"Passaggio di stato effettuato: {new_state.state}")
+        messages.add_message(self.request, messages.INFO, f"Passaggio di stato effettuato: {new_state.phase}")
 
     def check_transition_is_valid(self):
         """

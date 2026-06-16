@@ -31,7 +31,7 @@
                 {% for state in states%}
                 <tr>
                     <td><span name="{{state.transition_type}}" title="{{state.transition_type}}">{{state.transition_type_display}}</span></td>
-                    <td>{% if state.suspended %}<span class="suspended" title="sospeso"><b>s</b>:{{state.state}}</span>{% else %}{{state.state}}{% endif %}
+                    <td>{% if state.suspended %}<span class="suspended" title="sospeso"><b>s</b>:{{state.phase}}</span>{% else %}{{state.phase}}{% endif %}
                     </td>
                     <td>{{state.state_date|date:"D d-m-Y H:i:s"}}</td>
                     <td>{{state.user|default:"-"}}</td>

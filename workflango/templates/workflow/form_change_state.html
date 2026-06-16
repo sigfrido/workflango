@@ -13,7 +13,7 @@
         <div class="card-body">
             {{ form.errors }}
             <p>Oggetto: <b>{{ object }}</b></p>
-            <p>Fase corrente: {{ object.current_state.state }}
+            <p>Fase corrente: {{ object.current_state.phase }}
                 {% if transition.state_description %}
                 <a href="{% url "help_page" transition.state_help_topic %}" target="help"><i class="icon-question-sign" title="{{ transition.state_description }}">&nbsp;</i></a>
                 {% endif %}</p>
@@ -41,12 +41,12 @@
                 <p>Destinatario: {{ dest_owner }}</p>
                 {% endif %}
                 {% if transition.command == 'reject' %}
-                <p>Respingi a fase: <b>{{ object.current_state.get_previous_state.state }}</b></p>
+                <p>Respingi a fase: <b>{{ object.current_state.get_previous_state.phase }}</b></p>
                 {% endif %}
                 {% if show_message %}
                 {{ form.message|bootstrapform }}
                 {% endif %}
-                <p>{{ message }}{% if transition.state_str != transition.destination %}
+                <p>{{ message }}{% if transition.phase_str != transition.destination %}
                     <a href="{% url "help_page" transition.destination_help_topic %}" target="help"><i class="icon-question-sign" title="{{ transition.destination_description }}">&nbsp;</i></a>
                 {% endif %}</p>
                 <div class="d-flex">

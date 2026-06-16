@@ -44,7 +44,7 @@
 
             {% if st.owner == request.user %}
                 {% if reject_transition and not reject_transition.is_hidden %}
-                    <a class="btn btn-warning" href="{% url workflow_view object.pk "reject" %}" title="Respingi a fase {{ st.get_previous_state.state }}, utente {{ st.get_previous_state.owner }}">Respingi</a>
+                    <a class="btn btn-warning" href="{% url workflow_view object.pk "reject" %}" title="Respingi a fase {{ st.get_previous_state.phase }}, utente {{ st.get_previous_state.owner }}">Respingi</a>
                 {% endif %}
                 {% if st.can_release %}
                     <a class="btn btn-warning" href="{% url workflow_view object.pk "release" %}">Rilascia</a>

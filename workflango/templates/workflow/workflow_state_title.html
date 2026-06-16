@@ -1,1 +1,1 @@
-{% with st=object.current_state %}[{{ st.state }}{% if st.suspended %} (sospeso){% endif %}]{% endwith %}
+{% with st=object.current_state %}[{{ st.phase }}{% if st.suspended %} (sospeso){% endif %}]{% endwith %}

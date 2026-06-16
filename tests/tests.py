@@ -39,7 +39,7 @@ class WorkflowConfigTest(TestCase):
 
     def setUp(self):
         self.wc = WorkflowConfig(None,
-            WorkflowModelValid.workflow_states,
+            WorkflowModelValid.workflow_phases,
             WorkflowModelValid.workflow_defaults
         )
 
@@ -370,7 +370,7 @@ class WorkflowTest(TransactionTestCase):
         self.assertEqual(instance.current_state, None)
 
         state = instance.wfm.transition(self.user_1, 1, self.user_1)
-        self.assertEqual(state.state, '1')
+        self.assertEqual(state.phase, '1')
         self.assertEqual(state, instance.current_state)
         self.assertEqual(state, instance.wfm_state)
 
@@ -378,7 +378,7 @@ class WorkflowTest(TransactionTestCase):
         self.assertEqual(state, instance.current_state)
 
         state = instance.wfm.transition(self.user_1, 2, self.user_3)
-        self.assertEqual(state.state, '2')
+        self.assertEqual(state.phase, '2')
         self.assertEqual(state, instance.current_state)
 
 
@@ -440,7 +440,7 @@ class WorkflowTest(TransactionTestCase):
     def test_materialized_wfm_state(self):
         instance = self.OkModel.objects.create()
         state = instance.wfm.transition(self.user_1, 1, self.user_1)
-        self.assertEqual(state.state, '1')
+        self.assertEqual(state.phase, '1')
         # Instance.wfm_state is assigned by transition
         with self.assertNumQueries(0):
             self.assertEqual(state, instance.wfm_state)
@@ -452,14 +452,14 @@ class WorkflowTest(TransactionTestCase):
             self.assertEqual(state, instance.wfm_state)
 
         state = instance.wfm.transition(self.user_1, 2, self.user_3)
-        self.assertEqual(state.state, '2')
+        self.assertEqual(state.phase, '2')
         self.assertEqual(state, instance.wfm_state)
 
         with self.assertNumQueries(1):
             inst2 = self.OkModel.objects.get(pk = instance.pk)
         with self.assertNumQueries(1):
             self.assertEqual(state, inst2.current_state)
-            self.assertEqual(state.state, inst2.current_state.state)
+            self.assertEqual(state.phase, inst2.current_state.phase)
 
 
 
@@ -485,10 +485,10 @@ class WorkflowTest(TransactionTestCase):
 
         self.assertEqual(instance.states.count(), 2)
 
-        states_1 = instance.states.get(state='1')
+        states_1 = instance.states.get(phase='1')
         self.assertEqual(states_1.pk, state1.pk)
 
-        states_2 = instance.states.get(state='2')
+        states_2 = instance.states.get(phase='2')
         self.assertEqual(states_2.pk, state2.pk)
 
 
@@ -501,7 +501,7 @@ class WorkflowTest(TransactionTestCase):
         with self.assertRaisesRegex(TransitionNotAllowed, 'Unreachable'):
             instance.wfm.transition(self.user_4, 2, self.user_4)
         state = instance.wfm.transition(self.user_4, 1, self.user_4)
-        self.assertEqual(state.state, '1')
+        self.assertEqual(state.phase, '1')
 
     def test_wfm_model_get_config(self):
         instance = self.OkModel.objects.create()
@@ -642,7 +642,7 @@ class WorkflowTest(TransactionTestCase):
         self.assertTrue(state.can_reject)
         state = instance.wfm.reject(self.user_3)
 
-        self.assertEqual(state.state, '1')
+        self.assertEqual(state.phase, '1')
         self.assertEqual(state.transition_type, 'reject')
         state = instance.wfm.transition(self.user_1, 2, self.user_3)
         self.assertEqual(state.transition_type, 'resubmit')
@@ -654,7 +654,7 @@ class WorkflowTest(TransactionTestCase):
         instance.wfm.transition(self.user_1, 2, self.user_3)
         instance.wfm.transition(self.user_3, 4, self.user_4)
         rej_state = instance.wfm.reject_to_state(self.user_4, '1')
-        self.assertEqual(state.state, rej_state.state)
+        self.assertEqual(state.phase, rej_state.phase)
         self.assertEqual(state.owner, rej_state.owner)
         self.assertEqual(rej_state.transition_type, 'change_assign') # TODO mark as reject?
 
@@ -973,14 +973,14 @@ class WorkflowTest(TransactionTestCase):
 
         self.assertTrue(instance_1.wfm.transition_allowed(self.user_1, 1, self.user_1))
         state = instance_1.wfm.transition(self.user_1, 1, self.user_1)
-        self.assertEqual(state.state, '1')
+        self.assertEqual(state.phase, '1')
         self.assertEqual(state.owner, self.user_1)
 
         state = instance_1.wfm.transition(self.user_1, 1, None)
         self.assertEqual(state.owner, None)
-        self.assertEqual(state.state, '1')
+        self.assertEqual(state.phase, '1')
         self.assertEqual(instance_1.current_state_str(), '1')
-        self.assertEqual(instance_1.current_state.state, '1')
+        self.assertEqual(instance_1.current_state.phase, '1')
 
         state = instance_1.wfm.take_ownership(self.user_4)
         self.assertEqual(state.owner, self.user_4)
@@ -1011,7 +1011,7 @@ class WorkflowTest(TransactionTestCase):
         instance.wfm.get_transition(1, self.user_1, self.user_1).execute()
         t = instance.wfm.get_transition(2, self.user_1, self.user_3)
         state = t.execute()
-        self.assertEqual(state.state, '2')
+        self.assertEqual(state.phase, '2')
 
 
     def test_td_reject(self):
@@ -1021,7 +1021,7 @@ class WorkflowTest(TransactionTestCase):
         self.assertTrue(state.can_reject)
 
         state = instance.wfm.get_transition('reject', self.user_3).execute()
-        self.assertEqual(state.state, '1')
+        self.assertEqual(state.phase, '1')
         self.assertEqual(state.transition_type, 'reject')
 
 
@@ -1029,7 +1029,7 @@ class WorkflowTest(TransactionTestCase):
         instance = self.OkModel.objects.create()
         instance.wfm.get_transition(1, self.user_1, self.user_1).execute()
         state = instance.wfm.get_transition('release', self.user_1).execute()
-        self.assertEqual(state.state, '1')
+        self.assertEqual(state.phase, '1')
         self.assertEqual(state.transition_type, 'release')
         self.assertEqual(state.owner, None)
 
@@ -1043,7 +1043,7 @@ class WorkflowTest(TransactionTestCase):
         self.assertEqual(transition.is_resume, False)
         self.assertEqual(transition.transition, '1_to_2')
         self.assertEqual(transition.destination, '2')
-        self.assertEqual(transition.state_str, '1')
+        self.assertEqual(transition.phase_str, '1')
         self.assertEqual(transition.caption, 'exec 12')
 
         self.assertTrue(transition.is_forward)
@@ -1106,7 +1106,7 @@ class WorkflowTest(TransactionTestCase):
 
         state1_3 = inst1.wfm.take_ownership(self.user_4)
         st = inst1.wfm_state #get_last_state()
-        self.assertEqual(st.state, '2')
+        self.assertEqual(st.phase, '2')
         self.assertEqual(st.owner, self.user_4)
         self.assertEqual(st.pk, state1_3.pk)
 
