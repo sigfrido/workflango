@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load workflow_tags %}
+{% load dashboard_tags %}
+
+{% block content%}
+{% filter gpvref %}
+
+<div class="container min-height-page">
+    <div class="card mt-2 mb-4">
+        <div class="card-header card-header-title">
+            Storico stati
+        </div>
+        <div class="card-body">
+    <div class="row">
+        <div class="col-md-12">
+            <div class='d-flex justify-content-between align-items-center'>
+            <p style="font-size:18px;"><strong>{{ object }}</strong></p>
+            <a class="btn btn-outline-primary pull-right" href="{{ object.get_absolute_url }}">Torna al dettaglio</a>
+            </div>
+            <table class="table table-bordered table-condensed mt-4">
+                <tr>
+                    <th>Transizione</th>
+                    <th>Fase</th>
+                    <th>Data</th>
+                    <th>Operatore</th>
+                    <th>Proprietario</th>
+                    <th>Messaggio</th>
+                </tr>
+
+            
+                {% for state in states%}
+                <tr>
+                    <td><span name="{{state.transition_type}}" title="{{state.transition_type}}">{{state.transition_type_display}}</span></td>
+                    <td>{% if state.suspended %}<span class="suspended" title="sospeso"><b>s</b>:{{state.state}}</span>{% else %}{{state.state}}{% endif %}
+                    </td>
+                    <td>{{state.state_date|date:"D d-m-Y H:i:s"}}</td>
+                    <td>{{state.user|default:"-"}}</td>
+                    <td>{{state.owner|default:"-"}}</td>
+                    <td>{{state.message|default:""|linebreaks}}</td>
+                </tr>
+                {% endfor %}
+            
+            </table>
+        </div>
+    </div>
+</div>
+</div>
+</div>
+
+{% endfilter %}
+{% endblock %}

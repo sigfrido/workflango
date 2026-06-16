@@ -1,0 +1,18 @@
+{% with st=object.current_state %}
+    {% if st.message and st.message|length > 3 %}
+    <span class="icon icon-hand-right icon-in-list icon-tooltip" id="icon-toggle__{{ object.pk}}" data-bs-toggle="tooltip" title="da {{ st.user.username }}: {{ st.message }}"> </span>
+    <script>
+        $(function(){$("#icon-toggle__{{ object.pk}}").tooltip();});
+    </script>
+    {% endif %}
+    <a href="{% url history_view pk=object.pk %}">
+    {% if st.owner == request.user or st.user == request.user %}
+        {% if st.transition_type == 'reject' %}
+            <span{% if st.owner == request.user %} style="font-weight:bold; color:red"{% endif %}">RIFIUTATO</span><br \>
+        {% elif st.transition_type == 'resubmit' %}
+            <span{% if st.owner == request.user %} style="font-weight:bold; color:orange"{% endif %}>RI-INVIATO</span><br \>
+        {% endif %}
+    {% endif %}
+    {% if st.suspended %}<span class="suspended" title="sospeso"><b>s:</b>{{ st.state }}</span>{% else %}{{ st.state }}{% endif %}{% if not hide_owner %} ({{ st.owner|default:"n/a" }}){% endif %}
+    </a><span><small>{{ st.state_date|date:"d/m/y" }}</small></span>
+{% endwith %}

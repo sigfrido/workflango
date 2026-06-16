@@ -1,0 +1,27 @@
+{% load bootstrap workflow_tags %}
+
+<div class='col-md-2 mt-3'>
+    {{ form.search_proprietario|bootstrapform }}
+</div>
+<div class='col-md-2 mt-3'>
+    {{ form.search_fase|bootstrapform }}
+</div>
+<div class='col-md-2 mt-3'>
+    {{ form.search_messaggio|bootstrapform }}
+</div>
+<div class='col-md-1 mt-3'>
+    {{ form.search_sospeso|bootstrapform }}
+</div>
+<div class='col-md-2 mt-3'>
+{{ form.search_stato_old|bootstrapform }}
+</div>
+<div class='col-md-2 mt-3 d-flex'>
+{{ form.search_data_min|bootstrapform }}
+{{ form.search_data_max|bootstrapform }}
+</div>
+<div class='col-md-2 mt-3'>
+    {{ form.search_da_leggere|bootstrapform }}
+</div>
+<div class='col-md-1 mt-3'>
+    {{ form.search_following|bootstrapform }}
+</div>

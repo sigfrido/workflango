@@ -1,0 +1,67 @@
+{% load workflow_tags %}
+
+{% with st=object.current_state %}
+<div id="workflow_buttons_id">
+
+    {% if request.user == st.owner or not st.owner %}
+
+        {% if not st.suspended %}
+            {% if wf_can_take_ownership %}
+                <a class="btn btn-primary" href="{% url workflow_view object.pk "take-ownership" %}">Prendi in carico</a>
+            {% endif %}
+
+            {% if is_admin and request.user != st.owner %}
+                <a class="btn btn-primary" href="{% url workflow_view object.pk "assign" %}">Assegna</a>
+            {% endif %}
+        {% endif %}
+
+    {% else %}
+
+        {% if wf_can_take_ownership %}
+            <a class="btn btn-danger" href="{% url workflow_view object.pk "take-ownership" %}">Prendi in carico (ADMIN)</a>
+        {% endif %}
+
+        {% if is_admin and request.user != st.owner %}
+            <a class="btn btn-danger" href="{% url workflow_view object.pk "assign" %}">Riassegna (ADMIN)</a>
+        {% endif %}
+
+    {% endif %}
+
+    {% if st.owner == request.user %}
+        {% if st.suspended %}
+                <a class="btn btn-primary" href="{% url workflow_view object.pk "resume" %}">Riprendi</a>
+        {% else %}
+
+            {% for transition in allowed_transitions  %}
+                {% if not transition.is_hidden %}
+                    {% if transition.is_disabled %}
+                    <span class="btn btn-secondary btn-disabled disabled">{{ transition.caption }}</span>
+                    {% else %}
+                    <a class="btn {% if transition.is_reject %}btn-warning{% else %}btn-primary{% endif %}" href="{% url workflow_view object.pk transition.destination %}" title="{{ transition.destination_description }}">{{ transition.caption }}</a>
+                    {% endif %}
+                {% endif %}
+            {% endfor %}
+
+            {% if st.owner == request.user %}
+                {% if reject_transition and not reject_transition.is_hidden %}
+                    <a class="btn btn-warning" href="{% url workflow_view object.pk "reject" %}" title="Respingi a fase {{ st.get_previous_state.state }}, utente {{ st.get_previous_state.owner }}">Respingi</a>
+                {% endif %}
+                {% if st.can_release %}
+                    <a class="btn btn-warning" href="{% url workflow_view object.pk "release" %}">Rilascia</a>
+                {% endif %}
+                {% if st.can_delegate %}
+                <a class="btn btn-warning" href="{% url workflow_view object.pk "delegate" %}">Delega</a>
+                {% endif %}
+
+                <a class="btn btn-warning" href="{% url workflow_view object.pk "suspend" %}">Sospendi</a>
+
+            {% endif %}
+
+            {% if st.can_assign %}
+                <a class="btn btn-warning" href="{% url workflow_view object.pk "assign" %}">Assegna</a>
+            {% endif %}
+        {% endif %}
+    {% endif %}
+
+</div>
+{% endwith %}

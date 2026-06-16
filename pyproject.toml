@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "workflango"
+version = "0.1.0"
+description = "A reusable Django BPM workflow engine"
+requires-python = ">=3.10"
+dependencies = [
+    "Django>=4.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "psycopg2-binary",
+]
+
+[tool.setuptools.packages.find]
+include = ["workflango*"]
