@@ -144,7 +144,7 @@ class WFTransitionDescriptor(object):
 
     @property
     def transition(self):
-        return '%s_to_%s' % (self.state_str, self.destination)
+        return f'{self.state_str}_to_{self.destination}'
 
 
     @property

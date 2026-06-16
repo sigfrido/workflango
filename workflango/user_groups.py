@@ -19,7 +19,7 @@ def group_is_valid(group_name):
 
 def group_is_valid_or_error(group_name):
     if not group_is_valid(group_name):
-        raise ValueError('Undefined group: %s' % group_name)
+        raise ValueError(f'Undefined group: {group_name}')
     return True
 
 
@@ -85,7 +85,7 @@ def get_or_create_group(group_name):
     # Test if group has been defined in settings.
     # This is mainly for documentation purposes: we don't want users to create groups on the fly
     if not group_is_valid(group_name):
-        raise ImproperlyConfigured('Group {group} does not exist in settings.WORKFLOW_USERS_GROUPS.'.format(group = group_name))
+        raise ImproperlyConfigured(f'Group {group_name} does not exist in settings.WORKFLOW_USERS_GROUPS.')
     try:
         group = Group.objects.get(name = group_name)
         created = False
@@ -106,7 +106,7 @@ def init_all_groups(verbose=False):
             group, created = get_or_create_group(grp)
             if verbose:
                 action = 'CREATED' if created else 'EXISTING'
-                print("[{action}] {grp}: {descr}".format(action=action, grp=grp, descr=descr))
+                print(f'[{action}] {grp}: {descr}')
     except:
         raise ImproperlyConfigured('settings.WORKFLOW_USERS_GROUPS not found')
 

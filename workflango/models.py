@@ -116,7 +116,7 @@ class State(models.Model):
         """
         Unicode should or should not be used as a shortcut to state.state?
         """
-        return 'State: %s' % self.state
+        return f'State: {self.state}'
 
 
     @property
@@ -412,7 +412,7 @@ class WorkflowModel(models.Model):
 
     # Required by history_view
     def get_absolute_url(self):
-        view_name = "%s_detail" % self.__class__.__name__.lower()
+        view_name = f'{self.__class__.__name__.lower()}_detail'
         # TODO should remove this dependency upon url resolver
         url = reverse(view_name, kwargs={'pk': self.pk})
         return url
@@ -485,17 +485,17 @@ class InstanceWorkflowManager(object):
         Returns instance's current state if defined, otherwise throws error
         """
         if not self.instance.wfm_state:
-            raise UnmanagedObject("Instance is not managed by workflow: %s" % self.instance)
+            raise UnmanagedObject(f"Instance is not managed by workflow: {self.instance}")
         return self.instance.current_state
 
 
     def raise_transition_error(self, msg):
-        new_msg = '[%s]: %s' % (self.instance.get_brief_name(), msg.strip('.'))
+        new_msg = f'[{self.instance.get_brief_name()}]: {msg.strip(".")}'
         raise TransitionNotAllowed(new_msg)
 
 
     def raise_validation_error(self, msg):
-        new_msg = '[%s]: %s' % (self.instance.get_brief_name(), msg.strip('.'))
+        new_msg = f'[{self.instance.get_brief_name()}]: {msg.strip(".")}'
         raise ValidationError(new_msg)
 
 
@@ -644,15 +644,15 @@ class InstanceWorkflowManager(object):
                     self.raise_transition_error("User must be admin to set owner in a transition")
 
         if current_owner and new_owner and current_owner != new_owner and not current_state.can_delegate:
-            self.raise_transition_error("User is not allowed to delegate in this state (%s)" % source_state)
+            self.raise_transition_error(f"User is not allowed to delegate in this state ({source_state})")
 
         reachable_states = source_state_config['reachable_states']
         if new_state not in reachable_states and new_state != source_state:
-            self.raise_transition_error("Unreachable state: {new} from {old}".format(new=new_state, old=source_state))
+            self.raise_transition_error(f"Unreachable state: {new_state} from {source_state}")
 
         allowed_groups = reachable_states.get(new_state, {}).get('allowed_groups', [])
         if allowed_groups and not user.in_groups(allowed_groups):
-            self.raise_transition_error("Only users from groups {groups} are allowed to perform this transition".format(groups=','.join(allowed_groups)))
+            self.raise_transition_error(f"Only users from groups {','.join(allowed_groups)} are allowed to perform this transition")
 
         #unless not specifified by 'allow_no_owner', the new owner can be none
         allow_release = target_state_config.get('allow_release', 'strict')
@@ -682,9 +682,9 @@ class InstanceWorkflowManager(object):
         current_state = State.state_str(current_state, 'none')
         self._call_handler_if_exists('validate_state_transition', user, current_state, new_state, new_owner, suspended)
         if current_state != new_state:
-            self._call_handler_if_exists('validate_any_to_{dest}'.format(dest=new_state), user)
-            self._call_handler_if_exists('validate_{source}_to_any'.format(source=current_state), user)
-        self._call_handler_if_exists('validate_{source}_to_{dest}'.format(source=current_state, dest=new_state), user)
+            self._call_handler_if_exists(f'validate_any_to_{new_state}', user)
+            self._call_handler_if_exists(f'validate_{current_state}_to_any', user)
+        self._call_handler_if_exists(f'validate_{current_state}_to_{new_state}', user)
 
 
     def _call_handler_if_exists(self, methodname, *args, **kwargs):
@@ -722,7 +722,7 @@ class InstanceWorkflowManager(object):
 
         current_state = self.instance.reload_current_state()
         if current_state != self.instance.current_state:
-            raise StaleObject('Object %s has been changed by another transition.' % str(self.instance))
+            raise StaleObject(f'Object {self.instance} has been changed by another transition.')
 
         # Instance is validated (but not saved)
         # TODO is this the right place to do this?

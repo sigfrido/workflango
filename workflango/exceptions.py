@@ -10,7 +10,7 @@ def get_exception_error_msg(e):
     """
     try:
         d = e.message_dict
-        return " ".join(['%s: %s' % (field, get_exception_error_msg(err)) for field, err in d.items()])
+        return " ".join([f'{field}: {get_exception_error_msg(err)}' for field, err in d.items()])
     except AttributeError:
         try:
             l = e.message

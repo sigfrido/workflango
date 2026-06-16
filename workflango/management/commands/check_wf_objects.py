@@ -32,9 +32,8 @@ class Command(BaseCommand):
             self.check_model(model)
         if self.errors:
             subject = '[WebGPV] - check_wf_objects report'
-            message = 'Report di esecuzione check_wf_message:\n{report}\n'.format(
-                report='\n'.join(self.errors)
-            )
+            report = '\n'.join(self.errors)
+            message = f'Report di esecuzione check_wf_message:\n{report}\n'
             send_email_to_admins(subject, message)
         for msg in self.errors:
             print(msg)
@@ -50,22 +49,20 @@ class Command(BaseCommand):
                     if autofix:
                         result = fixer(inst)
                         if result:
-                            prefix = 'AUTOFIX ERR (%s)' % result
+                            prefix = f'AUTOFIX ERR ({result})'
                         else:
                             prefix = 'AUTOFIX'
                     else:
                         prefix = 'ERR'
-                    self.errors.append('%s: %s (pk=%s) - %s.' % (
-                        prefix, model.__name__, inst.pk, er_msg)
-                    )
+                    self.errors.append(f'{prefix}: {model.__name__} (pk={inst.pk}) - {er_msg}.')
         if not has_errors:
-            print("OK: %s" % model.__name__)
+            print(f"OK: {model.__name__}")
 
 
     def get_checks(self):
         for (check_name, er_msg) in self.CHECKS:
-            getter = getattr(self, 'get_%s' % check_name)
-            fixer_name = 'fix_%s' % check_name
+            getter = getattr(self, f'get_{check_name}')
+            fixer_name = f'fix_{check_name}'
             autofix = self.options.get(fixer_name, False)
             fixer = getattr(self, fixer_name)
             yield (getter, fixer, autofix, er_msg)

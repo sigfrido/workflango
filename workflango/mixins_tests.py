@@ -30,15 +30,15 @@ class WorkflowTestMixin(object):
         cls.users = {None : None}
         for user_id in users_dict.keys():
             for suffix in suffixes:
-                username = '{user_id}{suffix}'.format(user_id=user_id, suffix=suffix)
-                email = '{username}@test.it'.format(username=username)
+                username = f'{user_id}{suffix}'
+                email = f'{username}@test.it'
                 cls.users[username] = User.objects.create_user(username, email, COMMON_PASSWORD)
                 cls.users[username].save()
                 for base_group in base_groups:
                     user_group_add(cls.users[username], base_group)
                 for group in users_dict[user_id]:
                     user_group_add(cls.users[username], group)
-                setattr(cls, 'user_%s' % username, cls.users[username])
+                setattr(cls, f'user_{username}', cls.users[username])
 
 
     def str2date(self, strdate, date_format='%Y-%m-%d'):
@@ -116,7 +116,7 @@ class GUITestMixin(object):
     def login(self, username):
         self.client.logout()
         if not self.client.login(username=username, password=COMMON_PASSWORD):
-            raise Exception('Impossibile loggare l\'utente %s.' % username)
+            raise Exception(f"Impossibile loggare l'utente {username}.")
         return True
 
 
@@ -131,23 +131,23 @@ class GUITestMixin(object):
 
 
     def get_detail_view(self, instance, data={}):
-        url = reverse('%s_detail' % instance.view_base_name, kwargs={'pk': instance.pk})
+        url = reverse(f'{instance.view_base_name}_detail', kwargs={'pk': instance.pk})
         return self.get_view(url, data=data)
 
 
     def get_list_view(self, model_or_inst, data={}):
-        self.response = self.client.get(reverse('%s_list' % model_or_inst.view_base_name), data=data, follow=True)
+        self.response = self.client.get(reverse(f'{model_or_inst.view_base_name}_list'), data=data, follow=True)
         return self.response
 
 
     def get_history_view(self, instance):
-        self.response = self.client.get(reverse('%s_history' % instance.view_base_name, kwargs={'pk': instance.pk}), follow=True)
+        self.response = self.client.get(reverse(f'{instance.view_base_name}_history', kwargs={'pk': instance.pk}), follow=True)
         return self.response
 
 
     def get_change_state_view(self, instance, state):
         self.response = self.client.get(
-            reverse('%s_change_state' % instance.view_base_name, kwargs={'pk': instance.pk, 'nuovo_stato': state}),
+            reverse(f'{instance.view_base_name}_change_state', kwargs={'pk': instance.pk, 'nuovo_stato': state}),
             follow=True)
         return self.response
 
@@ -161,7 +161,7 @@ class GUITestMixin(object):
         elif (state != instance.wfm_state.state) or state in ('release', ):
             data['owner'] = 0
         return self.post_view(
-            reverse('%s_change_state' % instance.view_base_name, kwargs={'pk': instance.pk, 'nuovo_stato': state}),
+            reverse(f'{instance.view_base_name}_change_state', kwargs={'pk': instance.pk, 'nuovo_stato': state}),
             data)
 
 
@@ -188,7 +188,7 @@ class GUITestMixin(object):
 
 
     def assertRedirectsToLogin(self, url):
-        self.assertRedirects(self.response, '%s?next=%s' % (self.login_url(), url))
+        self.assertRedirects(self.response, f'{self.login_url()}?next={url}')
 
 
     def login_url(self):
@@ -202,7 +202,7 @@ class GUITestMixin(object):
         Test for the presence of an edit button indicator
         By default, only the icon is tested, caption may vary and negative tests can give false negatives
         """
-        txt = '<i class="icon-edit"></i>&nbsp;%s' % caption
+        txt = f'<i class="icon-edit"></i>&nbsp;{caption}'
         if visible:
             self.assertInResponse(txt)
             self.assertTrue(self.response.context['wf_editable'])
@@ -226,9 +226,9 @@ class GUITestMixin(object):
 
 
     def addFormManagement(self, formdata, formname, initial, total):
-        formdata['%s-INITIAL_FORMS' % formname] = initial
-        formdata['%s-MAX_NUM_FORMS' % formname] = 1000
-        formdata['%s-TOTAL_FORMS' % formname] = total
+        formdata[f'{formname}-INITIAL_FORMS'] = initial
+        formdata[f'{formname}-MAX_NUM_FORMS'] = 1000
+        formdata[f'{formname}-TOTAL_FORMS'] = total
         return formdata
 
 
@@ -237,7 +237,7 @@ class GUITestMixin(object):
             formdata.update(instdata)
         else:
             for k in instdata.keys():
-                formdata['%s-%s-%s' % (formname, instnum, k)] = instdata[k]
+                formdata[f'{formname}-{instnum}-{k}'] = instdata[k]
         return formdata
 
 

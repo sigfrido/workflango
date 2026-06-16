@@ -170,7 +170,7 @@ class _BaseWorkflowTransitionMixin:
             self.transition_denied()
             messages.add_message(
                 self.request, messages.ERROR,
-                "Il passaggio a %s non è stato effettuato: %s." % (destination_state, get_exception_error_msg(e)),
+                f"Il passaggio a {destination_state} non è stato effettuato: {get_exception_error_msg(e)}.",
             )
             transaction.set_rollback(True)
 
@@ -178,7 +178,7 @@ class _BaseWorkflowTransitionMixin:
         pass
 
     def after_transition(self, new_state):
-        messages.add_message(self.request, messages.INFO, "Passaggio di stato effettuato: %s" % new_state.state)
+        messages.add_message(self.request, messages.INFO, f"Passaggio di stato effettuato: {new_state.state}")
 
     def check_transition_is_valid(self):
         """
@@ -199,16 +199,16 @@ class _BaseWorkflowTransitionMixin:
             if self.object.wfm.can_admin(self.request.user) and self.get_destination_owner() == self.request.user:
                 messages.add_message(
                     self.request, messages.WARNING,
-                    "Il passaggio di stato verrà effettuato come ADMIN, sono stati rilevati i seguenti errori: %s." % get_exception_error_msg(e),
+                    f"Il passaggio di stato verrà effettuato come ADMIN, sono stati rilevati i seguenti errori: {get_exception_error_msg(e)}.",
                 )
                 return True
             messages.add_message(
                 self.request, messages.ERROR,
-                "Impossibile effettuare il passaggio di stato: %s." % get_exception_error_msg(e),
+                f"Impossibile effettuare il passaggio di stato: {get_exception_error_msg(e)}.",
             )
             return False
         except Exception as e:
-            messages.add_message(self.request, messages.ERROR, "Errore inatteso: %s." % get_exception_error_msg(e))
+            messages.add_message(self.request, messages.ERROR, f"Errore inatteso: {get_exception_error_msg(e)}.")
             return False
 
     def transition_denied(self):
@@ -269,7 +269,7 @@ class WorkflowModelList(LoginRequiredMixin):
         context = super().get_context_data(*args, **kwargs)
         context['active_states'] = self.model.wfm_config.get_states_list(closed=False)
         context['active_states_filter'] = '&'.join(
-            ["search_fase=%s" % state for state in context['active_states']]
+            [f"search_fase={state}" for state in context['active_states']]
         )
         return context
 
@@ -325,7 +325,7 @@ class WorkflowDetailMixin(CachedGetObjectMixin, AccessDeniedMixin, _WorkflowCont
                 st.save()
                 messages.add_message(
                     self.request, messages.INFO,
-                    "L'oggetto è stato impostato come %s." % ('da leggere' if unread else 'già letto'),
+                    f"L'oggetto è stato impostato come {'da leggere' if unread else 'già letto'}.",
                 )
 
         wf_editable = instance.wfm.is_owner(user) and not st.suspended and not st.get_state_property('disable_editing')

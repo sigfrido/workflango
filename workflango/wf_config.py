@@ -110,7 +110,7 @@ class WorkflowConfig(dict):
         if model_defaults is None:
             model_defaults = {}
         if not isinstance(model_defaults, dict):
-            raise InvalidWorkflowConfiguration("Parameter model_defaults for %s must be a dict" % self._model)
+            raise InvalidWorkflowConfiguration(f"Parameter model_defaults for {self._model} must be a dict")
         self._model_defaults = model_defaults
         self._model_states = []
         self._create_model_config(model_config)
@@ -118,7 +118,7 @@ class WorkflowConfig(dict):
 
     def _create_model_config(self, model_config):
         if not isinstance(model_config, tuple):
-            raise InvalidWorkflowConfiguration("Parameter model_config for %s must be a tuple" % self._model)
+            raise InvalidWorkflowConfiguration(f"Parameter model_config for {self._model} must be a tuple")
         for element in model_config:
             if isinstance(element, dict):
                 conf_dict = element
@@ -127,7 +127,7 @@ class WorkflowConfig(dict):
                 key = element[0]
                 conf_dict = element[1]
             else:
-                raise InvalidWorkflowConfiguration("Parameter model_config for %s must be a tuple of dict with key name or a tuple of (name, dict)" % self._model)
+                raise InvalidWorkflowConfiguration(f"Parameter model_config for {self._model} must be a tuple of dict with key name or a tuple of (name, dict)")
             self._create_state_config(key, conf_dict)
 
         self._model_states = tuple(self._model_states)
@@ -152,7 +152,7 @@ class WorkflowConfig(dict):
         else:
             new_key = str(key)
             if len(new_key) > 20:
-                raise InvalidWorkflowConfiguration("Module %s cannot be registered with workflow: configured states must be coercible to char(20), %s is not" % self._model, key)
+                raise InvalidWorkflowConfiguration(f"Module {self._model} cannot be registered with workflow: configured states must be coercible to char(20), {key} is not")
             self._model_states.append(new_key)
         return new_key
 
@@ -181,7 +181,7 @@ class WorkflowConfig(dict):
         try:
             return self[state]
         except:
-            raise InvalidState("%s[%s]" % (self._model, state))
+            raise InvalidState(f"{self._model}[{state}]")
 
 
     def get_states_list(self, closed=None):
@@ -194,7 +194,7 @@ class WorkflowConfig(dict):
                 states = [state for state in states if self[state].get('is_closed', False) == closed]
             return states
         except:
-            raise WorkflowModelNotConfigured("%s" % self._model)
+            raise WorkflowModelNotConfigured(f"{self._model}")
 
 
     def get_state_order(self, state):
@@ -207,7 +207,7 @@ class WorkflowConfig(dict):
         state = str(state)
         if state in states:
             return states.index(state) + 1
-        raise InvalidState("%s[%s]" % (self._model, state))
+        raise InvalidState(f"{self._model}[{state}]")
 
 
     def editors_for_state(self, state, admin_also=True):
@@ -219,7 +219,7 @@ class WorkflowConfig(dict):
                 groups = config['edit']
             return list(set(groups))
         except:
-            raise InvalidState("Configurazione per %s.%s non trovata" % (self._model, state))
+            raise InvalidState(f"Configurazione per {self._model}.{state} non trovata")
 
 
     def get_candidate_users_for_state(self, state, privileges='ea', active=None):
@@ -300,7 +300,7 @@ class WorkflowConfig(dict):
 
         for state in self._model_states:
             if not reachable[state]:
-                raise InvalidWorkflowConfiguration('Unreachable state for %s: %s.' % (self._model, state))
+                raise InvalidWorkflowConfiguration(f'Unreachable state for {self._model}: {state}.')
 
 
     def reach_states_from(self, state, reachable):
@@ -308,7 +308,7 @@ class WorkflowConfig(dict):
         reachable_states = self[state]['reachable_states']
         for reach in reachable_states:
             if reach not in reachable:
-                raise InvalidWorkflowConfiguration('Undefined state for model %s: states[%s].reachable_states[%s]' % (self._model, state, reach))
+                raise InvalidWorkflowConfiguration(f'Undefined state for model {self._model}: states[{state}].reachable_states[{reach}]')
             if not reachable[reach]:
                 self.reach_states_from(reach, reachable)
 
@@ -319,7 +319,7 @@ class WorkflowConfig(dict):
             for priv in ['read', 'edit', 'admin']:
                 for group in self[state][priv]:
                     if not group in wfgroups:
-                        raise InvalidWorkflowConfiguration('Undefined group: %.states[%s][%s] = %s' % (self._model, state, priv, group))
+                        raise InvalidWorkflowConfiguration(f'Undefined group: {self._model}.states[{state}][{priv}] = {group}')
 
 
     def check_config_values(self):
@@ -330,7 +330,7 @@ class WorkflowConfig(dict):
             ):
                 value = self[state].get(key, default)
                 if not value in values:
-                    raise InvalidWorkflowConfiguration('Undefined value for %s in state %s.%s: %s.' % (key, self._model.__name__, state, value))
+                    raise InvalidWorkflowConfiguration(f'Undefined value for {key} in state {self._model.__name__}.{state}: {value}.')
 
         # TODO destination_owner_mode: none, user, last_owner, assign, assign-optional
 #

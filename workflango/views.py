@@ -60,7 +60,7 @@ class ChangeStateView(CachedGetObjectMixin, WorkflowModelChangeState, UpdateView
 
 
     def get_transition_gui_message(self, transition):
-        return "Confermare il passaggio alla fase: %s" % transition.destination
+        return f"Confermare il passaggio alla fase: {transition.destination}"
 
 
     def get_context_data(self, *args, **kwargs):

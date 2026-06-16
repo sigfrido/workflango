@@ -13,6 +13,6 @@ class Command(BaseCommand):
         for model in get_model_list(*args):
             try:
                 model.wfm_config.check()
-                print("OK: %s" % model.__name__)
+                print(f"OK: {model.__name__}")
             except Exception as e:
                 raise CommandError(str(e))

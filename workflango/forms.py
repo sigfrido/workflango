@@ -31,7 +31,7 @@ class ChangeStateForm(forms.Form):
         owner_label = kwargs.pop('owner_label', 'Nuovo proprietario')
         msg_label = kwargs.pop('mesg_label', 'Messaggio')
         opt = 'Obbligatorio'  if require_msg else 'Opzionale'
-        msg_placeholder = kwargs.pop('msg_placeholder', 'Messaggio per il destinatario (%s)' % opt)
+        msg_placeholder = kwargs.pop('msg_placeholder', f'Messaggio per il destinatario ({opt})')
         if default_owner:
             kwargs['initial']['owner'] = default_owner.id
         super(ChangeStateForm, self).__init__(*args, **kwargs)
@@ -50,7 +50,7 @@ class ChangeStateForm(forms.Form):
         if msg:
             msg = msg.strip()
             if len(msg) > MSG_MAX_LEN:
-                raise forms.ValidationError("Il messaggio è lungo %s caratteri, il massimo consentito è %s." % (len(msg), MSG_MAX_LEN))
+                raise forms.ValidationError(f"Il messaggio è lungo {len(msg)} caratteri, il massimo consentito è {MSG_MAX_LEN}.")
         if self.fields['message'].required and not msg:
             raise forms.ValidationError("Inserire almeno un carattere che non sia lo spazio")
         return msg

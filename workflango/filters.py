@@ -31,7 +31,7 @@ def boolstr(strval):
         return True
     if v in ('0', 'f', 'false', 'falso', 'n', 'no'):
         return False
-    raise FilterException('Valore booleano non valido (%s): ammessi 1/0, t(rue)/f(alse), s(i)/(n)o, y(es)/n(o)' % escape(strval))
+    raise FilterException(f'Valore booleano non valido ({escape(strval)}): ammessi 1/0, t(rue)/f(alse), s(i)/(n)o, y(es)/n(o)')
 
 
 def datestr_local2iso(date_str):
@@ -179,7 +179,7 @@ class BaseFilter:
                             filter_dict = {model_field + search_operator: request_field_value}
                             or_query = or_query | Q(**filter_dict) if or_query else Q(**filter_dict)
                     except Exception as e:
-                        raise FilterException('Errore nel filtro per il campo %s: %s' % (model_field, escape(get_exception_error_msg(e))))
+                        raise FilterException(f'Errore nel filtro per il campo {model_field}: {escape(get_exception_error_msg(e))}')
                 fixed_filters_q = Q()
                 if fixed_filters:
                     if callable(fixed_filters):
@@ -256,7 +256,7 @@ def filter_by_unread(field, unread, request):
 
 def filter_by_message(field, message, request):
     status, lookup = _get_status_lookup(request)
-    req = text_search(('%s__message' % lookup, ), message, request)
+    req = text_search((f'{lookup}__message', ), message, request)
     return _fixed_filter(req, status)
 
 
@@ -273,7 +273,7 @@ def filter_by_date_max(field, date, request):
 
 
 def build_Q(lookup, field, value):
-    key = '%s__%s' % (lookup, field)
+    key = f'{lookup}__{field}'
     d = {key: value}
     return Q(**d)
 
