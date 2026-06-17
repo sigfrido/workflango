@@ -52,7 +52,7 @@ class State(models.Model):
     current State, avoiding a query on every access.
 
     Key fields:
-    - state: short string identifying the workflow phase (max 20 chars)
+    - phase: short string identifying the workflow phase (max 20 chars)
     - owner: the user currently responsible for the object (nullable = unassigned)
     - user: the user who triggered the transition into this state
     - transition_type: auto-derived category (new/assign/delegate/reject/…)
@@ -91,10 +91,10 @@ class State(models.Model):
     # transition type
     transition_type = models.CharField(max_length=20)
 
-    # The state record is suspended - kind of a lockout from other WF operations
+    # Flags a (temporary) inactivity on the instance until further notice from the owner
     suspended = models.BooleanField(default=False)
 
-    # The state record has not been read
+    # The state record and updated instance has not been read by its owner
     unread = models.BooleanField(default=False)
 
     # When set, this transition was performed by an admin impersonating another user.
@@ -388,12 +388,20 @@ class WorkflowModel(models.Model):
 
     def lock_instance(self):
         """
-        Locks the instance at the DB level for the current transactions
-        Any attempt to perform a lock or state transition on the same instance
-        from within another transition / session will result in a DB error.
-        Works only with Postgresql
+        Locks the instance row for the duration of the current transaction.
+
+        Behaviour by backend:
+        - PostgreSQL / MySQL 8.0+ / Oracle: SELECT FOR UPDATE NOWAIT — raises
+          OperationalError immediately if another transaction holds the lock.
+        - MySQL < 8.0 / MariaDB < 10.3: SELECT FOR UPDATE (blocking) — waits
+          for the lock; no NOWAIT error, but no instant failure either.
+        - SQLite: no-op (Django silently skips FOR UPDATE on SQLite).
         """
-        return self.__class__.objects.select_for_update(nowait=True).filter(pk=self.pk)[0]
+        from django.db import connection
+        if not connection.features.has_select_for_update:
+            return self
+        nowait = connection.features.has_select_for_update_nowait
+        return self.__class__.objects.select_for_update(nowait=nowait).filter(pk=self.pk)[0]
 
 
     @property
