@@ -178,6 +178,15 @@ Actions added automatically:
 |--------|-----|-------------|
 | GET | `/{pk}/workflow_history/` | Full transition history |
 | POST | `/{pk}/change_state/` | Perform a transition |
+| POST | `/{pk}/mark_read/` | Set or clear the `unread` flag (owner only) |
+
+`mark_read` POST body (all fields optional):
+
+```json
+{"read": true}
+```
+
+Returns `{"unread": false}`. Defaults to `read: true` if body is omitted (auto-mark-read on page open). Pass `{"read": false}` to toggle back to unread. Only the current owner can call this endpoint.
 
 `change_state` POST body:
 

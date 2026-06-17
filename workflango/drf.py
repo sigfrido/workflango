@@ -117,6 +117,11 @@ class WorkflowSerializerMixin:  # pylint: disable=too-few-public-methods
     current_state = StateSerializer(read_only=True)
 
 
+class _MarkReadInputSerializer(serializers.Serializer):  # pylint: disable=too-few-public-methods
+    """Input schema for the mark_read action."""
+    read = serializers.BooleanField(default=True)
+
+
 class _ChangeStateInputSerializer(serializers.Serializer):  # pylint: disable=too-few-public-methods
     """Input schema for the change_state action."""
     phase = serializers.CharField()
@@ -314,3 +319,39 @@ class WorkflowViewSetMixin:
 
         serializer = self.get_state_serializer(new_state)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'])
+    def mark_read(self, request, pk=None):  # noqa: ARG002
+        """
+        Set or clear the ``unread`` flag on the current state.
+
+        Only the current owner (or an impersonated user acting as owner) may call
+        this endpoint.  Intended for two patterns:
+
+        1. **Auto mark-read**: the detail template fires a delayed POST after a few
+           seconds with ``{"read": true}`` (or no body, default is ``true``).
+        2. **Toggle button**: the client sends the desired state explicitly::
+
+               {"read": true}   # mark as read   → unread becomes False
+               {"read": false}  # mark as unread  → unread becomes True
+
+        Returns ``{"unread": <bool>}`` so the client can update its UI without a
+        full page reload.
+
+        Returns 403 if the caller is not the current owner.
+        Returns 404 if the instance has no active state yet.
+        """
+        instance = self.get_object()
+        current_state = instance.wfm_state
+        if not current_state:
+            raise PermissionDenied("L'oggetto non ha ancora uno stato attivo.")
+
+        acting_user, _ = self.get_effective_user(request)
+        if current_state.owner_id != acting_user.pk:
+            raise PermissionDenied("Solo il proprietario corrente può modificare lo stato di lettura.")
+
+        input_ser = _MarkReadInputSerializer(data=request.data)
+        input_ser.is_valid(raise_exception=True)
+        current_state.unread = not input_ser.validated_data['read']
+        current_state.save(update_fields=['unread'])
+        return Response({'unread': current_state.unread})
