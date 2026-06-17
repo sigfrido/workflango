@@ -1,21 +1,19 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from django.test import TransactionTestCase, TestCase
+from django.test import TransactionTestCase, TestCase, override_settings
 from django.core.exceptions import  ImproperlyConfigured, ValidationError
 from django.contrib.auth.models import User
-from django.conf import settings
 from workflango.exceptions import (InvalidWorkflowConfiguration, InvalidState,
     TransitionNotAllowed, UnmanagedObject, StaleObject)
 from workflango.models import State, transition_done, WorkflowModel
 from workflango.wf_config import WorkflowConfig
 from workflango.wf_transition import WFTransitionDescriptor
-from tests.models import WorkflowModelValid, WorkflowModelInvalid
+from tests.models import WorkflowModelValid, WorkflowModelInvalid, WorkflowModelValidSerializer
 
 from django.db import IntegrityError, transaction
 
 
-import unittest
 import warnings
 
 from workflango.user_groups import (user_group_add, user_group_remove,
@@ -23,8 +21,6 @@ from workflango.user_groups import (user_group_add, user_group_remove,
     users_for_group, users_for_groups,
     group_is_valid, group_is_valid_or_error)
 
-
-SKIP_TESTS = not getattr(settings, 'STANDALONE_TESTS', False)
 
 _tdd = {}
 def _transition_done_handler(sender, **kwargs):
@@ -34,7 +30,6 @@ def _transition_done_handler(sender, **kwargs):
     #~ _transition_done_data.update(kwargs)
 
 
-@unittest.skipIf(SKIP_TESTS, "Please run workflow tests with run_standalone_tests.py")
 class WorkflowConfigTest(TestCase):
 
     def setUp(self):
@@ -65,16 +60,13 @@ class WorkflowConfigTest(TestCase):
 
 
 
-@unittest.skipIf(SKIP_TESTS, "Please run workflow tests with run_standalone_tests.py")
 class WorkflowTest(TransactionTestCase):
 
     @classmethod
     def setUpClass(cls):
         super(WorkflowTest, cls).setUpClass()
-        if SKIP_TESTS:
-            return
         cls.OkModel = WorkflowModelValid
-        cls.OkModel.configure_workflow()
+        cls.OkModel.configure_workflow(snapshot_serializer=WorkflowModelValidSerializer)
 
 
     def setUp(self):
@@ -1130,5 +1122,130 @@ class WorkflowTest(TransactionTestCase):
         trans = WFTransitionDescriptor(inst, 0, self.user_4)
         self.assertFalse(trans.is_disabled)
         inst.wfm.transition(self.user_4, 0, None)
+
+
+class WorkflowSnapshotTest(TransactionTestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.OkModel = WorkflowModelValid
+        cls.OkModel.configure_workflow(snapshot_serializer=WorkflowModelValidSerializer)
+        if cls.OkModel.wfm_config._snapshot_serializer is None:
+            cls.OkModel.wfm_config._snapshot_serializer = WorkflowModelValidSerializer
+
+    def setUp(self):
+        State.objects.all().delete()
+        self.OkModel.objects.all().delete()
+        User.objects.all().delete()
+        # user_1 (group1) can admin/edit state 1 and transition into it
+        # user_3 (group3) can own state 2 (edit: group3)
+        self.user_1 = User.objects.create(username='user1', password='pol')
+        self.user_3 = User.objects.create(username='user3', password='pol')
+        user_group_add(self.user_1, 'group1')
+        user_group_add(self.user_3, 'group3')
+        self.OkModel.wfm_config.clear_cached_admins()
+
+    def _create_at_state_1(self, **fields):
+        instance = self.OkModel.objects.create(**fields)
+        instance.wfm.transition(self.user_1, 1, self.user_1)
+        return instance
+
+    def test_snapshot_disabled_by_default(self):
+        instance = self._create_at_state_1(name='doc', size=7)
+        state = instance.wfm.transition(self.user_1, 2, self.user_3)
+        self.assertIsNone(state.snapshot)
+
+    @override_settings(WORKFLANGO_SNAPSHOT_ENABLED=True)
+    def test_snapshot_populated_on_exit_from_snapshot_state(self):
+        instance = self._create_at_state_1(name='test doc', size=42, active=True)
+        state = instance.wfm.transition(self.user_1, 2, self.user_3)
+        self.assertIsNotNone(state.snapshot)
+        self.assertEqual(state.snapshot['name'], 'test doc')
+        self.assertEqual(state.snapshot['size'], 42)
+        self.assertTrue(state.snapshot['active'])
+
+    @override_settings(WORKFLANGO_SNAPSHOT_ENABLED=True)
+    def test_snapshot_reflects_state_at_transition_time(self):
+        instance = self._create_at_state_1(name='original', size=1)
+        instance.name = 'modified'
+        instance.size = 99
+        instance.save()
+        state = instance.wfm.transition(self.user_1, 2, self.user_3)
+        self.assertEqual(state.snapshot['name'], 'modified')
+        self.assertEqual(state.snapshot['size'], 99)
+
+    @override_settings(WORKFLANGO_SNAPSHOT_ENABLED=True)
+    def test_snapshot_not_taken_for_non_snapshot_state(self):
+        instance = self.OkModel.objects.create(name='doc', size=5)
+        state = instance.wfm.transition(self.user_1, 1, self.user_1)
+        self.assertIsNone(state.snapshot)
+
+    @override_settings(WORKFLANGO_SNAPSHOT_ENABLED=True)
+    def test_snapshot_weight_decimal(self):
+        import decimal
+        instance = self._create_at_state_1(weight=decimal.Decimal('3.75'))
+        state = instance.wfm.transition(self.user_1, 2, self.user_3)
+        self.assertEqual(state.snapshot['weight'], '3.75')
+
+
+class WorkflowImpersonationTest(TransactionTestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.OkModel = WorkflowModelValid
+        cls.OkModel.configure_workflow(snapshot_serializer=WorkflowModelValidSerializer)
+
+    def setUp(self):
+        State.objects.all().delete()
+        self.OkModel.objects.all().delete()
+        User.objects.all().delete()
+        self.superuser = User.objects.create_superuser('superadmin', email='', password='pwd')
+        self.user_1 = User.objects.create(username='user1', password='pol')
+        self.user_2 = User.objects.create(username='user2', password='pol')
+        user_group_add(self.user_1, 'group1')
+        user_group_add(self.user_2, 'group1')
+        self.OkModel.wfm_config.clear_cached_admins()
+
+    def test_impersonated_by_none_by_default(self):
+        instance = self.OkModel.objects.create()
+        state = instance.wfm.transition(self.user_1, 1, self.user_1)
+        self.assertIsNone(state.impersonated_by)
+
+    def test_impersonated_by_saved_on_transition(self):
+        instance = self.OkModel.objects.create()
+        state = instance.wfm.transition(
+            self.user_1, 1, self.user_1,
+            impersonated_by=self.superuser,
+        )
+        self.assertEqual(state.user, self.user_1)
+        self.assertEqual(state.impersonated_by, self.superuser)
+
+    def test_get_impersonable_users_superuser_sees_all_others(self):
+        impersonable = self.OkModel.wfm_config.get_impersonable_users(self.superuser)
+        pks = set(impersonable.values_list('pk', flat=True))
+        self.assertIn(self.user_1.pk, pks)
+        self.assertIn(self.user_2.pk, pks)
+        self.assertNotIn(self.superuser.pk, pks)
+
+    def test_get_impersonable_users_non_superuser_gets_empty(self):
+        impersonable = self.OkModel.wfm_config.get_impersonable_users(self.user_1)
+        self.assertEqual(impersonable.count(), 0)
+
+    def test_get_impersonable_users_inactive_excluded(self):
+        inactive = User.objects.create(username='inactive', is_active=False)
+        impersonable = self.OkModel.wfm_config.get_impersonable_users(self.superuser)
+        pks = set(impersonable.values_list('pk', flat=True))
+        self.assertNotIn(inactive.pk, pks)
+
+    def test_impersonated_by_persisted_to_db(self):
+        instance = self.OkModel.objects.create()
+        state = instance.wfm.transition(
+            self.user_1, 1, self.user_1,
+            impersonated_by=self.superuser,
+        )
+        reloaded = State.objects.select_related('impersonated_by').get(pk=state.pk)
+        self.assertEqual(reloaded.impersonated_by, self.superuser)
 
 

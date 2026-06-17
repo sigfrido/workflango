@@ -104,7 +104,7 @@ class WorkflowConfig(dict):
     _workflow_admin = None
     _workflow_admins = None
 
-    def __init__(self, model, model_config, model_defaults=None, impersonable_users_func=None):
+    def __init__(self, model, model_config, model_defaults=None, impersonable_users_func=None, snapshot_serializer=None):
         super(WorkflowConfig, self).__init__()
         self._model = model
         if model_defaults is None:
@@ -114,6 +114,7 @@ class WorkflowConfig(dict):
         self._model_defaults = model_defaults
         self._model_states = []
         self._impersonable_users_func = impersonable_users_func
+        self._snapshot_serializer = snapshot_serializer
         self._create_model_config(model_config)
 
 
@@ -162,6 +163,7 @@ class WorkflowConfig(dict):
         current_config = {}
         current_config = deepcopy(self._model_defaults)
         current_config.setdefault('is_closed', False)
+        current_config.setdefault('snapshot', False)
         current_config.setdefault('properties', {})
         current_config.setdefault('allow_release', 'strict')
         current_config['reachable_states'] = {}

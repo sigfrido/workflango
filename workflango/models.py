@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from django.conf import settings
 from django.db import models
 from django.db import transaction
 from django.contrib.contenttypes.models import ContentType
@@ -334,14 +335,16 @@ class WorkflowModel(models.Model):
 
 
     @classmethod
-    def configure_workflow(cls, config=None, defaults=None, impersonable_users=None):
+    def configure_workflow(cls, config=None, defaults=None, impersonable_users=None, snapshot_serializer=None):
         """
         Creates the workflow configuration for this model.
 
-        ``impersonable_users``: optional callable ``(user) -> queryset`` that returns
-        the users ``user`` is allowed to impersonate in this workflow.
-        Stored on ``WorkflowConfig`` and accessible via ``cls.wfm_config.get_impersonable_users(user)``.
-        If omitted, the default policy (superuser / WORKFLOW_ADMIN_GROUP) applies.
+        ``impersonable_users``: optional callable ``(user) -> queryset`` returning the
+        users ``user`` is allowed to impersonate. Default: superuser / WORKFLOW_ADMIN_GROUP.
+
+        ``snapshot_serializer``: optional DRF serializer class used by the default
+        ``get_workflow_snapshot()`` implementation to produce the snapshot dict.
+        If omitted, ``get_workflow_snapshot()`` returns ``None`` (no snapshot).
         """
         if hasattr(cls, 'wfm_config'):
             return
@@ -349,7 +352,11 @@ class WorkflowModel(models.Model):
             config = getattr(cls, 'workflow_phases', None)
         if not defaults:
             defaults = getattr(cls, 'workflow_defaults', {})
-        cls.wfm_config = WorkflowConfig(cls, config, defaults, impersonable_users_func=impersonable_users)
+        cls.wfm_config = WorkflowConfig(
+            cls, config, defaults,
+            impersonable_users_func=impersonable_users,
+            snapshot_serializer=snapshot_serializer,
+        )
 
 
     @property
@@ -401,6 +408,26 @@ class WorkflowModel(models.Model):
 
     def current_state_str(self, for_none=''):
         return State.phase_str(self.current_state, for_none)
+
+
+    def get_workflow_snapshot(self, new_phase):  # noqa: ARG002
+        """
+        Returns a JSON-serialisable dict representing this instance at the moment of a
+        transition, to be stored in ``State.snapshot``.
+
+        Called automatically by ``transition()`` when:
+        - ``settings.WORKFLANGO_SNAPSHOT_ENABLED`` is ``True``
+        - the source state's config has ``'snapshot': True``
+
+        Default implementation: uses the serializer class declared via
+        ``configure_workflow(snapshot_serializer=MySerializer)``, or returns ``None``
+        if none is configured.  Override for custom logic (field filtering, per-phase
+        content, etc.); ``new_phase`` is the destination phase of the transition.
+        """
+        serializer_class = self.wfm_config._snapshot_serializer
+        if serializer_class is None:
+            return None
+        return dict(serializer_class(self).data)
 
 
     def reload_current_state(self):
@@ -758,6 +785,10 @@ class InstanceWorkflowManager(object):
             next_state.transition_type = next_state.get_transition_type(current_state)
         next_state.previous_state = current_state
         next_state.unread = bool(new_owner and (new_owner != user))
+        if getattr(settings, 'WORKFLANGO_SNAPSHOT_ENABLED', False):
+            source_phase = current_state.phase if current_state else None
+            if config[source_phase].get('snapshot', False):
+                next_state.snapshot = self.instance.get_workflow_snapshot(new_state)
         next_state.save()
 
         self.instance.materialize_current_state(next_state)

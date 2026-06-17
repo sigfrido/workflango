@@ -1,14 +1,24 @@
 # -*- coding: utf-8 -*-
 
-from workflango.models import WorkflowModel
+import decimal
+
 from django.core.exceptions import ValidationError
+from django.db import models
 from django.db.models import AutoField
+from rest_framework import serializers
+
+from workflango.models import WorkflowModel
 
 
 class WorkflowModelValid(WorkflowModel):
 
     id = AutoField(primary_key=True)
-    
+    name = models.CharField(max_length=100, blank=True, default='')
+    description = models.TextField(blank=True, default='')
+    size = models.IntegerField(default=0)
+    weight = models.DecimalField(max_digits=10, decimal_places=2, default=decimal.Decimal('0.00'))
+    active = models.BooleanField(default=False)
+
     class Meta:
         app_label = 'tests'
 
@@ -79,6 +89,7 @@ class WorkflowModelValid(WorkflowModel):
         }),
 
         (1, {
+            'snapshot': True,
             'reachable_states' : {
                 2 : { 'caption' : 'exec 12' },
                 3 : {},
@@ -133,6 +144,12 @@ class WorkflowModelValid(WorkflowModel):
     )
 
     
+class WorkflowModelValidSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WorkflowModelValid
+        fields = ['id', 'name', 'description', 'size', 'weight', 'active']
+
+
 class WorkflowModelInvalid(WorkflowModel):
     id = AutoField(primary_key=True)
 

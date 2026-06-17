@@ -41,4 +41,3 @@ SETTINGS = dict(
 
 )
 
-SETTINGS['STANDALONE_TESTS'] = True
