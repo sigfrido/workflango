@@ -104,7 +104,7 @@ class WorkflowConfig(dict):
     _workflow_admin = None
     _workflow_admins = None
 
-    def __init__(self, model, model_config, model_defaults=None):
+    def __init__(self, model, model_config, model_defaults=None, impersonable_users_func=None):
         super(WorkflowConfig, self).__init__()
         self._model = model
         if model_defaults is None:
@@ -113,6 +113,7 @@ class WorkflowConfig(dict):
             raise InvalidWorkflowConfiguration(f"Parameter model_defaults for {self._model} must be a dict")
         self._model_defaults = model_defaults
         self._model_states = []
+        self._impersonable_users_func = impersonable_users_func
         self._create_model_config(model_config)
 
 
@@ -280,6 +281,31 @@ class WorkflowConfig(dict):
     def clear_cached_admins(cls):
         cls._workflow_admin = None
         cls._workflow_admins = None
+
+
+    def get_impersonable_users(self, user):
+        """
+        Returns a queryset of users that ``user`` is allowed to impersonate in this workflow.
+
+        Default: superuser or WORKFLOW_ADMIN_GROUP members can impersonate any
+        other active user; everyone else gets an empty queryset.
+
+        Override by passing ``impersonable_users`` to ``configure_workflow()``::
+
+            MyModel.configure_workflow(
+                config=...,
+                impersonable_users=lambda user: UserDelegation.delegates_for(user),
+            )
+
+        The callable receives the requesting user and must return a queryset or
+        iterable of User instances.
+        """
+        if self._impersonable_users_func is not None:
+            return self._impersonable_users_func(user)
+        admin_group = getattr(settings, 'WORKFLOW_ADMIN_GROUP', None)
+        if user.is_superuser or (admin_group and user_in_groups(user, admin_group)):
+            return User.objects.filter(is_active=True).exclude(pk=user.pk)
+        return User.objects.none()
 
 
     def check(self):

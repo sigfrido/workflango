@@ -57,8 +57,8 @@ class State(models.Model):
     - transition_type: auto-derived category (new/assign/delegate/reject/…)
     - suspended: soft-lock that blocks further transitions until resumed
     - unread: True when the owner has not yet viewed the object in this state
-    - impersonating_user: set when an admin performed the transition impersonating another user;
-      `user` holds the impersonated identity, `impersonating_user` the real actor
+    - impersonated_by: set when an admin performed the transition impersonating another user;
+      `user` holds the impersonated identity, `impersonated_by` the real actor
     - snapshot: optional JSON snapshot of the object at transition time (audit/rollback)
     """
 
@@ -97,8 +97,8 @@ class State(models.Model):
     unread = models.BooleanField(default=False)
 
     # When set, this transition was performed by an admin impersonating another user.
-    # user = the impersonated identity; impersonating_user = the real admin acting.
-    impersonating_user = models.ForeignKey(User, null=True, blank=True, related_name='+', on_delete=models.SET_NULL)
+    # user = the impersonated identity; impersonated_by = the real admin acting.
+    impersonated_by = models.ForeignKey(User, null=True, blank=True, related_name='+', on_delete=models.SET_NULL)
 
     # Optional JSON snapshot of the object at the time of transition (audit/rollback).
     snapshot = models.JSONField(null=True, blank=True)
@@ -334,9 +334,14 @@ class WorkflowModel(models.Model):
 
 
     @classmethod
-    def configure_workflow(cls, config=None, defaults=None):
+    def configure_workflow(cls, config=None, defaults=None, impersonable_users=None):
         """
-        Creates the workflow configuration for this model
+        Creates the workflow configuration for this model.
+
+        ``impersonable_users``: optional callable ``(user) -> queryset`` that returns
+        the users ``user`` is allowed to impersonate in this workflow.
+        Stored on ``WorkflowConfig`` and accessible via ``cls.wfm_config.get_impersonable_users(user)``.
+        If omitted, the default policy (superuser / WORKFLOW_ADMIN_GROUP) applies.
         """
         if hasattr(cls, 'wfm_config'):
             return
@@ -344,9 +349,7 @@ class WorkflowModel(models.Model):
             config = getattr(cls, 'workflow_phases', None)
         if not defaults:
             defaults = getattr(cls, 'workflow_defaults', {})
-        # TODO we need a property accessible via both model and instance
-        # For now we use a public attribute
-        cls.wfm_config = WorkflowConfig(cls, config, defaults)
+        cls.wfm_config = WorkflowConfig(cls, config, defaults, impersonable_users_func=impersonable_users)
 
 
     @property
@@ -706,7 +709,8 @@ class InstanceWorkflowManager(object):
 
 
     @transaction.atomic
-    def transition(self, user, new_state, new_owner, message='', suspended=False, force_transition_type=None):
+    def transition(self, user, new_state, new_owner, message='', suspended=False,
+                   force_transition_type=None, impersonated_by=None):
         """
         Performs a transition between two states.
         First, instance is validated (but not saved) through a call to full_clean().
@@ -715,6 +719,9 @@ class InstanceWorkflowManager(object):
         If a previous state exists for the same instance, the 'next_state' attribute is
         set to the new state.
         All the saving operations are performed within a transaction.
+
+        impersonated_by: when set, ``user`` is the impersonated identity and
+        ``impersonated_by`` is the real actor (e.g. an admin operating on their behalf).
         """
 
         # LOCK riga stato corrente, dovrebbe generare istantaneamente un errore se
@@ -741,7 +748,8 @@ class InstanceWorkflowManager(object):
 
 
         config = self.transition_allowed(user, new_state, new_owner, suspended=suspended)
-        next_state = State(instance=self.instance, user=user, phase=new_state, owner=new_owner, message=message, suspended=suspended)
+        next_state = State(instance=self.instance, user=user, phase=new_state, owner=new_owner,
+                           message=message, suspended=suspended, impersonated_by=impersonated_by)
         if force_transition_type:
             next_state.transition_type = force_transition_type
         elif current_state and current_state.phase != new_state and config[current_state.phase]['reachable_states'][new_state].get('reject', False):
