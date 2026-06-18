@@ -5,6 +5,7 @@ from django.db import models
 from django.db import transaction
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import User
 from django.urls import reverse
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
@@ -74,10 +75,10 @@ class State(models.Model):
     state_date = models.DateTimeField(auto_now_add=True)
 
     # owner user
-    owner = models.ForeignKey(User, null=True, related_name='states', on_delete=models.PROTECT)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, related_name='states', on_delete=models.PROTECT)
 
     # user responsible for the transition to current state
-    user = models.ForeignKey(User, on_delete=models.PROTECT)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
 
     # link to next state
     next_state = models.OneToOneField('self', null=True, related_name='_previous_state', unique=True, on_delete=models.PROTECT)
@@ -99,7 +100,7 @@ class State(models.Model):
 
     # When set, this transition was performed by an admin impersonating another user.
     # user = the impersonated identity; impersonated_by = the real admin acting.
-    impersonated_by = models.ForeignKey(User, null=True, blank=True, related_name='+', on_delete=models.SET_NULL)
+    impersonated_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, related_name='+', on_delete=models.SET_NULL)
 
     # Optional JSON snapshot of the object at the time of transition (audit/rollback).
     snapshot = models.JSONField(null=True, blank=True)
