@@ -267,6 +267,24 @@ class WorkflowViewSetMixin:
         serializer = self.get_state_serializer(states, many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['get'])
+    def history(self, request, pk=None, **kwargs):  # noqa: ARG002
+        """Returns all State records for this instance (GUI-friendly alias for workflow_history)."""
+        instance = self.get_object()
+        self._sebastian_obj = instance
+        states = instance.wfm.get_states().select_related('owner', 'user', 'impersonated_by')
+        page = self.paginate_queryset(states)
+        if page is not None:
+            serializer = self.get_state_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_state_serializer(states, many=True)
+        return Response(serializer.data)
+
+    history.gui_config = {
+        'label': 'Storico',
+        'icon': 'clock-history',
+    }
+
     @action(detail=True, methods=['post'])
     def change_state(self, request, pk=None):  # noqa: ARG002
         """
