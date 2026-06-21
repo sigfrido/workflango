@@ -6,7 +6,7 @@ from django.db import transaction
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import User
+from django.contrib.auth.models import AbstractUser
 from django.urls import reverse
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 import django.dispatch
@@ -495,7 +495,7 @@ def _user_display_str(user):
     return str(user)
 
 # Show username in owner dropdown for change state view
-User.wfm_display_str_assign = _user_display_str
+AbstractUser.wfm_display_str_assign = _user_display_str
 
 
 
@@ -913,13 +913,13 @@ def _user_in_groups(user, *groups):
             if grp in user.groups_list:
                 return True
     return False
-User.in_groups = _user_in_groups
+AbstractUser.in_groups = _user_in_groups
 
 def _user_groups_list(user):
     return sorted(list(set(user.groups.all().values_list('name', flat=True))))
-User.groups_list = _cached_property(_user_groups_list)
+AbstractUser.groups_list = _cached_property(_user_groups_list)
 
 def _user_groups_set(user):
     return set(user.groups_list)
-User.groups_set = _cached_property(_user_groups_set)
+AbstractUser.groups_set = _cached_property(_user_groups_set)
 
