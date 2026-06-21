@@ -99,7 +99,7 @@ class StateSerializer(serializers.ModelSerializer):
         return str(obj.impersonated_by) if obj.impersonated_by else None
 
 
-class WorkflowSerializerMixin:  # pylint: disable=too-few-public-methods
+class WorkflowSerializerMixin(serializers.Serializer):  # pylint: disable=too-few-public-methods
     """
     Serializer mixin that adds a read-only ``current_state`` nested field to any
     WorkflowModel serializer.
@@ -111,9 +111,10 @@ class WorkflowSerializerMixin:  # pylint: disable=too-few-public-methods
                 model = MyModel
                 fields = ['id', 'title', 'current_state']
 
-    Override ``state_serializer_class`` on the outer serializer to use a custom
-    StateSerializer subclass.
+    To use a custom StateSerializer subclass, redeclare ``current_state`` on the
+    consuming serializer.
     """
+
     current_state = StateSerializer(read_only=True)
 
 
@@ -136,6 +137,10 @@ class _ChangeStateInputSerializer(serializers.Serializer):  # pylint: disable=to
 class WorkflowViewSetMixin:
     """
     ViewSet mixin that adds standard workflow actions to any ModelViewSet.
+
+    When used alongside a Sebastian GUIMixin, sets ``template_namespace = 'workflango'``
+    so the Sebastian renderer picks up templates from
+    ``workflango/sebastian/{pack}/`` instead of the default ``sebastian/{pack}/``.
 
     Actions added:
     - GET  ``/{pk}/workflow_history/``  — ordered list of all State records
@@ -162,6 +167,8 @@ class WorkflowViewSetMixin:
             serializer_class = MyModelSerializer
             filter_backends = [WorkflowFilterBackend]
     """
+
+    template_namespace = 'workflango'
 
     state_serializer_class = StateSerializer
 
@@ -283,6 +290,7 @@ class WorkflowViewSetMixin:
     history.gui_config = {
         'label': 'Storico',
         'icon': 'clock-history',
+        'position': 'both',
     }
 
     @action(detail=True, methods=['post'])

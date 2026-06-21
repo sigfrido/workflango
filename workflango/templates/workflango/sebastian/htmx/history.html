@@ -1,0 +1,68 @@
+{% extends pack_base %}
+{% load sebastian_tags %}
+
+{% block title %}Storico workflow{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4>
+    <a href="../.."
+       hx-get="../.."
+       hx-target="#sebastian-content"
+       hx-push-url="true">{{ view.get_view_name }}</a>
+    — Storico workflow
+  </h4>
+</div>
+
+{% if items %}
+<div class="table-responsive">
+  <table class="table table-sm table-hover">
+    <thead class="table-light">
+      <tr>
+        <th>Data</th>
+        <th>Fase</th>
+        <th>Proprietario</th>
+        <th>Operatore</th>
+        <th>Tipo</th>
+        <th>Messaggio</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for state in items %}
+      <tr>
+        <td class="text-nowrap">{{ state.state_date|isodt:"d/m/Y H:i" }}</td>
+        <td><span class="badge bg-secondary">{{ state.phase }}</span></td>
+        <td>{{ state.owner_display|default:"—" }}</td>
+        <td>
+          {{ state.user_display|default:"—" }}
+          {% if state.impersonated_by_display %}
+          <small class="text-muted">(come {{ state.impersonated_by_display }})</small>
+          {% endif %}
+        </td>
+        <td>{{ state.transition_type_display|default:"—" }}</td>
+        <td>{{ state.message|default:"" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if pagination %}
+<div class="d-flex justify-content-between align-items-center mt-2">
+  <small class="text-muted">{{ pagination.count }} record</small>
+  <div>
+    {% if pagination.previous %}
+    <a href="{{ pagination.previous }}" class="btn btn-outline-secondary btn-sm">{% icon "chevron-left" %}</a>
+    {% endif %}
+    {% if pagination.next %}
+    <a href="{{ pagination.next }}" class="btn btn-outline-secondary btn-sm">{% icon "chevron-right" %}</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% else %}
+<p class="text-muted">Nessuno stato registrato.</p>
+{% endif %}
+
+{% endblock %}

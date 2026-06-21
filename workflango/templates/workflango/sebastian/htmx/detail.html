@@ -1,0 +1,17 @@
+{% extends 'sebastian/htmx/detail.html' %}
+{% load sebastian_tags %}
+
+{% block extra_fields_before %}
+{% if data.current_state %}
+<div class="card mb-3 border-secondary">
+  <div class="card-body py-2">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <span class="fw-semibold text-secondary">Workflow</span>
+      <span class="badge bg-secondary">{{ data.current_state.phase }}</span>
+      <span>{% icon "person" %} {{ data.current_state.owner_display|default:"—" }}</span>
+      <small class="text-muted">{% icon "calendar" %} {{ data.current_state.state_date|isodt:"d/m/Y H:i" }}</small>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

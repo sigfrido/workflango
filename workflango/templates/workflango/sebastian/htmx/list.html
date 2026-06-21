@@ -1,0 +1,14 @@
+{% extends 'sebastian/htmx/list.html' %}
+{% load sebastian_tags %}
+
+{% block extra_header_after %}<th>Stato</th>{% endblock %}
+
+{% block extra_fields_after %}
+{% if item.current_state %}
+<td class="text-nowrap">
+  <span class="badge bg-secondary">{{ item.current_state.phase }}</span>
+  <span class="ms-1">{{ item.current_state.owner_display|default:"—" }}</span>
+  <small class="text-muted ms-1">{{ item.current_state.state_date|isodt:"d/m/Y" }}</small>
+</td>
+{% endif %}
+{% endblock %}
