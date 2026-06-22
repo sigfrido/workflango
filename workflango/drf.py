@@ -40,6 +40,14 @@ except ImportError as e:
         "Add 'djangorestframework' to your project dependencies."
     ) from e
 
+try:
+    from sebastian.serializers import gui_field
+except ImportError:
+    def gui_field(label_or_func=None):  # no-op fallback when sebastian is not installed
+        if callable(label_or_func):
+            return label_or_func
+        return lambda f: f
+
 from django.contrib.auth.models import User
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
@@ -53,6 +61,7 @@ __all__ = [
     'WorkflowSerializerMixin',
     'WorkflowViewSetMixin',
     'WorkflowFilterBackend',
+    'gui_field',
 ]
 
 
@@ -101,21 +110,42 @@ class StateSerializer(serializers.ModelSerializer):
 
 class WorkflowSerializerMixin(serializers.Serializer):  # pylint: disable=too-few-public-methods
     """
-    Serializer mixin that adds a read-only ``current_state`` nested field to any
-    WorkflowModel serializer.
+    Serializer mixin that adds a read-only ``current_state`` nested field and a
+    GUI-only ``current_state_for_list`` column to any WorkflowModel serializer.
 
     Usage::
 
-        class MyModelSerializer(WorkflowSerializerMixin, serializers.ModelSerializer):
+        class MyWorkflowModelSerializer(WorkflowSerializerMixin, serializers.ModelSerializer):
             class Meta:
-                model = MyModel
+                model = MyWorkflowModel
                 fields = ['id', 'title', 'current_state']
 
     To use a custom StateSerializer subclass, redeclare ``current_state`` on the
     consuming serializer.
+
+    ``current_state_for_list`` is a ``@gui_field`` method — it renders the workflow
+    state as a formatted HTML badge for use in ``Sebastian.list_fields``. It is
+    never included in the JSON API response.
     """
 
     current_state = StateSerializer(read_only=True)
+    datetime_format = '%d/%m/%Y %H:%M'
+
+    @gui_field('Stato')
+    def current_state_for_list(self, obj):
+        from django.utils.html import format_html
+        from django.utils.timezone import localtime
+        state = obj.wfm_state
+        if not state:
+            return '—'
+        date_str = localtime(state.state_date).strftime(self.datetime_format) if state.state_date else ''
+        owner_str = str(state.owner) if state.owner else '—'
+        return format_html(
+            '<span class="badge bg-secondary">{}</span>'
+            ' <span class="ms-1">{}</span>'
+            ' <small class="text-muted ms-1">{}</small>',
+            state.phase or '—', owner_str, date_str,
+        )
 
 
 class _MarkReadInputSerializer(serializers.Serializer):  # pylint: disable=too-few-public-methods
