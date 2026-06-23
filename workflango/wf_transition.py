@@ -1,6 +1,22 @@
 # -*- coding: utf-8 -*-
 
+from collections import namedtuple
+
 from .models import State
+
+
+WorkflowTransitions = namedtuple(
+    'WorkflowTransitions',
+    ['phase_transitions', 'reject_transition', 'command_transitions'],
+)
+"""
+Named tuple returned by WFTransitionDescriptor.get_workflow_transitions().
+
+- phase_transitions: list[WFTransitionDescriptor] — forward moves (reachable states)
+- reject_transition: WFTransitionDescriptor | None — send back to previous phase
+- command_transitions: list[WFTransitionDescriptor] — owner/admin commands
+  (take-ownership, suspend, resume, delegate, release, snatch, reassign)
+"""
 
 
 class WFTransitionDescriptor(object):
@@ -179,10 +195,18 @@ class WFTransitionDescriptor(object):
     def caption(self):
         caption = self.get_config('caption', '')
         if not caption:
-            if self.is_take_ownership:
+            if self.command == 'take-ownership' or self.is_take_ownership:
                 caption = 'Prendi in carico'
-            elif self.is_free:
+            elif self.command == 'release' or (not self.command and self.is_free):
                 caption = 'Rilascia'
+            elif self.command == 'suspend':
+                caption = 'Sospendi'
+            elif self.command == 'resume':
+                caption = 'Riprendi'
+            elif self.command == 'delegate':
+                caption = 'Delega'
+            elif self.command == 'assign':
+                caption = 'Assegna'
             elif self.is_reject:
                 caption = 'Rimanda a ' + self.destination
             else:
@@ -318,6 +342,98 @@ class WFTransitionDescriptor(object):
         for user_data in pot_owners:
             if user_data[0] in removable_ids:
                 pot_owners.remove(user_data)
+
+    @property
+    def severity(self):
+        """Returns 'info', 'warn', or 'error' for button-color mapping.
+
+        Maps to Bootstrap classes: info→btn-outline-primary, warn→btn-warning,
+        error→btn-danger.
+
+        Admin-forced actions (snatch = take-ownership when record is already
+        owned; reassign = delegate on someone else's record) are marked 'error'.
+        """
+        if self.is_forward:
+            return 'info'
+        if self.is_reject:
+            return 'warn'
+        if self.command == 'take-ownership':
+            # snatch: admin taking ownership from an existing owner
+            if self.state and self.state.owner and self.state.owner != self.user:
+                return 'error'
+            return 'info'
+        if self.command == 'resume':
+            return 'info'
+        if self.command == 'delegate':
+            # reassign: admin delegating on someone else's record
+            if self.state and self.state.owner and self.state.owner != self.user:
+                return 'error'
+            return 'warn'
+        if self.command in ('suspend', 'release'):
+            return 'warn'
+        return 'info'
+
+    @classmethod
+    def get_workflow_transitions(cls, obj, user):
+        """
+        Returns a WorkflowTransitions named tuple for (obj, user).
+
+        Extracted from _WorkflowContextMixin.get_allowed_transitions() and
+        extended with command_transitions (take-ownership, suspend, resume,
+        delegate, release; plus admin snatch / reassign).
+
+        Intended for use in both Django CBV mixins and WorkflowViewSetMixin.
+        """
+        cur_state = obj.current_state
+        phase_transitions = []
+        reject_transition = None
+        command_transitions = []
+
+        if not cur_state:
+            return WorkflowTransitions(phase_transitions, reject_transition, command_transitions)
+
+        prev_state = cur_state.get_previous_state()
+        cfg = cur_state.wfm_state_config()
+        reachable_states = cfg['reachable_states'].keys()
+
+        owner = cur_state.owner
+        is_admin = obj.wfm.can_admin(user)
+        is_owner = (owner == user)
+
+        # Build phase_transitions + reject_transition — only for owner or admin
+        if is_owner or is_admin:
+            if cur_state.can_reject and prev_state and prev_state.phase == cur_state.phase:
+                reject_transition = cls(obj, cur_state.phase, user, cur_state.user)
+
+            for dest_state in reachable_states:
+                transition = cls(obj, dest_state, user)
+                if transition.is_reject and prev_state and transition.destination == prev_state.phase:
+                    if cur_state.can_reject:
+                        reject_transition = transition
+                elif not transition.is_reject or cur_state.find_last_state(transition.destination):
+                    phase_transitions.append(transition)
+
+        # Build command_transitions
+
+        if owner is None:
+            if obj.wfm.can_edit(user) or is_admin:
+                command_transitions.append(cls(obj, 'take-ownership', user))
+
+        if owner == user:
+            if cur_state.suspended:
+                command_transitions.append(cls(obj, 'resume', user))
+            else:
+                command_transitions.append(cls(obj, 'suspend', user))
+            if cur_state.can_delegate:
+                command_transitions.append(cls(obj, 'delegate', user))
+            if cur_state.can_release:
+                command_transitions.append(cls(obj, 'release', user))
+
+        if is_admin and owner is not None and owner != user:
+            command_transitions.append(cls(obj, 'take-ownership', user))  # snatch → severity=error
+            command_transitions.append(cls(obj, 'delegate', user))        # reassign → severity=error
+
+        return WorkflowTransitions(phase_transitions, reject_transition, command_transitions)
 
 
 

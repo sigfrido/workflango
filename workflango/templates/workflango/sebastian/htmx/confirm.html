@@ -1,0 +1,86 @@
+{% load sebastian_tags %}
+{# Inline workflow confirmation form — rendered into #wf-confirm-panel (innerHTML swap). #}
+{# On success, hx-target reloads the full detail page (#sebastian-content).             #}
+<div class="card border-{{ data.confirm_style|default:'primary' }} mt-3">
+  <div class="card-header bg-{{ data.confirm_style|default:'primary' }} bg-opacity-10 d-flex justify-content-between align-items-center">
+    <span class="fw-semibold">{{ data.confirm_prompt }}</span>
+    <button type="button"
+            class="btn-close"
+            aria-label="Annulla"
+            onclick="document.getElementById('wf-confirm-panel').innerHTML=''"></button>
+  </div>
+  <div class="card-body">
+
+    {% if form_errors.non_field_errors %}
+    <div class="alert alert-danger mb-3">
+      <ul class="mb-0">
+        {% for error in form_errors.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <form id="wf-confirm-form"
+          hx-post="{{ data.action_url }}"
+          hx-target="#sebastian-content"
+          hx-push-url="{{ object_url }}"
+          hx-indicator="#wf-confirm-spinner">
+      {% csrf_token %}
+      <input type="hidden" name="phase" value="{{ data.phase }}">
+      <input type="hidden" name="suspended" value="{{ data.suspended|yesno:'true,false' }}">
+
+      {% if data.show_owner %}
+      <div class="mb-3">
+        <label class="form-label" for="id_owner">
+          Assegna a{% with errs=form_errors|get_item:"owner" %}{% if errs %} <span class="text-danger">*</span>{% endif %}{% endwith %}
+        </label>
+        <select name="owner"
+                id="id_owner"
+                class="form-select ts-select{% with errs=form_errors|get_item:'owner' %}{% if errs %} is-invalid{% endif %}{% endwith %}">
+          {% for uid, label in data.owner_choices %}
+          <option value="{{ uid }}"{% if uid == 0 %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        {% with errs=form_errors|get_item:"owner" %}
+        {% if errs %}
+        <div class="invalid-feedback">
+          {% for e in errs %}{{ e }}{% if not forloop.last %} {% endif %}{% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+      </div>
+      {% endif %}
+
+      <div class="mb-3">
+        <label class="form-label" for="id_message">
+          Messaggio{% if data.require_message %} <span class="text-danger">*</span>{% endif %}
+        </label>
+        <textarea name="message"
+                  id="id_message"
+                  rows="3"
+                  class="form-control{% with errs=form_errors|get_item:'message' %}{% if errs %} is-invalid{% endif %}{% endwith %}"
+                  {% if data.require_message %}required{% endif %}></textarea>
+        {% with errs=form_errors|get_item:"message" %}
+        {% if errs %}
+        <div class="invalid-feedback">
+          {% for e in errs %}{{ e }}{% if not forloop.last %} {% endif %}{% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit"
+                class="btn btn-{{ data.confirm_style|default:'primary' }}">
+          {% icon "check-lg" %} Conferma
+        </button>
+        <button type="button"
+                class="btn btn-outline-secondary"
+                onclick="document.getElementById('wf-confirm-panel').innerHTML=''">
+          Annulla
+        </button>
+        <span id="wf-confirm-spinner" class="htmx-indicator ms-2 spinner-border spinner-border-sm text-secondary" role="status"></span>
+      </div>
+    </form>
+
+  </div>
+</div>

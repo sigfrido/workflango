@@ -58,6 +58,7 @@ from .models import State
 
 __all__ = [
     'StateSerializer',
+    'WorkflowActionSerializer',
     'WorkflowSerializerMixin',
     'WorkflowViewSetMixin',
     'WorkflowFilterBackend',
@@ -131,6 +132,16 @@ class WorkflowSerializerMixin(serializers.Serializer):  # pylint: disable=too-fe
     current_state = StateSerializer(read_only=True)
     datetime_format = '%d/%m/%Y %H:%M'
 
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        request = self.context.get('request')
+        if getattr(request, 'sebastian_gui', False):
+            state = instance.wfm_state
+            if state:
+                ret['__can_update'] = state.owner == request.user
+            # No __can_update when unmanaged: template falls back to view.can_update (True)
+        return ret
+
     @gui_field('Stato')
     def current_state_for_list(self, obj):
         from django.utils.html import format_html
@@ -153,8 +164,24 @@ class _MarkReadInputSerializer(serializers.Serializer):  # pylint: disable=too-f
     read = serializers.BooleanField(default=True)
 
 
+class WorkflowActionSerializer(serializers.Serializer):  # pylint: disable=too-few-public-methods
+    """
+    Public input serializer for workflow transitions.
+
+    Used both as the confirmation form schema (rendered in the detail template)
+    and as input validation for the change_state POST endpoint.
+
+    The ``user`` field (impersonation) is intentionally excluded — impersonation
+    is a privileged API-level feature not exposed through the GUI confirm form.
+    """
+    phase     = serializers.CharField()
+    owner     = serializers.IntegerField(allow_null=True, required=False, default=None)
+    message   = serializers.CharField(allow_blank=True, required=False, default='')
+    suspended = serializers.BooleanField(required=False, default=False)
+
+
 class _ChangeStateInputSerializer(serializers.Serializer):  # pylint: disable=too-few-public-methods
-    """Input schema for the change_state action."""
+    """Input schema for the change_state action (includes impersonation field)."""
     phase = serializers.CharField()
     owner = serializers.IntegerField(allow_null=True, default=None)
     user = serializers.IntegerField(allow_null=True, default=None,
@@ -201,6 +228,39 @@ class WorkflowViewSetMixin:
     template_namespace = 'workflango'
 
     state_serializer_class = StateSerializer
+
+    # ------------------------------------------------------------------
+    # GUI permission hooks (override GUIMixin defaults)
+    # ------------------------------------------------------------------
+
+    def can_update(self):
+        """Returns True only when the current user owns the workflow instance.
+
+        In list context (_sebastian_obj not set) returns True so the per-row
+        edit link is shown; ownership is enforced when the form actually loads.
+        """
+        obj = getattr(self, '_sebastian_obj', None)
+        if obj is None:
+            return True
+        if not obj.wfm_state:
+            return True   # object not yet under workflow management
+        return obj.wfm.is_owner(self.request.user)
+
+    def can_delete(self):
+        """Workflow-managed objects cannot be deleted via the GUI."""
+        return False
+
+    def get_workflow_transitions(self, instance):
+        """
+        Returns WorkflowTransitions(phase_transitions, reject_transition, command_transitions)
+        for the given instance and the current request user.
+
+        The renderer injects the result into the template context as
+        ``workflow_transitions`` so the workflango detail template can render
+        the action buttons.
+        """
+        from .wf_transition import WFTransitionDescriptor
+        return WFTransitionDescriptor.get_workflow_transitions(instance, self.request.user)
 
     def get_state_serializer(self, *args, **kwargs):  # noqa: D102
         return self.state_serializer_class(*args, **kwargs)
@@ -322,6 +382,84 @@ class WorkflowViewSetMixin:
         'icon': 'clock-history',
         'position': 'both',
     }
+
+    @action(detail=True, methods=['get', 'post'])
+    def change_state_form(self, request, pk=None, **__):  # noqa: ARG002
+        """
+        GET: returns the inline confirmation form for a workflow transition.
+             Accepts ``?phase=<phase>`` query parameter.
+        POST: performs the transition and returns the instance detail data so
+              HTMX can reload the full detail page into ``#sebastian-content``.
+
+        Both GET and POST render through the workflango confirm template when
+        present, falling back to the base Sebastian confirm template.
+        """
+        instance = self.get_object()
+        self._sebastian_obj = instance
+
+        from .wf_transition import WFTransitionDescriptor
+
+        if request.method == 'GET':
+            phase = request.query_params.get('phase')
+            if not phase:
+                raise DRFValidationError({'phase': 'Required.'})
+
+            transition = WFTransitionDescriptor(instance, phase, request.user)
+            owner_choices = transition.get_potential_owners() if transition.show_owner else []
+            severity_to_style = {'info': 'primary', 'warn': 'warning', 'error': 'danger'}
+
+            return Response({
+                'action': 'confirm',
+                'confirm_prompt': transition.caption,
+                'confirm_style': severity_to_style.get(transition.severity, 'primary'),
+                'action_url': request.path,
+                'confirm_serializer': WorkflowActionSerializer(initial={
+                    'phase': phase,
+                    'suspended': transition.is_suspend,
+                }),
+                'owner_choices': owner_choices,
+                'show_owner': transition.show_owner,
+                'require_message': transition.require_message,
+                'phase': phase,
+                'suspended': transition.is_suspend,
+            })
+
+        # POST: perform the transition
+        input_ser = WorkflowActionSerializer(data=request.data)
+        input_ser.is_valid(raise_exception=True)
+        data = input_ser.validated_data
+
+        self.check_wf_permission(instance, request.user)
+
+        # Resolve command strings ('suspend', 'resume', 'release', 'take-ownership', ...)
+        # to the real destination phase and suspended flag via WFTransitionDescriptor.
+        transition = WFTransitionDescriptor(instance, data['phase'], request.user)
+        destination = transition.destination
+        suspended   = transition.is_suspend
+
+        owner = None
+        if data['owner']:
+            try:
+                owner = User.objects.get(pk=data['owner'], is_active=True)
+            except ObjectDoesNotExist as exc:
+                raise DRFValidationError({'owner': f"Utente {data['owner']} non trovato."}) from exc
+
+        try:
+            instance.wfm.transition(
+                request.user,
+                destination,
+                owner,
+                message=data['message'],
+                suspended=suspended,
+            )
+        except (TransitionNotAllowed, ValidationError) as e:
+            raise DRFValidationError({'detail': get_exception_error_msg(e)}) from e
+
+        instance.refresh_from_db()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+    change_state_form.gui_url = True  # register in GUIRouter without adding to action buttons
 
     @action(detail=True, methods=['post'])
     def change_state(self, request, pk=None):  # noqa: ARG002

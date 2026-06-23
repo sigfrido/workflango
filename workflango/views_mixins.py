@@ -11,6 +11,7 @@ from django.urls import reverse
 from django.utils.decorators import method_decorator
 
 from .exceptions import get_exception_error_msg
+from .wf_transition import WFTransitionDescriptor
 
 
 # ---------------------------------------------------------------------------
@@ -88,30 +89,9 @@ class _WorkflowContextMixin:
         return context
 
     def get_allowed_transitions(self):
-        """
-        Return (transitions, reject_transition) for the object's current state.
-
-        transitions — list of WFTransitionDescriptor for forward/non-reject moves.
-        reject_transition — WFTransitionDescriptor for the reject action, or None.
-        """
-        obj = self.get_object()
-        cur_state = obj.current_state
-        prev_state = cur_state.get_previous_state()
-        cfg = cur_state.wfm_state_config()
-        transitions = []
-        reachable_states = cfg['reachable_states'].keys()
-        if cur_state.can_reject and prev_state.phase == cur_state.phase:
-            rej_trans = obj.wfm.get_transition(cur_state.phase, self.request.user, cur_state.user)
-        else:
-            rej_trans = None
-        for dest_state in reachable_states:
-            transition = obj.wfm.get_transition(dest_state, self.request.user)
-            if transition.is_reject and prev_state and (transition.destination == prev_state.phase):
-                if cur_state.can_reject:
-                    rej_trans = transition
-            elif not transition.is_reject or cur_state.find_last_state(transition.destination):
-                transitions.append(transition)
-        return transitions, rej_trans
+        """Return (phase_transitions, reject_transition) for the object's current state."""
+        wt = WFTransitionDescriptor.get_workflow_transitions(self.get_object(), self.request.user)
+        return wt.phase_transitions, wt.reject_transition
 
 
 class _BaseWorkflowTransitionMixin:
