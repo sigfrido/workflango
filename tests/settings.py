@@ -26,7 +26,7 @@ SETTINGS = dict(
         ('group3', 'test group 2'),
         ('group4', 'test group 2'),
         ('group_extra', 'test group extra'),
-        ('GPV_APP_ADMIN', 'Application admin'),
+        ('APP_ADMIN', 'Application admin'),
     ),
 
     WORKFLOW_ADMIN = 'admin',

@@ -92,8 +92,8 @@ class WorkflowTest(TransactionTestCase):
         user_group_add(self.user_3_c, 'group3')
         user_group_add(self.user_4, 'group4')
 
-        user_group_add(self.user_1, 'GPV_APP_ADMIN')
-        user_group_add(self.admin, 'GPV_APP_ADMIN')
+        user_group_add(self.user_1, 'APP_ADMIN')
+        user_group_add(self.admin, 'APP_ADMIN')
 
         self.OkModel.wfm_config.clear_cached_admins()
 

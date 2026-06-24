@@ -6,7 +6,7 @@ SAMPLE WORKFLOW CONFIG
 Model.configure_workflow(
     defaults = {
         'read' : ['GPV_APP_STAFF'],
-        'admin' : ['GPV_APP_ADMIN','GPV_MODEL_ADMIN'],
+        'admin' : ['APP_ADMIN','GPV_MODEL_ADMIN'],
         'edit' : ['GPV_MODEL_EDIT'],
         'properties' : {
             'edit_button_label' : 'Modifica',
@@ -275,12 +275,21 @@ class WorkflowConfig(dict):
 
 
     def is_admin(self, user):
-        cls = self.__class__
-        if cls._workflow_admins == None:
-            cls._workflow_admins = tuple(get_user_model().objects.filter(groups__name=settings._GROUP).values_list('id', flat=True))
-            if not len(cls._workflow_admins):
-                raise ConfigurationException('Nessun utente trovato per il gruppo dichiarato in WORKFLOW_ADMIN_GROUP')
-        return user.id in cls._workflow_admins
+        if user.is_superuser:
+            return True
+        admin_name = getattr(settings, 'WORKFLOW_ADMIN', None)
+        if admin_name and user.username == admin_name:
+            return True
+        admin_group = getattr(settings, 'WORKFLOW_ADMIN_GROUP', None)
+        if admin_group and user_in_groups(user, admin_group):
+            return True
+        return False
+        # cls = self.__class__
+        # if cls._workflow_admins == None:
+        #     cls._workflow_admins = tuple(get_user_model().objects.filter(groups__name=settings.WORKFLOW_ADMIN_GROUP).values_list('id', flat=True))
+        #     if not len(cls._workflow_admins):
+        #         raise ConfigurationException('Nessun utente trovato per il gruppo dichiarato in WORKFLOW_ADMIN_GROUP')
+        # return user.id in cls._workflow_admins
 
 
     @classmethod
@@ -308,8 +317,7 @@ class WorkflowConfig(dict):
         """
         if self._impersonable_users_func is not None:
             return self._impersonable_users_func(user)
-        admin_group = getattr(settings, 'WORKFLOW_ADMIN_GROUP', None)
-        if user.is_superuser or (admin_group and user_in_groups(user, admin_group)):
+        if self.is_admin(user):
             return get_user_model().objects.filter(is_active=True).exclude(pk=user.pk)
         return get_user_model().objects.none()
 
