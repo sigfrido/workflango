@@ -400,6 +400,12 @@ class WFTransitionDescriptor(object):
         is_admin = obj.wfm.can_admin(user)
         is_owner = (owner == user)
 
+        # When suspended, the only available action is Resume.
+        if cur_state.suspended:
+            if is_owner or is_admin:
+                command_transitions.append(cls(obj, 'resume', user))
+            return WorkflowTransitions(phase_transitions, reject_transition, command_transitions)
+
         # Build phase_transitions + reject_transition — only for owner or admin
         if is_owner or is_admin:
             if cur_state.can_reject and prev_state and prev_state.phase == cur_state.phase:
@@ -420,10 +426,7 @@ class WFTransitionDescriptor(object):
                 command_transitions.append(cls(obj, 'take-ownership', user))
 
         if owner == user:
-            if cur_state.suspended:
-                command_transitions.append(cls(obj, 'resume', user))
-            else:
-                command_transitions.append(cls(obj, 'suspend', user))
+            command_transitions.append(cls(obj, 'suspend', user))
             if cur_state.can_delegate:
                 command_transitions.append(cls(obj, 'delegate', user))
             if cur_state.can_release:

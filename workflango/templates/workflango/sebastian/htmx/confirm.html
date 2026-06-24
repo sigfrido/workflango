@@ -37,7 +37,10 @@
                 id="id_owner"
                 class="form-select ts-select{% with errs=form_errors|get_item:'owner' %}{% if errs %} is-invalid{% endif %}{% endwith %}">
           {% for uid, label in data.owner_choices %}
-          <option value="{{ uid }}"{% if uid == 0 %} selected{% endif %}>{{ label }}</option>
+          <option value="{{ uid }}"
+            {% if data.default_owner_id and uid == data.default_owner_id %}selected
+            {% elif uid == 0 and not data.default_owner_id %}selected
+            {% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
         {% with errs=form_errors|get_item:"owner" %}

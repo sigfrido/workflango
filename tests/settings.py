@@ -31,7 +31,7 @@ SETTINGS = dict(
 
     WORKFLOW_ADMIN = 'admin',
 
-    WORKFLOW_ADMIN_GROUP = 'GPV_APP_ADMIN',
+    WORKFLOW_ADMIN_GROUP = 'APP_ADMIN',
 
     # Limit transition message length
     WORKFLOW_TRANS_MSG_MAX_LEN = 4096,

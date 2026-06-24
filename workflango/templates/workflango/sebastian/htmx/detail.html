@@ -10,6 +10,12 @@
       <span class="badge bg-secondary">{{ data.current_state.phase }}</span>
       <span>{% icon "person" %} {{ data.current_state.owner_display|default:"—" }}</span>
       <small class="text-muted">{% icon "calendar" %} {{ data.current_state.state_date|isodt:"d/m/Y H:i" }}</small>
+      {% if data.current_state.suspended %}
+      <i class="bi bi-hourglass-split text-warning" title="Sospeso"></i>
+      {% endif %}
+      {% if data.current_state.message %}
+      <i class="bi bi-sticky text-muted" title="{{ data.current_state.message }}"></i>
+      {% endif %}
     </div>
   </div>
 </div>

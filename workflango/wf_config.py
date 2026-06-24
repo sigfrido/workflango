@@ -66,7 +66,7 @@ Model.configure_workflow(
 """
 from copy import deepcopy
 
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 
 from django.conf import settings
 from .user_groups import user_in_groups, users_for_groups
@@ -264,16 +264,20 @@ class WorkflowConfig(dict):
         cls = self.__class__
         if cls._workflow_admin == None:
             try:
-                cls._workflow_admin = User.objects.get(username=settings.WORKFLOW_ADMIN)
+                admin_name = getattr(settings, 'WORKFLOW_ADMIN', None)
+                if admin_name:
+                    cls._workflow_admin = get_user_model().objects.get(username=admin_name)
+                else:
+                    cls._workflow_admin = get_user_model().objects.get(is_superuser=True)
             except:
-                raise ConfigurationException('Utente admin non trovato o non univoco')
+                raise ConfigurationException('Utente admin o superuser non trovato o non univoco')
         return cls._workflow_admin
 
 
     def is_admin(self, user):
         cls = self.__class__
         if cls._workflow_admins == None:
-            cls._workflow_admins = tuple(User.objects.filter(groups__name=settings.WORKFLOW_ADMIN_GROUP).values_list('id', flat=True))
+            cls._workflow_admins = tuple(get_user_model().objects.filter(groups__name=settings._GROUP).values_list('id', flat=True))
             if not len(cls._workflow_admins):
                 raise ConfigurationException('Nessun utente trovato per il gruppo dichiarato in WORKFLOW_ADMIN_GROUP')
         return user.id in cls._workflow_admins
@@ -306,8 +310,8 @@ class WorkflowConfig(dict):
             return self._impersonable_users_func(user)
         admin_group = getattr(settings, 'WORKFLOW_ADMIN_GROUP', None)
         if user.is_superuser or (admin_group and user_in_groups(user, admin_group)):
-            return User.objects.filter(is_active=True).exclude(pk=user.pk)
-        return User.objects.none()
+            return get_user_model().objects.filter(is_active=True).exclude(pk=user.pk)
+        return get_user_model().objects.none()
 
 
     def check(self):

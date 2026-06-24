@@ -6,11 +6,11 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h4>
-    <a href="../.."
-       hx-get="../.."
+    Storico workflow —
+    <a href="{{ object_url }}"
+       hx-get="{{ object_url }}"
        hx-target="#sebastian-content"
-       hx-push-url="true">{{ view.get_view_name }}</a>
-    — Storico workflow
+       hx-push-url="true">{{ instance }}</a>
   </h4>
 </div>
 

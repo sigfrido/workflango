@@ -1,6 +1,6 @@
 # Handle user / group relationship
 from django.conf import settings
-from django.contrib.auth.models import User, Group
+from django.contrib.auth.models import Group
 from django.core.exceptions import ObjectDoesNotExist, ImproperlyConfigured
 from django.utils.encoding import force_str
 
@@ -28,6 +28,8 @@ def users_for_group(group_name, active=None):
 
 
 def users_for_groups(groups_list, active=None):
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
     groups = Group.objects.filter(name__in=groups_list).distinct()
     if not groups.exists():
         return User.objects.none()

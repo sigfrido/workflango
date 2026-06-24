@@ -48,7 +48,7 @@ except ImportError:
             return label_or_func
         return lambda f: f
 
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 
@@ -138,24 +138,31 @@ class WorkflowSerializerMixin(serializers.Serializer):  # pylint: disable=too-fe
         if getattr(request, 'sebastian_gui', False):
             state = instance.wfm_state
             if state:
-                ret['__can_update'] = state.owner == request.user
+                ret['__can_update'] = (state.owner == request.user) and not state.suspended
             # No __can_update when unmanaged: template falls back to view.can_update (True)
         return ret
 
     @gui_field('Stato')
     def current_state_for_list(self, obj):
-        from django.utils.html import format_html
+        from django.utils.html import format_html, conditional_escape
+        from django.utils.safestring import mark_safe
         from django.utils.timezone import localtime
         state = obj.wfm_state
         if not state:
             return '—'
         date_str = localtime(state.state_date).strftime(self.datetime_format) if state.state_date else ''
         owner_str = str(state.owner) if state.owner else '—'
+        icons = ''
+        if state.suspended:
+            icons += '<i class="bi bi-hourglass-split ms-1 text-warning" title="Sospeso"></i>'
+        if state.message:
+            icons += f'<i class="bi bi-sticky ms-1 text-muted" title="{conditional_escape(state.message)}"></i>'
         return format_html(
             '<span class="badge bg-secondary">{}</span>'
             ' <span class="ms-1">{}</span>'
-            ' <small class="text-muted ms-1">{}</small>',
-            state.phase or '—', owner_str, date_str,
+            ' <small class="text-muted ms-1">{}</small>'
+            '{}',
+            state.phase or '—', owner_str, date_str, mark_safe(icons),
         )
 
 
@@ -244,7 +251,7 @@ class WorkflowViewSetMixin:
             return True
         if not obj.wfm_state:
             return True   # object not yet under workflow management
-        return obj.wfm.is_owner(self.request.user)
+        return obj.wfm.is_owner(self.request.user) and not obj.wfm_state.suspended
 
     def can_delete(self):
         """Workflow-managed objects cannot be deleted via the GUI."""
@@ -304,7 +311,7 @@ class WorkflowViewSetMixin:
             raise PermissionDenied("Impersonazione non abilitata (WORKFLANGO_ALLOW_IMPERSONATE).")
 
         try:
-            target_user = User.objects.get(pk=user_id, is_active=True)
+            target_user = get_user_model().objects.get(pk=user_id, is_active=True)
         except ObjectDoesNotExist as exc:
             raise DRFValidationError({'user': f'Utente {user_id} non trovato o non attivo.'}) from exc
 
@@ -340,13 +347,24 @@ class WorkflowViewSetMixin:
 
     def check_wf_permission(self, instance, acting_user):
         """
-        Raises ``PermissionDenied`` if ``acting_user`` is neither owner nor admin
-        of the workflow instance. Skipped for unmanaged objects (first transition).
+        Raises ``PermissionDenied`` if ``acting_user`` is not allowed to perform
+        a workflow transition. Skipped for unmanaged objects (first transition).
+
+        Allowed if any of:
+        - acting_user is the current owner
+        - acting_user is an admin for this instance
+        - the instance has no owner and acting_user can edit in the current phase
+          (i.e. they are eligible to take ownership)
         """
         if not instance.wfm_state:
             return
-        if not instance.wfm.is_owner(acting_user) and not instance.wfm.can_admin(acting_user):
-            raise PermissionDenied("Accesso negato: utente non è proprietario né amministratore.")
+        if instance.wfm.is_owner(acting_user):
+            return
+        if instance.wfm.can_admin(acting_user):
+            return
+        if instance.wfm_state.owner is None and instance.wfm.can_edit(acting_user):
+            return
+        raise PermissionDenied("Accesso negato: utente non è proprietario né amministratore.")
 
     # ------------------------------------------------------------------
     # Actions
@@ -406,6 +424,7 @@ class WorkflowViewSetMixin:
 
             transition = WFTransitionDescriptor(instance, phase, request.user)
             owner_choices = transition.get_potential_owners() if transition.show_owner else []
+            default_owner = transition.get_default_owner() if transition.show_owner else None
             severity_to_style = {'info': 'primary', 'warn': 'warning', 'error': 'danger'}
 
             return Response({
@@ -418,6 +437,7 @@ class WorkflowViewSetMixin:
                     'suspended': transition.is_suspend,
                 }),
                 'owner_choices': owner_choices,
+                'default_owner_id': default_owner.pk if default_owner else None,
                 'show_owner': transition.show_owner,
                 'require_message': transition.require_message,
                 'phase': phase,
@@ -437,12 +457,17 @@ class WorkflowViewSetMixin:
         destination = transition.destination
         suspended   = transition.is_suspend
 
-        owner = None
         if data['owner']:
             try:
-                owner = User.objects.get(pk=data['owner'], is_active=True)
+                owner = get_user_model().objects.get(pk=data['owner'], is_active=True)
             except ObjectDoesNotExist as exc:
                 raise DRFValidationError({'owner': f"Utente {data['owner']} non trovato."}) from exc
+        else:
+            # For commands where show_owner=False (suspend, resume, release, take-ownership…)
+            # WFTransitionDescriptor already resolved the correct owner; use it.
+            owner = transition.owner
+
+        impersonated_by = getattr(request, 'impersonated_by', None)
 
         try:
             instance.wfm.transition(
@@ -451,6 +476,7 @@ class WorkflowViewSetMixin:
                 owner,
                 message=data['message'],
                 suspended=suspended,
+                impersonated_by=impersonated_by,
             )
         except (TransitionNotAllowed, ValidationError) as e:
             raise DRFValidationError({'detail': get_exception_error_msg(e)}) from e
@@ -495,7 +521,7 @@ class WorkflowViewSetMixin:
         owner = None
         if data['owner']:
             try:
-                owner = User.objects.get(pk=data['owner'], is_active=True)
+                owner = get_user_model().objects.get(pk=data['owner'], is_active=True)
             except ObjectDoesNotExist as exc:
                 raise DRFValidationError({'owner': f"Utente {data['owner']} non trovato."}) from exc
 

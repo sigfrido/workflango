@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 from django.views.generic.edit import UpdateView
 from django.views.generic.detail import DetailView
 
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.http import HttpResponseRedirect
 
 from .views_mixins import WorkflowModelChangeState, AccessDeniedMixin, CachedGetObjectMixin
@@ -134,7 +134,7 @@ class ChangeStateView(CachedGetObjectMixin, WorkflowModelChangeState, UpdateView
         self.get_transition()
         owner_id = form.cleaned_data.get('owner', None)
         if owner_id:
-            self.transition.set_owner(User.objects.get(pk=owner_id))
+            self.transition.set_owner(get_user_model().objects.get(pk=owner_id))
         elif self.transition.command in ('', 'release'):
             self.transition.set_owner(None)
         self.transition.set_message(form.cleaned_data.get('message', None))

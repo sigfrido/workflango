@@ -75,19 +75,22 @@ class State(models.Model):
     state_date = models.DateTimeField(auto_now_add=True)
 
     # owner user
-    owner = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, related_name='states', on_delete=models.PROTECT)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
+        related_name='states', on_delete=models.PROTECT)
 
     # user responsible for the transition to current state
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
 
     # link to next state
-    next_state = models.OneToOneField('self', null=True, related_name='_previous_state', unique=True, on_delete=models.PROTECT)
+    next_state = models.OneToOneField('self', null=True, blank=True,
+        related_name='_previous_state', unique=True, on_delete=models.PROTECT)
 
     # link to previous state
-    previous_state = models.OneToOneField('self', null=True, related_name='_next_state', unique=True, on_delete=models.PROTECT)
+    previous_state = models.OneToOneField('self', null=True, blank=True,
+        related_name='_next_state', unique=True, on_delete=models.PROTECT)
 
     # optional message for the state transition
-    message = models.TextField(blank=True, null=True)
+    message = models.TextField(null=True, blank=True)
 
     # transition type
     transition_type = models.CharField(max_length=20)
@@ -100,7 +103,8 @@ class State(models.Model):
 
     # When set, this transition was performed by an admin impersonating another user.
     # user = the impersonated identity; impersonated_by = the real admin acting.
-    impersonated_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, related_name='+', on_delete=models.SET_NULL)
+    impersonated_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, 
+        related_name='+', on_delete=models.SET_NULL)
 
     # Optional JSON snapshot of the object at the time of transition (audit/rollback).
     snapshot = models.JSONField(null=True, blank=True)
@@ -341,7 +345,7 @@ class WorkflowModel(models.Model):
         Creates the workflow configuration for this model.
 
         ``impersonable_users``: optional callable ``(user) -> queryset`` returning the
-        users ``user`` is allowed to impersonate. Default: superuser / WORKFLOW_ADMIN_GROUP.
+        users ``user`` is allowed to impersonate. Default: superuser / WORKFLOW_ADMIN / WORKFLOW_ADMIN_GROUP.
 
         ``snapshot_serializer``: optional DRF serializer class used by the default
         ``get_workflow_snapshot()`` implementation to produce the snapshot dict.
