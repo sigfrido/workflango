@@ -812,7 +812,9 @@ class InstanceWorkflowManager(object):
             current_state.save()
 
         # An exception in after_state will make the transition fail
-        self._call_handler_if_exists('after_state_transition', previous_state=current_state)
+        self._call_handler_if_exists('after_state_transition',
+                                     previous_state=current_state,
+                                     impersonated_by=impersonated_by)
         try:
             transition_done.send(sender=self, instance=self.instance, prev_state=current_state, cur_state=next_state)
         except ValidationError as e:
@@ -823,46 +825,51 @@ class InstanceWorkflowManager(object):
 
 
     # TODO unused but in tests
-    def release(self, user, message=None):
+    def release(self, user, message=None, impersonated_by=None):
         current_state = self.instance.current_state
         # TODO move this check into transition_allowed()
         if not current_state or not current_state.can_release:
             self.raise_transition_error("Cannot release record")
-        return self.transition(user, current_state.phase, None, message=message)
+        return self.transition(user, current_state.phase, None,
+                               message=message, impersonated_by=impersonated_by)
 
 
     # TODO unused but in tests
-    def reject(self, user, message=None):
+    def reject(self, user, message=None, impersonated_by=None):
         current_state = self.instance.current_state
         if current_state:
             reject_to = current_state.get_previous_state()
             if reject_to:
                 # Should be current_state.user = reject_to.owner
-                return self.transition(user, reject_to.phase, current_state.user, message=message)
+                return self.transition(user, reject_to.phase, current_state.user,
+                                       message=message, impersonated_by=impersonated_by)
         self.raise_transition_error("Cannot reject record")
 
 
     # TODO unused but in tests
-    def reject_to_state(self, user, state, message=None):
+    def reject_to_state(self, user, state, message=None, impersonated_by=None):
         current_state = self.instance.current_state
         if current_state:
             reject_to = current_state.find_last_state(state)
             if reject_to:
-                return self.transition(user, state, reject_to.owner, message=message)
+                return self.transition(user, state, reject_to.owner,
+                                       message=message, impersonated_by=impersonated_by)
         self.raise_transition_error("Cannot reject record")
 
 
-    def take_ownership(self, user, message=None):
+    def take_ownership(self, user, message=None, impersonated_by=None):
         cst = self.state_or_error()
         if cst.owner and cst.owner.pk == user.pk:
             return cst
-        return self.transition(user, cst.phase, user, suspended=False, message=message)
+        return self.transition(user, cst.phase, user,
+                               suspended=False, message=message, impersonated_by=impersonated_by)
 
 
-    def assign(self, new_owner, user=None, message=None):
+    def assign(self, new_owner, user=None, message=None, impersonated_by=None):
         cst = self.state_or_error()
         user = user or cst.owner
-        return self.transition(user, cst.phase, new_owner, suspended=False, message=message)
+        return self.transition(user, cst.phase, new_owner,
+                               suspended=False, message=message, impersonated_by=impersonated_by)
 
 
     def get_transition(self, dest_state, user, owner='auto'):

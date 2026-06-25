@@ -27,7 +27,7 @@ class WorkflowModelValid(WorkflowModel):
         return 'WorkflowModelValid %s' % (self.pk)
 
 
-    def after_state_transition(self, previous_state):
+    def after_state_transition(self, previous_state, impersonated_by=None):
         """
         This method is called anytime a transition has been completed
         """

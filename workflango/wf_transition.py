@@ -42,13 +42,15 @@ class WFTransitionDescriptor(object):
 
     # destination_owner_modes = ('user', 'none', 'assign', 'last_owner') # , 'admin', 'random', 'workload'
     # TODO check errors (obj registered & managed, valid dest_state, can_reject...)
-    def __init__(self, obj, dest_state, user, owner='auto', message=None, suspended=False):
+    def __init__(self, obj, dest_state, user, owner='auto', message=None, suspended=False,
+                 impersonated_by=None):
         self._obj = obj
         self.wfconfig = obj.wfm_config
         self.user = user
         self._owner = owner
         self._message = message
         self._suspended = suspended
+        self._impersonated_by = impersonated_by
         dest_state = State.phase_str(dest_state)
         if dest_state in ['release', 'delegate', 'assign', 'reject', 'take-ownership', 'suspend', 'resume']:
             self.command = dest_state
@@ -141,7 +143,8 @@ class WFTransitionDescriptor(object):
 
 
     def execute(self):
-        return self.obj.wfm.transition(self.user, self.destination, self.owner, self.message, suspended=self._suspended)
+        return self.obj.wfm.transition(self.user, self.destination, self.owner, self.message,
+                                       suspended=self._suspended, impersonated_by=self._impersonated_by)
 
 
     def get_config(self, key, default=None):

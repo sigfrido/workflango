@@ -137,12 +137,14 @@ class _BaseWorkflowTransitionMixin:
         suspended = self.get_destination_suspended()
         force_transition_type = self.get_force_transition_type()
         obj = self.object
+        impersonated_by = getattr(self.request, 'impersonated_by', None)
         try:
             self.before_transition(obj)
             new_state = obj.wfm.transition(
                 self.request.user, destination_state, destination_owner,
                 message=transition_message, suspended=suspended,
                 force_transition_type=force_transition_type,
+                impersonated_by=impersonated_by,
             )
             self.after_transition(new_state)
             setattr(self, 'transitioned', 1)
