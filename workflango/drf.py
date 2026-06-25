@@ -453,33 +453,57 @@ class WorkflowViewSetMixin:
 
         # Resolve command strings ('suspend', 'resume', 'release', 'take-ownership', ...)
         # to the real destination phase and suspended flag via WFTransitionDescriptor.
-        transition = WFTransitionDescriptor(instance, data['phase'], request.user)
+        phase      = data['phase']
+        transition = WFTransitionDescriptor(instance, phase, request.user)
         destination = transition.destination
         suspended   = transition.is_suspend
+
+        form_errors: dict = {}
 
         if data['owner']:
             try:
                 owner = get_user_model().objects.get(pk=data['owner'], is_active=True)
-            except ObjectDoesNotExist as exc:
-                raise DRFValidationError({'owner': f"Utente {data['owner']} non trovato."}) from exc
+            except ObjectDoesNotExist:
+                form_errors['owner'] = [f"Utente {data['owner']} non trovato."]
+                owner = None
         else:
-            # For commands where show_owner=False (suspend, resume, release, take-ownership…)
-            # WFTransitionDescriptor already resolved the correct owner; use it.
             owner = transition.owner
 
-        impersonated_by = getattr(request, 'impersonated_by', None)
+        if not form_errors:
+            impersonated_by = getattr(request, 'impersonated_by', None)
+            try:
+                instance.wfm.transition(
+                    request.user,
+                    destination,
+                    owner,
+                    message=data['message'],
+                    suspended=suspended,
+                    impersonated_by=impersonated_by,
+                )
+            except (TransitionNotAllowed, ValidationError) as e:
+                form_errors['non_field_errors'] = [get_exception_error_msg(e)]
 
-        try:
-            instance.wfm.transition(
-                request.user,
-                destination,
-                owner,
-                message=data['message'],
-                suspended=suspended,
-                impersonated_by=impersonated_by,
-            )
-        except (TransitionNotAllowed, ValidationError) as e:
-            raise DRFValidationError({'detail': get_exception_error_msg(e)}) from e
+        if form_errors:
+            owner_choices = transition.get_potential_owners() if transition.show_owner else []
+            default_owner = transition.get_default_owner() if transition.show_owner else None
+            severity_to_style = {'info': 'primary', 'warn': 'warning', 'error': 'danger'}
+            response = Response({
+                'action':          'confirm',
+                'confirm_prompt':  transition.caption,
+                'confirm_style':   severity_to_style.get(transition.severity, 'primary'),
+                'action_url':      request.path,
+                'owner_choices':   owner_choices,
+                'default_owner_id': default_owner.pk if default_owner else None,
+                'show_owner':      transition.show_owner,
+                'require_message': transition.require_message,
+                'phase':           phase,
+                'suspended':       transition.is_suspend,
+                'form_errors':     form_errors,
+            }, status=400)
+            response['X-Sebastian-Form-Error'] = '1'
+            response['HX-Retarget'] = '#wf-confirm-panel'
+            response['HX-Reswap'] = 'innerHTML'
+            return response
 
         instance.refresh_from_db()
         serializer = self.get_serializer(instance)

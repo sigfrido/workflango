@@ -329,7 +329,10 @@ class WFTransitionDescriptor(object):
         # Remove admin from potential owners for normal users, #592
         if not user_is_admin:
             # This shouldn't be needed, admin should have only 'a' privilege on records
-            self._remove_users_from_owners((self.obj.wfm_config.admin(), ), pot_owners)
+            try:
+                self._remove_users_from_owners((self.obj.wfm_config.admin(), ), pot_owners)
+            except Exception:
+                pass
         if self.command in ['assign', 'delegate', 'reassign']:
             # Cannot delegate to myself or to current owner; owner is compulsory
             self._remove_users_from_owners((self.user, self.obj.current_state.owner), pot_owners)
