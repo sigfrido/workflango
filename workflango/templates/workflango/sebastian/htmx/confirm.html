@@ -19,6 +19,7 @@
     </div>
     {% endif %}
 
+    {% if not data.pre_check_blocked %}
     <form id="wf-confirm-form"
           hx-post="{{ data.action_url }}"
           hx-target="#sebastian-content"
@@ -84,6 +85,13 @@
         <span id="wf-confirm-spinner" class="htmx-indicator ms-2 spinner-border spinner-border-sm text-secondary" role="status"></span>
       </div>
     </form>
+    {% else %}
+    <button type="button"
+            class="btn btn-outline-secondary"
+            onclick="document.getElementById('wf-confirm-panel').innerHTML=''">
+      Chiudi
+    </button>
+    {% endif %}
 
   </div>
 </div>

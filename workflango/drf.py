@@ -427,7 +427,13 @@ class WorkflowViewSetMixin:
             default_owner = transition.get_default_owner() if transition.show_owner else None
             severity_to_style = {'info': 'primary', 'warn': 'warning', 'error': 'danger'}
 
-            return Response({
+            pre_check_blocked = not transition.allowed()
+            pre_check_errors = (
+                [getattr(transition, 'error_msg', 'Transizione non consentita.')]
+                if pre_check_blocked else []
+            )
+
+            response_data = {
                 'action': 'confirm',
                 'confirm_prompt': transition.caption,
                 'confirm_style': severity_to_style.get(transition.severity, 'primary'),
@@ -442,7 +448,11 @@ class WorkflowViewSetMixin:
                 'require_message': transition.require_message,
                 'phase': phase,
                 'suspended': transition.is_suspend,
-            })
+                'pre_check_blocked': pre_check_blocked,
+            }
+            if pre_check_errors:
+                response_data['form_errors'] = {'non_field_errors': pre_check_errors}
+            return Response(response_data)
 
         # POST: perform the transition
         input_ser = WorkflowActionSerializer(data=request.data)
