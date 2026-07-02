@@ -449,6 +449,8 @@ class WorkflowViewSetMixin:
                 'phase': phase,
                 'suspended': transition.is_suspend,
                 'pre_check_blocked': pre_check_blocked,
+                'warnings': instance.wfm.warnings,
+                'infos': instance.wfm.infos,
             }
             if pre_check_errors:
                 response_data['form_errors'] = {'non_field_errors': pre_check_errors}

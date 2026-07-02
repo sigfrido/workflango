@@ -66,3 +66,13 @@ class UnmanagedObject(BusinessException):
 
 class StaleObject(BusinessException):
     """The object was modified by another transition since it was loaded."""
+
+
+# Non-blocking transition feedback — raised from validate_* methods.
+
+class TransitionWarning(Exception):
+    """Non-blocking warning collected during transition validation; rendered as a yellow alert."""
+
+
+class TransitionInfo(Exception):
+    """Non-blocking informational message collected during validation; rendered as a blue alert."""

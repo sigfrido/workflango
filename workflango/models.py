@@ -525,6 +525,8 @@ class InstanceWorkflowManager(object):
 
     def __init__(self, instance):
         self.instance = instance
+        self.warnings: list = []
+        self.infos: list = []
 
 
     def state_or_error(self):
@@ -724,8 +726,11 @@ class InstanceWorkflowManager(object):
     def run_transition_validations(self, user, current_state, new_state, new_owner, suspended):
         """
         Calls custom transition validators if defined:
-        validators can raise ValidationError to prevent the status transition
+        validators can raise ValidationError to prevent the status transition.
+        TransitionWarning and TransitionInfo are collected without blocking.
         """
+        self.warnings = []
+        self.infos = []
         current_state = State.phase_str(current_state, 'none')
         self._call_handler_if_exists('validate_state_transition', user, current_state, new_state, new_owner, suspended)
         if current_state != new_state:
@@ -735,6 +740,7 @@ class InstanceWorkflowManager(object):
 
 
     def _call_handler_if_exists(self, methodname, *args, **kwargs):
+        from .exceptions import TransitionWarning, TransitionInfo
         if hasattr(self.instance, methodname):
             method = getattr(self.instance, methodname)
             if callable(method):
@@ -744,6 +750,10 @@ class InstanceWorkflowManager(object):
                     self.raise_validation_error(get_exception_error_msg(e))
                 except TransitionNotAllowed as e:
                     self.raise_transition_error(get_exception_error_msg(e))
+                except TransitionWarning as e:
+                    self.warnings.append(str(e))
+                except TransitionInfo as e:
+                    self.infos.append(str(e))
 
 
 

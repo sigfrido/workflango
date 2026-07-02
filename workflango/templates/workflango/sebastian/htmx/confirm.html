@@ -19,6 +19,13 @@
     </div>
     {% endif %}
 
+    {% for msg in data.warnings %}
+    <div class="alert alert-warning mb-2">{% icon "exclamation-triangle" %} {{ msg }}</div>
+    {% endfor %}
+    {% for msg in data.infos %}
+    <div class="alert alert-info mb-2">{% icon "info-circle" %} {{ msg }}</div>
+    {% endfor %}
+
     {% if not data.pre_check_blocked %}
     <form id="wf-confirm-form"
           hx-post="{{ data.action_url }}"
