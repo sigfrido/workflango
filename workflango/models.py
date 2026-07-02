@@ -676,6 +676,7 @@ class InstanceWorkflowManager(object):
                     self.raise_transition_error("Only owner can suspend and object")
                 if not is_admin:
                     self.raise_transition_error("Only owner or admins can act on a suspended object")
+            self.run_transition_validations(user, current_state, new_state, new_owner, suspended)
             return config
 
         if source_state is None:
