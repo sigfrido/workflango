@@ -138,7 +138,8 @@ class WFTransitionDescriptor(object):
         try:
             return self.obj.wfm.transition_allowed(self.user, self.destination, self.owner, suspended=self._suspended)
         except Exception as e:
-            self.error_msg = ";".join(e.messages)
+            messages = getattr(e, 'messages', None)
+            self.error_msg = "; ".join(messages) if messages else str(e)
             return False
 
 
@@ -412,8 +413,10 @@ class WFTransitionDescriptor(object):
                 command_transitions.append(cls(obj, 'resume', user))
             return WorkflowTransitions(phase_transitions, reject_transition, command_transitions)
 
-        # Build phase_transitions + reject_transition — only for owner or admin
-        if is_owner or is_admin:
+        # Build phase_transitions + reject_transition — only for owner.
+        # Admins are not allowed to perform state changes (see transition_allowed);
+        # they use command_transitions (take-ownership, delegate) instead.
+        if is_owner:
             if cur_state.can_reject and prev_state and prev_state.phase == cur_state.phase:
                 reject_transition = cls(obj, cur_state.phase, user, cur_state.user)
 
