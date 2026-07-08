@@ -19,3 +19,6 @@ dev = [
 
 [tool.setuptools.packages.find]
 include = ["workflango*"]
+
+[tool.setuptools.package-data]
+workflango = ["templates/**/*.html"]
