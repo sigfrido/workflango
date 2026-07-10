@@ -279,7 +279,7 @@ def build_Q(lookup, field, value):
 
 
 def _get_status_lookup(request):
-    status = request.GET.get('search_stato_old', '')
+    status = request.GET.get('search_wf_stato_old', '')
     if status == '':
         lookup = 'wfm_state'
     else:
@@ -314,33 +314,33 @@ class WorkflowFilter(BaseFilter):
     model = None
 
     search_fields = {
-        'search_fase': {
+        'search_wf_fase': {
             'custom_query': filter_by_state,
             'multiple': True,
             'fields': ['states__phase'],
             'description': 'Fase del workflow',
             'type': 'string',
         },
-        'search_messaggio': {
+        'search_wf_messaggio': {
             'fields': ['states__message'],
             'custom_query': filter_by_message,
             'description': 'Messaggio di transizione workflow',
             'type': 'string',
             'advanced_text_search': True,
         },
-        'search_sospeso': {
+        'search_wf_sospeso': {
             'custom_query': filter_by_suspended,
             'fields': ['states__suspended'],
             'description': 'Il workflow è in stato sospeso',
             'type': 'boolean',
         },
-        'search_da_leggere': {
+        'search_wf_da_leggere': {
             'custom_query': filter_by_unread,
             'fields': ['states__unread'],
             'description': "Il record non è ancora stato letto dall'assegnatario",
             'type': 'boolean',
         },
-        'search_proprietario': {
+        'search_wf_proprietario': {
             'fields': ['states__owner_id'],
             'custom_query': filter_by_owner,
             'multiple': True,
@@ -348,21 +348,21 @@ class WorkflowFilter(BaseFilter):
             'type': 'integer',
             'choices': USER_CHOICES + (('id', 'Codice utente'), ),
         },
-        'search_data_min': {
+        'search_wf_data_min': {
             'fields': ['states__state_date'],
             'custom_query': filter_by_date_min,
             'description': 'Data minima di ingresso nella fase',
             'type': 'date',
             'value_mapper': datestr_local2iso,
         },
-        'search_data_max': {
+        'search_wf_data_max': {
             'fields': ['states__state_date'],
             'custom_query': filter_by_date_max,
             'description': 'Data massima di ingresso nella fase',
             'type': 'date',
             'value_mapper': datestr_local2iso,
         },
-        'search_stato_old': {
+        'search_wf_stato_old': {
             'ignore': True,
             'description': 'Ricerca negli stati passati',
             'type': 'string',
