@@ -7,59 +7,53 @@
 
         {% if not st.suspended %}
             {% if wf_can_take_ownership %}
-                <a class="btn btn-primary" href="{% url workflow_view object.pk "take-ownership" %}">Prendi in carico</a>
+                <a class="btn btn-primary" href="{{ object|change_state_url:"take-ownership" }}">{% wtrans "Take ownership" %}</a>
             {% endif %}
 
             {% if is_admin and request.user != st.owner %}
-                <a class="btn btn-primary" href="{% url workflow_view object.pk "assign" %}">Assegna</a>
+                <a class="btn btn-primary" href="{{ object|change_state_url:"assign" }}">{% wtrans "Assign" %}</a>
             {% endif %}
         {% endif %}
 
     {% else %}
 
         {% if wf_can_take_ownership %}
-            <a class="btn btn-danger" href="{% url workflow_view object.pk "take-ownership" %}">Prendi in carico (ADMIN)</a>
+            <a class="btn btn-danger" href="{{ object|change_state_url:"take-ownership" }}">{% wtrans "Take ownership (ADMIN)" %}</a>
         {% endif %}
 
         {% if is_admin and request.user != st.owner %}
-            <a class="btn btn-danger" href="{% url workflow_view object.pk "assign" %}">Riassegna (ADMIN)</a>
+            <a class="btn btn-danger" href="{{ object|change_state_url:"assign" }}">{% wtrans "Reassign (ADMIN)" %}</a>
         {% endif %}
 
     {% endif %}
 
     {% if st.owner == request.user %}
         {% if st.suspended %}
-                <a class="btn btn-primary" href="{% url workflow_view object.pk "resume" %}">Riprendi</a>
+                <a class="btn btn-primary" href="{{ object|change_state_url:"resume" }}">{% wtrans "Resume" %}</a>
         {% else %}
 
-            {% for transition in allowed_transitions  %}
+            {% for transition in allowed_transitions %}
                 {% if not transition.is_hidden %}
                     {% if transition.is_disabled %}
                     <span class="btn btn-secondary btn-disabled disabled">{{ transition.caption }}</span>
                     {% else %}
-                    <a class="btn {% if transition.is_reject %}btn-warning{% else %}btn-primary{% endif %}" href="{% url workflow_view object.pk transition.destination %}" title="{{ transition.destination_description }}">{{ transition.caption }}</a>
+                    <a class="btn {% if transition.is_reject %}btn-warning{% else %}btn-primary{% endif %}" href="{{ object|change_state_url:transition.destination }}" title="{{ transition.destination_description|default:"" }}">{{ transition.caption }}</a>
                     {% endif %}
                 {% endif %}
             {% endfor %}
 
-            {% if st.owner == request.user %}
-                {% if reject_transition and not reject_transition.is_hidden %}
-                    <a class="btn btn-warning" href="{% url workflow_view object.pk "reject" %}" title="Respingi a fase {{ st.get_previous_state.phase }}, utente {{ st.get_previous_state.owner }}">Respingi</a>
-                {% endif %}
-                {% if st.can_release %}
-                    <a class="btn btn-warning" href="{% url workflow_view object.pk "release" %}">Rilascia</a>
-                {% endif %}
-                {% if st.can_delegate %}
-                <a class="btn btn-warning" href="{% url workflow_view object.pk "delegate" %}">Delega</a>
-                {% endif %}
-
-                <a class="btn btn-warning" href="{% url workflow_view object.pk "suspend" %}">Sospendi</a>
-
+            {% if reject_transition and not reject_transition.is_hidden %}
+                <a class="btn btn-warning" href="{{ object|change_state_url:"reject" }}" title="{% wtrans "Reject to phase" %} {{ st.get_previous_state.phase }}, {% wtrans "user" %} {{ st.get_previous_state.owner }}">{% wtrans "Reject" %}</a>
+            {% endif %}
+            {% if st.can_release %}
+                <a class="btn btn-warning" href="{{ object|change_state_url:"release" }}">{% wtrans "Release" %}</a>
+            {% endif %}
+            {% if st.can_delegate %}
+            <a class="btn btn-warning" href="{{ object|change_state_url:"delegate" }}">{% wtrans "Delegate" %}</a>
             {% endif %}
 
-            {% if st.can_assign %}
-                <a class="btn btn-warning" href="{% url workflow_view object.pk "assign" %}">Assegna</a>
-            {% endif %}
+            <a class="btn btn-warning" href="{{ object|change_state_url:"suspend" }}">{% wtrans "Suspend" %}</a>
+
         {% endif %}
     {% endif %}
 

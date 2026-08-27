@@ -54,6 +54,7 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError
 
 from .exceptions import TransitionNotAllowed, get_exception_error_msg
 from .filters import WorkflowFilterBackend  # re-exported for convenience
+from .i18n import wgettext, wgettext_lazy
 from .models import State
 
 __all__ = [
@@ -142,7 +143,7 @@ class WorkflowSerializerMixin(serializers.Serializer):  # pylint: disable=too-fe
             # No __can_update when unmanaged: template falls back to view.can_update (True)
         return ret
 
-    @gui_field('Stato')
+    @gui_field(wgettext_lazy('State'))
     def current_state_for_list(self, obj):
         from django.utils.html import format_html, conditional_escape
         from django.utils.safestring import mark_safe
@@ -364,7 +365,7 @@ class WorkflowViewSetMixin:
             return
         if instance.wfm_state.owner is None and instance.wfm.can_edit(acting_user):
             return
-        raise PermissionDenied("Accesso negato: utente non è proprietario né amministratore.")
+        raise PermissionDenied(wgettext("Access denied: user is neither the owner nor an administrator."))
 
     # ------------------------------------------------------------------
     # Actions
@@ -396,7 +397,7 @@ class WorkflowViewSetMixin:
         return Response(serializer.data)
 
     history.gui_config = {
-        'label': 'Storico',
+        'label': wgettext_lazy('History'),
         'icon': 'clock-history',
         'position': 'both',
     }
@@ -600,11 +601,11 @@ class WorkflowViewSetMixin:
         instance = self.get_object()
         current_state = instance.wfm_state
         if not current_state:
-            raise PermissionDenied("L'oggetto non ha ancora uno stato attivo.")
+            raise PermissionDenied(wgettext("The object does not have an active state yet."))
 
         acting_user, _ = self.get_effective_user(request)
         if current_state.owner_id != acting_user.pk:
-            raise PermissionDenied("Solo il proprietario corrente può modificare lo stato di lettura.")
+            raise PermissionDenied(wgettext("Only the current owner can change the read state."))
 
         input_ser = _MarkReadInputSerializer(data=request.data)
         input_ser.is_valid(raise_exception=True)

@@ -1,5 +1,4 @@
+{% load workflow_tags %}
 {% if object.current_state.unread %}
-<span class="icon-exclamation-sign {% if object.current_state.owner == request.user %}unread_owner{% else %}unread{% endif %}" title="Da leggere"></span>
-{% else %}
-<!-- span class="icon-ok-sign" title="Letto"></span -->
+<span class="icon-unread {% if object.current_state.owner == request.user %}unread_owner{% else %}unread{% endif %}" title="{% wtrans "Unread" %}">&#9679;</span>
 {% endif %}

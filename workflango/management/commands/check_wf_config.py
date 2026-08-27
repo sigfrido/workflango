@@ -7,7 +7,7 @@ class Command(BaseCommand):
     
 
     args = '[<appname.model>, <appname.model>...]'
-    help = 'Verifica configurazione WFM per i model specificati'
+    help = 'Checks the workflow configuration for the specified models'
 
     def handle(self, *args, **options):
         for model in get_model_list(*args):

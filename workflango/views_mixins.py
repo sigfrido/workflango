@@ -11,6 +11,7 @@ from django.urls import reverse
 from django.utils.decorators import method_decorator
 
 from .exceptions import get_exception_error_msg
+from .i18n import wgettext
 from .wf_transition import WFTransitionDescriptor
 
 
@@ -152,7 +153,9 @@ class _BaseWorkflowTransitionMixin:
             self.transition_denied()
             messages.add_message(
                 self.request, messages.ERROR,
-                f"Il passaggio a {destination_state} non è stato effettuato: {get_exception_error_msg(e)}.",
+                wgettext("The transition to %(destination)s failed: %(error)s.") % {
+                    'destination': destination_state, 'error': get_exception_error_msg(e),
+                },
             )
             transaction.set_rollback(True)
 
@@ -160,7 +163,10 @@ class _BaseWorkflowTransitionMixin:
         pass
 
     def after_transition(self, new_state):
-        messages.add_message(self.request, messages.INFO, f"Passaggio di stato effettuato: {new_state.phase}")
+        messages.add_message(
+            self.request, messages.INFO,
+            wgettext("Transition to state completed: %(phase)s") % {'phase': new_state.phase},
+        )
 
     def check_transition_is_valid(self):
         """
@@ -181,16 +187,21 @@ class _BaseWorkflowTransitionMixin:
             if self.object.wfm.can_admin(self.request.user) and self.get_destination_owner() == self.request.user:
                 messages.add_message(
                     self.request, messages.WARNING,
-                    f"Il passaggio di stato verrà effettuato come ADMIN, sono stati rilevati i seguenti errori: {get_exception_error_msg(e)}.",
+                    wgettext("The transition will be performed as ADMIN; the following errors were detected: %(error)s.") % {
+                        'error': get_exception_error_msg(e),
+                    },
                 )
                 return True
             messages.add_message(
                 self.request, messages.ERROR,
-                f"Impossibile effettuare il passaggio di stato: {get_exception_error_msg(e)}.",
+                wgettext("Cannot perform the transition: %(error)s.") % {'error': get_exception_error_msg(e)},
             )
             return False
         except Exception as e:
-            messages.add_message(self.request, messages.ERROR, f"Errore inatteso: {get_exception_error_msg(e)}.")
+            messages.add_message(
+                self.request, messages.ERROR,
+                wgettext("Unexpected error: %(error)s.") % {'error': get_exception_error_msg(e)},
+            )
             return False
 
     def transition_denied(self):
@@ -228,7 +239,7 @@ class WorkflowModelChangeState(AccessDeniedMixin, _BaseWorkflowTransitionMixin, 
         else:
             req = obj.wfm.can_edit(request.user)
         if not req:
-            return "L'utente non può accedere a questa risorsa."
+            return wgettext("You do not have access to this resource.")
 
 
 class WorkflowModelCreate(AccessDeniedMixin, _BaseWorkflowTransitionMixin):
@@ -236,7 +247,7 @@ class WorkflowModelCreate(AccessDeniedMixin, _BaseWorkflowTransitionMixin):
 
     def access_denied_error(self, request, *args, **kwargs):
         if not self.model.wfm_config.can_create(request.user):
-            return "Errore di accesso: non hai i privilegi di creazione."
+            return wgettext("Access error: you do not have creation privileges.")
 
 
 class WorkflowModelList(LoginRequiredMixin):
@@ -267,10 +278,10 @@ class WorkflowModelUpdate(AccessDeniedMixin, _WorkflowContextMixin):
     def access_denied_error(self, request, *args, **kwargs):
         obj = self.get_object()
         if not obj.wfm.is_owner(request.user):
-            return "L'utente non può accedere a questa risorsa."
+            return wgettext("You do not have access to this resource.")
         cur_state = obj.current_state
         if cur_state and cur_state.suspended:
-            return "Il record è sospeso. Impossibile procedere."
+            return wgettext("The record is suspended. Cannot proceed.")
 
 
 class WorkflowDetailMixin(CachedGetObjectMixin, AccessDeniedMixin, _WorkflowContextMixin):
@@ -290,7 +301,7 @@ class WorkflowDetailMixin(CachedGetObjectMixin, AccessDeniedMixin, _WorkflowCont
 
     def access_denied_error(self, request, *args, **kwargs):
         if not self.get_object().wfm.can_read(request.user):
-            return "L'utente non può visualizzare questa risorsa."
+            return wgettext("You cannot view this resource.")
 
     def get_context_data(self, *args, **kwargs):
         context = super().get_context_data(*args, **kwargs)
@@ -307,7 +318,8 @@ class WorkflowDetailMixin(CachedGetObjectMixin, AccessDeniedMixin, _WorkflowCont
                 st.save()
                 messages.add_message(
                     self.request, messages.INFO,
-                    f"L'oggetto è stato impostato come {'da leggere' if unread else 'già letto'}.",
+                    wgettext("The object was marked as unread.") if unread
+                    else wgettext("The object was marked as read."),
                 )
 
         wf_editable = instance.wfm.is_owner(user) and not st.suspended and not st.get_state_property('disable_editing')

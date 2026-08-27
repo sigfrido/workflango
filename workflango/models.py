@@ -14,6 +14,7 @@ from .user_groups import user_in_groups
 from .exceptions import UnmanagedObject, TransitionNotAllowed, StaleObject
 
 from .exceptions import get_exception_error_msg
+from .i18n import wgettext
 
 
 
@@ -23,23 +24,26 @@ from .exceptions import get_exception_error_msg
 transition_done = django.dispatch.Signal()
 
 
-# TODO move me in settings? Use gettext?
+# Values are plain (untranslated) msgids, translated lazily at display time by
+# transition_type_display() -- this dict is built once at import time, before
+# any per-request language has been activated, so eager wgettext() here would
+# bake in whatever language was active at process startup.
 TRANS_TYPE_MAP = {
-    None            : 'Non definita',
-    'undefined'     : 'Non definita',
-    'new'           : 'Inserimento',
-    'delegate'      : 'Delega',
-    'change_assign' : 'Transizione e assegnazione',
-    'reject'        : 'Rifiuto',
-    'resubmit'      : 'Ri-invio',
-    'assign'        : 'Assegnazione',
-    'reassign'      : 'Riassegnazione',
-    'change'        : 'Transizione',
-    'release'       : 'Rilascio',
-    'snatch'        : 'Appropriazione',
-    'take'          : 'Presa in carico',
-    'suspend'       : 'Sospensione',
-    'resume'        : 'Ripresa',
+    None            : 'Undefined',
+    'undefined'     : 'Undefined',
+    'new'           : 'Created',
+    'delegate'      : 'Delegated',
+    'change_assign' : 'Transition and assignment',
+    'reject'        : 'Rejected',
+    'resubmit'      : 'Resubmitted',
+    'assign'        : 'Assigned',
+    'reassign'      : 'Reassigned',
+    'change'        : 'Transition',
+    'release'       : 'Released',
+    'snatch'        : 'Snatched',
+    'take'          : 'Taken in charge',
+    'suspend'       : 'Suspension',
+    'resume'        : 'Resumed',
 }
 
 
@@ -292,8 +296,8 @@ class State(models.Model):
 
     def transition_type_display(self):
         if self.transition_type and self.transition_type in TRANS_TYPE_MAP:
-            return TRANS_TYPE_MAP[self.transition_type]
-        return TRANS_TYPE_MAP[None]
+            return wgettext(TRANS_TYPE_MAP[self.transition_type])
+        return wgettext(TRANS_TYPE_MAP[None])
 
 
 
@@ -457,12 +461,27 @@ class WorkflowModel(models.Model):
         return last_state
 
 
-    # Required by history_view
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        # Set a plain class attribute (not a property) so `view_base_name` reads
+        # identically whether accessed on the class or on an instance -- both
+        # forms are used across the library and in consumers' test suites
+        # (e.g. GUITestMixin.get_list_view(model_or_inst)). A subclass that sets
+        # its own `view_base_name` in the class body overrides this default.
+        if 'view_base_name' not in cls.__dict__:
+            cls.view_base_name = cls.__name__.lower()
+
     def get_absolute_url(self):
-        view_name = f'{self.__class__.__name__.lower()}_detail'
-        # TODO should remove this dependency upon url resolver
-        url = reverse(view_name, kwargs={'pk': self.pk})
-        return url
+        return reverse(f'{self.view_base_name}_detail', kwargs={'pk': self.pk})
+
+    def get_edit_url(self):
+        return reverse(f'{self.view_base_name}_edit', kwargs={'pk': self.pk})
+
+    def get_history_url(self):
+        return reverse(f'{self.view_base_name}_history', kwargs={'pk': self.pk})
+
+    def get_change_state_url(self, destination):
+        return reverse(f'{self.view_base_name}_change_state', kwargs={'pk': self.pk, 'nuovo_stato': destination})
 
 
     # Required by WF error messages - should briefly identify the object
@@ -775,9 +794,8 @@ class InstanceWorkflowManager(object):
         ``impersonated_by`` is the real actor (e.g. an admin operating on their behalf).
         """
 
-        # LOCK riga stato corrente, dovrebbe generare istantaneamente un errore se
-        # l'oggetto è già bloccato.
-        # TODO anche le modifiche dei record diverse dalle transizioni dovrebbero bloccare il record (su POST)
+        # LOCK current state row, should raise instantly if the object is already locked.
+        # TODO record changes other than transitions should also lock the record (on POST)
         self.instance.lock_instance()
 
         new_state = State.phase_str(new_state)

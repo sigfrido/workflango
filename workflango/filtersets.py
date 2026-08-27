@@ -3,9 +3,14 @@ try:
     from collections import OrderedDict
     from django import forms
 
-    _BOOL_CHOICES = (('True', 'Sì'), ('False', 'No'))
-    _STATE_CHOICES = (('all', 'Anche passato'), ('past', 'Solo passato'))
-    _USER_SHORTCUTS = (('-1', 'Io'), ('-5', 'Non io'), ('-3', 'Nessuno'), ('-4', 'Qualcuno'))
+    from .i18n import wgettext_lazy
+
+    _BOOL_CHOICES = (('True', wgettext_lazy('Yes')), ('False', wgettext_lazy('No')))
+    _STATE_CHOICES = (('all', wgettext_lazy('Also past')), ('past', wgettext_lazy('Only past')))
+    _USER_SHORTCUTS = (
+        ('-1', wgettext_lazy('Me')), ('-5', wgettext_lazy('Not me')),
+        ('-3', wgettext_lazy('None')), ('-4', wgettext_lazy('Someone')),
+    )
 
     def _wf_noop(qs, name, value):
         return qs
@@ -29,23 +34,23 @@ try:
         """
         declared_filters = OrderedDict([
             ('search_wf_fase', _NoopMultipleChoiceFilter(
-                choices=[], label='Fase',
+                choices=[], label=wgettext_lazy('Phase'),
                 widget=forms.SelectMultiple(attrs={'class': 'ts-select'}),
             )),
-            ('search_wf_messaggio', django_filters.CharFilter(method=_wf_noop, label='Messaggio')),
+            ('search_wf_messaggio', django_filters.CharFilter(method=_wf_noop, label=wgettext_lazy('Message'))),
             ('search_wf_sospeso', django_filters.ChoiceFilter(
-                method=_wf_noop, choices=_BOOL_CHOICES, label='Sospeso',
+                method=_wf_noop, choices=_BOOL_CHOICES, label=wgettext_lazy('Suspended'),
             )),
             ('search_wf_da_leggere', django_filters.ChoiceFilter(
-                method=_wf_noop, choices=_BOOL_CHOICES, label='Da leggere',
+                method=_wf_noop, choices=_BOOL_CHOICES, label=wgettext_lazy('Unread'),
             )),
             ('search_wf_proprietario', _NoopMultipleChoiceFilter(
-                choices=[], label='Proprietario',
+                choices=[], label=wgettext_lazy('Owner'),
                 widget=forms.SelectMultiple(attrs={'class': 'ts-select'}),
             )),
             ('search_wf_stato_old', django_filters.ChoiceFilter(
-                method=_wf_noop, choices=_STATE_CHOICES, label='Storico',
-                empty_label='Corrente',
+                method=_wf_noop, choices=_STATE_CHOICES, label=wgettext_lazy('History'),
+                empty_label=wgettext_lazy('Current'),
             )),
         ])
 

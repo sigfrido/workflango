@@ -4,6 +4,7 @@ from django import forms
 from django.forms.widgets import Select
 
 from .filters import USER_CHOICES, STATE_CHOICES, TRUEFALSE_CHOICES
+from .i18n import wgettext, wgettext_lazy
 
 from django.conf import settings
 
@@ -12,7 +13,7 @@ MSG_MAX_LEN = getattr(settings, 'WORKFLOW_TRANS_MSG_MAX_LEN', 4096)
 class ChangeStateForm(forms.Form):
 
     owner = forms.IntegerField(required=False,
-        widget=Select()
+        widget=Select(attrs={'class': 'form-select'})
     )
 
     message = forms.CharField(required=False,
@@ -28,10 +29,10 @@ class ChangeStateForm(forms.Form):
         default_owner = kwargs.pop('default_owner', None)
         require_msg = kwargs.pop('require_msg', require_owner)
         owner_choices = kwargs.pop('owner_choices', {})
-        owner_label = kwargs.pop('owner_label', 'Nuovo proprietario')
-        msg_label = kwargs.pop('mesg_label', 'Messaggio')
-        opt = 'Obbligatorio'  if require_msg else 'Opzionale'
-        msg_placeholder = kwargs.pop('msg_placeholder', f'Messaggio per il destinatario ({opt})')
+        owner_label = kwargs.pop('owner_label', wgettext('New owner'))
+        msg_label = kwargs.pop('mesg_label', wgettext('Message'))
+        opt = wgettext('Required') if require_msg else wgettext('Optional')
+        msg_placeholder = kwargs.pop('msg_placeholder', wgettext('Message for the recipient (%(opt)s)') % {'opt': opt})
         if default_owner:
             kwargs['initial']['owner'] = default_owner.id
         super(ChangeStateForm, self).__init__(*args, **kwargs)
@@ -50,9 +51,13 @@ class ChangeStateForm(forms.Form):
         if msg:
             msg = msg.strip()
             if len(msg) > MSG_MAX_LEN:
-                raise forms.ValidationError(f"Il messaggio è lungo {len(msg)} caratteri, il massimo consentito è {MSG_MAX_LEN}.")
+                raise forms.ValidationError(
+                    wgettext("The message is %(len)s characters long, the maximum allowed is %(max)s.") % {
+                        'len': len(msg), 'max': MSG_MAX_LEN,
+                    }
+                )
         if self.fields['message'].required and not msg:
-            raise forms.ValidationError("Inserire almeno un carattere che non sia lo spazio")
+            raise forms.ValidationError(wgettext("Enter at least one non-space character"))
         return msg
 
 
@@ -64,28 +69,28 @@ class ChangeStateForm(forms.Form):
 class WorkflowFilterForm(forms.Form):
 
     search_proprietario = forms.ChoiceField(
-                    label='Proprietario',
+                    label=wgettext_lazy('Owner'),
                     choices=USER_CHOICES,
                     widget=forms.SelectMultiple(
-                        attrs={'class': 'w-100 form-control', 'data-placeholder':'Digitare un nome'}
+                        attrs={'class': 'w-100 form-control', 'data-placeholder': wgettext_lazy('Type a name')}
                     ),
     )
 
     search_fase =  forms.MultipleChoiceField(
-                        label='Fase',
+                        label=wgettext_lazy('Phase'),
                         widget=forms.SelectMultiple(
-                            attrs={'class': 'w-100 form-control', 'data-placeholder':'Digitare una fase'}
+                            attrs={'class': 'w-100 form-control', 'data-placeholder': wgettext_lazy('Type a phase')}
                         ),
                       )
 
     search_messaggio =  forms.CharField(
-                        label='Messaggio',
-                        widget=forms.TextInput(attrs={'placeholder': 'Testo contenuto nel messaggio', 'class': 'form-control'}),
-                        help_text='Ricerca testo avanzata: adozione or firma'
+                        label=wgettext_lazy('Message'),
+                        widget=forms.TextInput(attrs={'placeholder': wgettext_lazy('Text contained in the message'), 'class': 'form-control'}),
+                        help_text=wgettext_lazy('Advanced text search: adoption or signature')
                       )
 
     search_sospeso = forms.NullBooleanField(
-                        label='Sospeso',
+                        label=wgettext_lazy('Suspended'),
                         widget=Select(
                             attrs={'class':'form-select'},
                             choices=TRUEFALSE_CHOICES,
@@ -94,7 +99,7 @@ class WorkflowFilterForm(forms.Form):
 
 
     search_da_leggere = forms.NullBooleanField(
-                        label='Leggere',
+                        label=wgettext_lazy('Unread'),
                         widget=Select(
                             attrs={'class':'form-select'},
                             choices=TRUEFALSE_CHOICES,
@@ -103,7 +108,7 @@ class WorkflowFilterForm(forms.Form):
 
 
     search_stato_old =  forms.ChoiceField(
-                        label='Storico',
+                        label=wgettext_lazy('History'),
                         choices = STATE_CHOICES,
                         widget=forms.Select(
                             attrs={'class':'form-select'}
@@ -112,7 +117,7 @@ class WorkflowFilterForm(forms.Form):
 
     # TODO spostare in dashborad.forms_mixins
     search_following = forms.NullBooleanField(
-                        label='Seguo',
+                        label=wgettext_lazy('Following'),
                         widget=Select(
                             attrs={'class':'form-select'},
                             choices=TRUEFALSE_CHOICES,
@@ -121,24 +126,24 @@ class WorkflowFilterForm(forms.Form):
 
 
     search_data_min = forms.DateField(
-                    label='Data min',
+                    label=wgettext_lazy('Min date'),
                     input_formats=['%Y-%m-%d', '%d/%m/%Y'],
                     widget=forms.DateInput(
                         attrs={'class':'form-control fs-12', 'type': 'date'},
                         format='%d/%m/%Y'
                     ),
-                    help_text='Data minima di ingresso nella fase corrente o nelle fasi selezionate'
+                    help_text=wgettext_lazy('Minimum entry date into the current phase or the selected phases')
     )
 
 
     search_data_max = forms.DateField(
-                    label='Data max',
+                    label=wgettext_lazy('Max date'),
                     input_formats=['%Y-%m-%d', '%d/%m/%Y'],
                     widget=forms.DateInput(
                         attrs={'class':'form-control fs-12', 'type': 'date'},
                         format='%d/%m/%Y'
                     ),
-                    help_text='Data massima di ingresso nella fase corrente o nelle fasi selezionate'
+                    help_text=wgettext_lazy('Maximum entry date into the current phase or the selected phases')
     )
 
 

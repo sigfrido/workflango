@@ -1,9 +1,7 @@
 {% extends "base.html" %}
-{% load bootstrap %}
 {% load workflow_tags %}
 
 {% block content %}
-
 
 <div class="container min-height-page">
     <div class="card mt-2 mb-4">
@@ -12,74 +10,52 @@
         </div>
         <div class="card-body">
             {{ form.errors }}
-            <p>Oggetto: <b>{{ object }}</b></p>
-            <p>Fase corrente: {{ object.current_state.phase }}
-                {% if transition.state_description %}
-                <a href="{% url "help_page" transition.state_help_topic %}" target="help"><i class="icon-question-sign" title="{{ transition.state_description }}">&nbsp;</i></a>
-                {% endif %}</p>
-            <p>Proprietario: <i>
+            <p>{% wtrans "Object" %}: <b>{{ object }}</b></p>
+            <p{% if transition.state_description %} title="{{ transition.state_description }}"{% endif %}>{% wtrans "Current phase" %}: {{ object.current_state.phase }}</p>
+            <p>{% wtrans "Owner" %}: <i>
             {% if object.current_state.owner %}
                 {% if object.current_state.owner == request.user %}
-                    Io
+                    {% wtrans "Me" %}
                 {% else %}
                     <b>{{ object.current_state.owner }}</b>
                 {% endif %}
             {% else %}
-                Nessuno
+                {% wtrans "None" %}
             {% endif %}</i>
             </p>
             {% if show_user and last_owner %}
-            <p>Precedente proprietario nella fase <i>{{ transition.destination }}</i>: <b>{{ last_owner }}</b></p>
+            <p>{% wtrans "Previous owner in phase" %} <i>{{ transition.destination }}</i>: <b>{{ last_owner }}</b></p>
             {% endif %}
 
             <hr>
-            
+
             <form action="" method="POST">{% csrf_token %}
                 {% if show_user %}
-                {{ form.owner|bootstrapform }}
+                <div class="mb-3">
+                    <label class="form-label" for="{{ form.owner.id_for_label }}">{{ form.owner.label }}</label>
+                    {{ form.owner }}
+                    {{ form.owner.errors }}
+                </div>
                 {% else %}
-                <p>Destinatario: {{ dest_owner }}</p>
+                <p>{% wtrans "Recipient" %}: {{ dest_owner }}</p>
                 {% endif %}
                 {% if transition.command == 'reject' %}
-                <p>Respingi a fase: <b>{{ object.current_state.get_previous_state.phase }}</b></p>
+                <p>{% wtrans "Reject to phase" %}: <b>{{ object.current_state.get_previous_state.phase }}</b></p>
                 {% endif %}
                 {% if show_message %}
-                {{ form.message|bootstrapform }}
+                <div class="mb-3">
+                    <label class="form-label" for="{{ form.message.id_for_label }}">{{ form.message.label }}</label>
+                    {{ form.message }}
+                    {{ form.message.errors }}
+                </div>
                 {% endif %}
-                <p>{{ message }}{% if transition.phase_str != transition.destination %}
-                    <a href="{% url "help_page" transition.destination_help_topic %}" target="help"><i class="icon-question-sign" title="{{ transition.destination_description }}">&nbsp;</i></a>
-                {% endif %}</p>
+                <p{% if transition.phase_str != transition.destination and transition.destination_description %} title="{{ transition.destination_description }}"{% endif %}>{{ message }}</p>
                 <div class="d-flex">
                 <button class="btn {% if object.current_state.owner and object.current_state.owner != request.user %}btn-danger{% else %}btn-primary{% endif %}" type="submit">{{ button_caption }}</button>
-                <a class="btn btn-outline-primary ms-3" href="{{ cancel_url }}">Annulla</a>
+                <a class="btn btn-outline-primary ms-3" href="{{ cancel_url }}">{% wtrans "Cancel" %}</a>
                 </div>
             </form>
         </div>
     </div>
-    
-    
-
 </div>
 {% endblock %}
-
-{% block extra_body %}
-
-<script>
-$('#id_owner').chosen({
-    disable_search_threshold: 5, 
-    no_results_text: "Nessun utente trovato", 
-    allow_single_deselect: true,
-    inherit_select_classes : true,
-    search_contains : true,
-});
-</script>
-
-<script>
-    $( "select" ).addClass( "form-select" );
-    $( "input" ).addClass( "form-control" );
-    $( "textarea" ).addClass( "form-control" );
-    $( "input:checkbox" ).removeClass( "form-control" );
-</script>
-
-{% endblock %}
-

@@ -2,6 +2,7 @@
 
 from collections import namedtuple
 
+from .i18n import wgettext
 from .models import State
 
 
@@ -200,21 +201,21 @@ class WFTransitionDescriptor(object):
         caption = self.get_config('caption', '')
         if not caption:
             if self.command == 'take-ownership' or self.is_take_ownership:
-                caption = 'Prendi in carico'
+                caption = wgettext('Take ownership')
             elif self.command == 'release' or (not self.command and self.is_free):
-                caption = 'Rilascia'
+                caption = wgettext('Release')
             elif self.command == 'suspend':
-                caption = 'Sospendi'
+                caption = wgettext('Suspend')
             elif self.command == 'resume':
-                caption = 'Riprendi'
+                caption = wgettext('Resume')
             elif self.command == 'delegate':
-                caption = 'Delega'
+                caption = wgettext('Delegate')
             elif self.command == 'assign':
-                caption = 'Assegna'
+                caption = wgettext('Assign')
             elif self.is_reject:
-                caption = 'Rimanda a ' + self.destination
+                caption = wgettext('Send back to %(destination)s') % {'destination': self.destination}
             else:
-                caption = 'Vai a: ' + self.destination
+                caption = wgettext('Go to: %(destination)s') % {'destination': self.destination}
         return caption
 
 

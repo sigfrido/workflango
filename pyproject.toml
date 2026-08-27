@@ -4,8 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "workflango"
-version = "0.1.0"
+version = "1.0.0rc1"
 description = "A reusable Django BPM workflow engine"
+readme = "README.md"
+license = {file = "LICENSE"}
 requires-python = ">=3.10"
 dependencies = [
     "Django>=4.2",
@@ -15,10 +17,12 @@ dependencies = [
 dev = [
     "psycopg2-binary",
     "djangorestframework",
+    "pdoc",
+    "build",
 ]
 
 [tool.setuptools.packages.find]
 include = ["workflango*"]
 
 [tool.setuptools.package-data]
-workflango = ["templates/**/*.html"]
+workflango = ["templates/**/*.html", "locale/**/*"]

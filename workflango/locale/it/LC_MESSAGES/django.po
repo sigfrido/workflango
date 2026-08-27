@@ -1,0 +1,511 @@
+# Italian translation catalog for workflango's own GUI chrome.
+# This file is distributed under the same license as the workflango package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: workflango 1.0.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-27 12:30+0200\n"
+"PO-Revision-Date: 2026-08-27 12:00+0200\n"
+"Last-Translator: workflango maintainers\n"
+"Language-Team: Italian\n"
+"Language: it\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgctxt "workflango"
+msgid "Undefined"
+msgstr "Non definita"
+
+msgctxt "workflango"
+msgid "Created"
+msgstr "Inserimento"
+
+msgctxt "workflango"
+msgid "Delegated"
+msgstr "Delega"
+
+msgctxt "workflango"
+msgid "Transition and assignment"
+msgstr "Transizione e assegnazione"
+
+msgctxt "workflango"
+msgid "Rejected"
+msgstr "Rifiuto"
+
+msgctxt "workflango"
+msgid "Resubmitted"
+msgstr "Ri-invio"
+
+msgctxt "workflango"
+msgid "Assigned"
+msgstr "Assegnazione"
+
+msgctxt "workflango"
+msgid "Reassigned"
+msgstr "Riassegnazione"
+
+msgctxt "workflango"
+msgid "Transition"
+msgstr "Transizione"
+
+msgctxt "workflango"
+msgid "Released"
+msgstr "Rilascio"
+
+msgctxt "workflango"
+msgid "Snatched"
+msgstr "Appropriazione"
+
+msgctxt "workflango"
+msgid "Taken in charge"
+msgstr "Presa in carico"
+
+msgctxt "workflango"
+msgid "Suspension"
+msgstr "Sospensione"
+
+msgctxt "workflango"
+msgid "Resumed"
+msgstr "Ripresa"
+
+#. Translators: %(admin)s/%(user)s are usernames, substituted after translation --
+#. keep them verbatim.
+#, python-format
+msgctxt "workflango"
+msgid "impersonated by %(admin)s"
+msgstr "impersonato da %(admin)s"
+
+#, python-format
+msgctxt "workflango"
+msgid "%(user)s (impersonated by %(admin)s)"
+msgstr "%(user)s (impersonato da %(admin)s)"
+
+msgctxt "workflango"
+msgid "Access denied: user is neither the owner nor an administrator."
+msgstr "Accesso negato: utente non è proprietario né amministratore."
+
+msgctxt "workflango"
+msgid "The object does not have an active state yet."
+msgstr "L'oggetto non ha ancora uno stato attivo."
+
+msgctxt "workflango"
+msgid "Only the current owner can change the read state."
+msgstr "Solo il proprietario corrente può modificare lo stato di lettura."
+
+msgctxt "workflango"
+msgid "State"
+msgstr "Stato"
+
+#. Translators: %(destination)s is the target phase name, substituted after
+#. translation -- keep it verbatim.
+#, python-format
+msgctxt "workflango"
+msgid "Send back to %(destination)s"
+msgstr "Rimanda a %(destination)s"
+
+#, python-format
+msgctxt "workflango"
+msgid "Go to: %(destination)s"
+msgstr "Vai a: %(destination)s"
+
+#. Translators: %(destination)s/%(phase)s/%(error)s tokens are placeholders
+#. substituted after translation -- keep them verbatim.
+#, python-format
+msgctxt "workflango"
+msgid "The transition to %(destination)s failed: %(error)s."
+msgstr "Il passaggio a %(destination)s non è stato effettuato: %(error)s."
+
+#, python-format
+msgctxt "workflango"
+msgid "Transition to state completed: %(phase)s"
+msgstr "Passaggio di stato effettuato: %(phase)s"
+
+#, python-format
+msgctxt "workflango"
+msgid ""
+"The transition will be performed as ADMIN; the following errors were "
+"detected: %(error)s."
+msgstr ""
+"Il passaggio di stato verrà effettuato come ADMIN, sono stati rilevati i "
+"seguenti errori: %(error)s."
+
+#, python-format
+msgctxt "workflango"
+msgid "Cannot perform the transition: %(error)s."
+msgstr "Impossibile effettuare il passaggio di stato: %(error)s."
+
+#, python-format
+msgctxt "workflango"
+msgid "Unexpected error: %(error)s."
+msgstr "Errore inatteso: %(error)s."
+
+msgctxt "workflango"
+msgid "You do not have access to this resource."
+msgstr "L'utente non può accedere a questa risorsa."
+
+msgctxt "workflango"
+msgid "Access error: you do not have creation privileges."
+msgstr "Errore di accesso: non hai i privilegi di creazione."
+
+msgctxt "workflango"
+msgid "The record is suspended. Cannot proceed."
+msgstr "Il record è sospeso. Impossibile procedere."
+
+msgctxt "workflango"
+msgid "You cannot view this resource."
+msgstr "L'utente non può visualizzare questa risorsa."
+
+msgctxt "workflango"
+msgid "The object was marked as unread."
+msgstr "L'oggetto è stato impostato come da leggere."
+
+msgctxt "workflango"
+msgid "The object was marked as read."
+msgstr "L'oggetto è stato impostato come già letto."
+
+msgctxt "workflango"
+msgid "Take ownership"
+msgstr "Prendi in carico"
+
+msgctxt "workflango"
+msgid "The object will be taken in charge."
+msgstr "L'oggetto verrà preso in carico."
+
+msgctxt "workflango"
+msgid "Release"
+msgstr "Rilascia"
+
+msgctxt "workflango"
+msgid ""
+"The object will be released and become available again for take ownership."
+msgstr ""
+"L'oggetto verrà rilasciato e tornerà disponibile per la presa in carico."
+
+msgctxt "workflango"
+msgid "Reject to previous state"
+msgstr "Respingi a stato precedente"
+
+msgctxt "workflango"
+msgid ""
+"The object will be rejected to the phase and user that previously assigned "
+"it to you."
+msgstr ""
+"L'oggetto verrà respinto alla fase e all'utente precedente che te l'ha "
+"assegnato."
+
+msgctxt "workflango"
+msgid "Reject"
+msgstr "Respingi"
+
+msgctxt "workflango"
+msgid "Delegate"
+msgstr "Delega"
+
+msgctxt "workflango"
+msgid "The object will be delegated to the selected user."
+msgstr "L'oggetto verrà delegato all'utente selezionato."
+
+msgctxt "workflango"
+msgid "Assign"
+msgstr "Assegna"
+
+msgctxt "workflango"
+msgid "The object will be assigned to the selected user."
+msgstr "L'oggetto verrà assegnato all'utente selezionato."
+
+msgctxt "workflango"
+msgid "Suspend"
+msgstr "Sospendi"
+
+msgctxt "workflango"
+msgid "The object will be suspended."
+msgstr "L'oggetto verrà sospeso."
+
+msgctxt "workflango"
+msgid "Resume"
+msgstr "Riprendi"
+
+msgctxt "workflango"
+msgid "The object will be resumed."
+msgstr "L'oggetto verrà ripreso."
+
+#, python-format
+msgctxt "workflango"
+msgid "Confirm the transition to phase: %(phase)s"
+msgstr "Confermare il passaggio alla fase: %(phase)s"
+
+#, python-format
+msgctxt "workflango"
+msgid "Transition to phase: %(phase)s"
+msgstr "Passaggio a fase: %(phase)s"
+
+msgctxt "workflango"
+msgid "None"
+msgstr "Nessuno"
+
+msgctxt "workflango"
+msgid "New owner"
+msgstr "Nuovo proprietario"
+
+msgctxt "workflango"
+msgid "Message"
+msgstr "Messaggio"
+
+msgctxt "workflango"
+msgid "Required"
+msgstr "Obbligatorio"
+
+msgctxt "workflango"
+msgid "Optional"
+msgstr "Opzionale"
+
+#, python-format
+msgctxt "workflango"
+msgid "Message for the recipient (%(opt)s)"
+msgstr "Messaggio per il destinatario (%(opt)s)"
+
+#, python-format
+msgctxt "workflango"
+msgid "The message is %(len)s characters long, the maximum allowed is %(max)s."
+msgstr ""
+"Il messaggio è lungo %(len)s caratteri, il massimo consentito è %(max)s."
+
+msgctxt "workflango"
+msgid "Enter at least one non-space character"
+msgstr "Inserire almeno un carattere che non sia lo spazio"
+
+msgctxt "workflango"
+msgid "Owner"
+msgstr "Proprietario"
+
+msgctxt "workflango"
+msgid "Type a name"
+msgstr "Digitare un nome"
+
+msgctxt "workflango"
+msgid "Phase"
+msgstr "Fase"
+
+msgctxt "workflango"
+msgid "Type a phase"
+msgstr "Digitare una fase"
+
+msgctxt "workflango"
+msgid "Text contained in the message"
+msgstr "Testo contenuto nel messaggio"
+
+msgctxt "workflango"
+msgid "Advanced text search: adoption or signature"
+msgstr "Ricerca testo avanzata: adozione or firma"
+
+msgctxt "workflango"
+msgid "Unread"
+msgstr "Da leggere"
+
+msgctxt "workflango"
+msgid "History"
+msgstr "Storico"
+
+msgctxt "workflango"
+msgid "Following"
+msgstr "Seguo"
+
+msgctxt "workflango"
+msgid "Min date"
+msgstr "Data min"
+
+msgctxt "workflango"
+msgid "Minimum entry date into the current phase or the selected phases"
+msgstr "Data minima di ingresso nella fase corrente o nelle fasi selezionate"
+
+msgctxt "workflango"
+msgid "Max date"
+msgstr "Data max"
+
+msgctxt "workflango"
+msgid "Maximum entry date into the current phase or the selected phases"
+msgstr "Data massima di ingresso nella fase corrente o nelle fasi selezionate"
+
+msgctxt "workflango"
+msgid "Yes"
+msgstr "Sì"
+
+msgctxt "workflango"
+msgid "No"
+msgstr "No"
+
+msgctxt "workflango"
+msgid "Also past"
+msgstr "Anche passato"
+
+msgctxt "workflango"
+msgid "Only past"
+msgstr "Solo passato"
+
+msgctxt "workflango"
+msgid "Me"
+msgstr "Io"
+
+msgctxt "workflango"
+msgid "Me or none"
+msgstr "Io o nessuno"
+
+msgctxt "workflango"
+msgid "Not me"
+msgstr "Non io"
+
+msgctxt "workflango"
+msgid "Someone"
+msgstr "Qualcuno"
+
+msgctxt "workflango"
+msgid "Not active"
+msgstr "Non attivo"
+
+msgctxt "workflango"
+msgid "Away"
+msgstr "Assente"
+
+msgctxt "workflango"
+msgid "Current"
+msgstr "Corrente"
+
+#, python-format
+msgctxt "workflango"
+msgid ""
+"Invalid boolean value (%(value)s): allowed 1/0, t(rue)/f(alse), y(es)/n(o)"
+msgstr ""
+"Valore booleano non valido (%(value)s): ammessi 1/0, t(rue)/f(alse), s(i)/"
+"(n)o, y(es)/n(o)"
+
+#, python-format
+msgctxt "workflango"
+msgid "Error in the filter for field %(field)s: %(error)s"
+msgstr "Errore nel filtro per il campo %(field)s: %(error)s"
+
+msgctxt "workflango"
+msgid "Workflow phase"
+msgstr "Fase del workflow"
+
+msgctxt "workflango"
+msgid "Workflow transition message"
+msgstr "Messaggio di transizione workflow"
+
+msgctxt "workflango"
+msgid "The workflow is in a suspended state"
+msgstr "Il workflow è in stato sospeso"
+
+msgctxt "workflango"
+msgid "The record has not yet been read by the assignee"
+msgstr "Il record non è ancora stato letto dall'assegnatario"
+
+msgctxt "workflango"
+msgid "Record owner"
+msgstr "Proprietario del record"
+
+msgctxt "workflango"
+msgid "User id"
+msgstr "Codice utente"
+
+msgctxt "workflango"
+msgid "Minimum entry date into the phase"
+msgstr "Data minima di ingresso nella fase"
+
+msgctxt "workflango"
+msgid "Maximum entry date into the phase"
+msgstr "Data massima di ingresso nella fase"
+
+msgctxt "workflango"
+msgid "Search past states"
+msgstr "Ricerca negli stati passati"
+
+msgctxt "workflango"
+msgid "unassigned"
+msgstr "non assegnato"
+
+msgctxt "workflango"
+msgid "Current state"
+msgstr "Stato corrente"
+
+msgctxt "workflango"
+msgid "View state history"
+msgstr "Visualizza lo storico degli stati"
+
+msgctxt "workflango"
+msgid "State history"
+msgstr "Storico stati"
+
+msgctxt "workflango"
+msgid "suspended"
+msgstr "sospeso"
+
+msgctxt "workflango"
+msgid "from"
+msgstr "da"
+
+msgctxt "workflango"
+msgid "Object"
+msgstr "Oggetto"
+
+msgctxt "workflango"
+msgid "Current phase"
+msgstr "Fase corrente"
+
+msgctxt "workflango"
+msgid "Previous owner in phase"
+msgstr "Precedente proprietario nella fase"
+
+msgctxt "workflango"
+msgid "Recipient"
+msgstr "Destinatario"
+
+msgctxt "workflango"
+msgid "Reject to phase"
+msgstr "Respingi a fase"
+
+msgctxt "workflango"
+msgid "Cancel"
+msgstr "Annulla"
+
+msgctxt "workflango"
+msgid "Take ownership (ADMIN)"
+msgstr "Prendi in carico (ADMIN)"
+
+msgctxt "workflango"
+msgid "Reassign (ADMIN)"
+msgstr "Riassegna (ADMIN)"
+
+msgctxt "workflango"
+msgid "user"
+msgstr "utente"
+
+msgctxt "workflango"
+msgid "REJECTED"
+msgstr "RIFIUTATO"
+
+msgctxt "workflango"
+msgid "RESUBMITTED"
+msgstr "RI-INVIATO"
+
+msgctxt "workflango"
+msgid "Mark as read"
+msgstr "Imposta come già letto"
+
+msgctxt "workflango"
+msgid "Mark as unread"
+msgstr "Imposta come da leggere"
+
+msgctxt "workflango"
+msgid "Back to detail"
+msgstr "Torna al dettaglio"
+
+msgctxt "workflango"
+msgid "Date"
+msgstr "Data"
+
+msgctxt "workflango"
+msgid "Operator"
+msgstr "Operatore"

@@ -9,19 +9,19 @@ from workflango.management.utils import send_email_to_admins
 class Command(BaseCommand):
 
     args = '[<appname.model>, <appname.model>...]'
-    help = 'Verifica lo stato del workflow per gli oggetti dei model specificati'
+    help = 'Checks the workflow state for the objects of the specified models'
 
     def add_arguments(self, parser):
         parser.add_argument('--fix-stale-states', '-s', dest='fix_stale_states',
             action = 'store_true', default=False,
-            help='Corregge automaticamente gli stati non aggiornati.')
+            help='Automatically fixes stale states.')
         parser.add_argument('--fix-unmanaged-objects', '-u', dest='fix_unmanaged_objects',
             action = 'store_true', default=False,
-            help='Corregge automaticamente le istanze senza stato.')
+            help='Automatically fixes instances with no state.')
 
     CHECKS = (
-        ('unmanaged_objects', 'istanze senza stato', ),
-        ('stale_states', 'istanze con stato corrente non aggiornato'),
+        ('unmanaged_objects', 'instances with no state', ),
+        ('stale_states', 'instances whose current state is stale'),
     )
 
 
@@ -31,9 +31,9 @@ class Command(BaseCommand):
         for model in get_model_list(*args):
             self.check_model(model)
         if self.errors:
-            subject = '[WebGPV] - check_wf_objects report'
+            subject = '[workflango] - check_wf_objects report'
             report = '\n'.join(self.errors)
-            message = f'Report di esecuzione check_wf_message:\n{report}\n'
+            message = f'check_wf_objects execution report:\n{report}\n'
             send_email_to_admins(subject, message)
         for msg in self.errors:
             print(msg)

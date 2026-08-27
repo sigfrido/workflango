@@ -1,16 +1,17 @@
-{% load dashboard_tags %}
+{% load workflow_tags %}
+{% wtrans "unassigned" as unassigned_label %}
 {% with st=object.current_state %}
 <tr>
     <td>
-        Stato corrente
+        {% wtrans "Current state" %}
         <br/>
-        <a href="{% url history_view pk=object.pk %}" title="Visualizza lo storico degli stati">Storico stati</a>
+        <a href="{{ object.get_history_url }}" title="{% wtrans "View state history" %}">{% wtrans "State history" %}</a>
     </td>
     <td>
-        {% if st.suspended %}<span class="suspended"><b>sospeso</b> - {{ st.phase }}</span>{% else %}{{ st.phase }}{% endif %} ({{ object.current_state.owner|default:"non assegnato" }}{% if object.current_state.owner and object.current_state.owner.config.away %}<span class="away" title="Assente: {{ object.current_state.owner.config.away_msg }}">{{ object.current_state.owner.get_away_str }}</span>{% endif %})
+        {% if st.suspended %}<span class="suspended"><b>{% wtrans "suspended" %}</b> - {{ st.phase }}</span>{% else %}{{ st.phase }}{% endif %} ({{ object.current_state.owner|default:unassigned_label }})
         {{ st.state_date|date:"d/m/y" }}
         {% if object.current_state.message %}
-        <br>Messaggio{% if request.user == object.current_state.owner %} da <b>{{ object.current_state.user }}</b>{% endif %}: <i>{{ object.current_state.message|linebreaks|gpvref }}</i>
+        <br>{% wtrans "Message" %}{% if request.user == object.current_state.owner %} {% wtrans "from" %} <b>{% state_operator object.current_state %}</b>{% endif %}: <i>{{ object.current_state.message|linebreaks }}</i>
         {% endif %}
     </td>
 </tr>

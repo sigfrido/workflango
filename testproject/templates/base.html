@@ -1,0 +1,61 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}workflango demo{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-md navbar-dark bg-dark mb-4">
+    <div class="container">
+        <a class="navbar-brand" href="{% url 'home' %}">workflango demo</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarMenu">
+            {% if user.is_authenticated %}
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item"><a class="nav-link" href="{% url 'supplier_list' %}">Suppliers</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'request_list' %}">Requests</a></li>
+                {% if user.is_superuser %}
+                <li class="nav-item"><a class="nav-link" href="{% url 'settings' %}">Settings</a></li>
+                {% endif %}
+            </ul>
+            {% if request.impersonated_by %}
+            <span class="navbar-text text-warning me-3">
+                {{ request.impersonated_by.username }} ({{ user.username }})
+            </span>
+            <form action="{% url 'impersonate_stop' %}" method="post" class="d-flex me-2">
+                {% csrf_token %}
+                <button class="btn btn-outline-warning btn-sm" type="submit">Stop impersonating</button>
+            </form>
+            {% else %}
+            {% if user.is_superuser %}
+            <a class="nav-link text-light me-2" href="{% url 'impersonate_start' %}">Impersonate&hellip;</a>
+            {% endif %}
+            <span class="navbar-text text-light me-3">{{ user.username }}</span>
+            {% endif %}
+            <form action="{% url 'logout' %}" method="post" class="d-flex">
+                {% csrf_token %}
+                <button class="btn btn-outline-light btn-sm" type="submit">Log out</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}" role="alert">{{ message }}</div>
+    {% endfor %}
+
+    {% block content %}{% endblock %}
+</div>
+
+<script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+{% block extra_body %}{% endblock %}
+</body>
+</html>

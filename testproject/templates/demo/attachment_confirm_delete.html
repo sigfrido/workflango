@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}Delete attachment - workflango demo{% endblock %}
+
+{% block content %}
+<h1>Delete attachment</h1>
+<p>Delete &ldquo;{{ object.description }}&rdquo;?</p>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Delete</button>
+    <a href="{{ object.request.get_absolute_url }}" class="btn btn-outline-secondary">Cancel</a>
+</form>
+{% endblock %}

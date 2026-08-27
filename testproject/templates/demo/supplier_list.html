@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load workflow_tags %}
+
+{% block title %}Suppliers - workflango demo{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Suppliers</h1>
+    <a href="{% url 'supplier_create' %}" class="btn btn-primary">New supplier</a>
+</div>
+
+<table class="table table-bordered">
+    <tr>
+        <th>Company name</th>
+        <th>Tax code</th>
+        <th>Phase</th>
+        <th>Owner</th>
+    </tr>
+    {% for object in object_list %}
+    <tr>
+        <td><a href="{{ object.get_absolute_url }}">{{ object.company_name }}</a></td>
+        <td>{{ object.tax_code }}</td>
+        <td>{% if object.current_state.suspended %}<span class="suspended">suspended</span> - {% endif %}{{ object.current_state.phase }}</td>
+        <td>{{ object.current_state.owner|default:"-" }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="4" class="text-muted">No suppliers yet.</td></tr>
+    {% endfor %}
+</table>
+{% endblock %}

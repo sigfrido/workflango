@@ -1,1 +1,2 @@
-{% with st=object.current_state %}[{{ st.phase }}{% if st.suspended %} (sospeso){% endif %}]{% endwith %}
+{% load workflow_tags %}
+{% with st=object.current_state %}[{{ st.phase }}{% if st.suspended %} ({% wtrans "suspended" %}){% endif %}]{% endwith %}

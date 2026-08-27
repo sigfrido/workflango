@@ -6,7 +6,7 @@ from workflango.user_groups import init_all_groups
 class Command(BaseCommand):
     
 
-    help = 'Crea i nuovi gruppi utenti'
+    help = 'Creates the configured user groups (settings.WORKFLOW_USERS_GROUPS)'
 
     def handle(self, *args, **options):
         init_all_groups(True)

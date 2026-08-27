@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}{% if object %}Edit request{% else %}New request{% endif %} - workflango demo{% endblock %}
+
+{% block content %}
+<h1>{% if object %}Edit request{% else %}New request{% endif %}</h1>
+
+{# Which fields are rendered as inputs vs. read-only text depends on the request's #}
+{# current workflow phase -- see Request.EDITABLE_FIELDS_BY_PHASE / RequestForm. #}
+<form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}
+    <div class="mb-3">
+        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {% if field.name in form.editable_fields %}
+            {{ field }}
+            {{ field.errors }}
+        {% else %}
+            <div class="form-control-plaintext">{{ field.value|default:"-" }}</div>
+        {% endif %}
+        {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+    </div>
+    {% endfor %}
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a href="{% if object %}{{ object.get_absolute_url }}{% else %}{% url 'request_list' %}{% endif %}" class="btn btn-outline-secondary">Cancel</a>
+</form>
+{% endblock %}

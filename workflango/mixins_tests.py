@@ -116,7 +116,7 @@ class GUITestMixin(object):
     def login(self, username):
         self.client.logout()
         if not self.client.login(username=username, password=COMMON_PASSWORD):
-            raise Exception(f"Impossibile loggare l'utente {username}.")
+            raise Exception(f"Could not log in user {username}.")
         return True
 
 

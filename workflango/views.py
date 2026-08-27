@@ -10,6 +10,7 @@ from django.http import HttpResponseRedirect
 from .views_mixins import WorkflowModelChangeState, AccessDeniedMixin, CachedGetObjectMixin
 
 from .forms import ChangeStateForm
+from .i18n import wgettext
 
 
 class ChangeStateView(CachedGetObjectMixin, WorkflowModelChangeState, UpdateView):
@@ -18,20 +19,50 @@ class ChangeStateView(CachedGetObjectMixin, WorkflowModelChangeState, UpdateView
     """
     model = None
     form_class = ChangeStateForm
-    template_name = "workflow/form_change_state.html"
+    template_name = "workflango/django/form_change_state.html"
     transition = None
     cancel_url = '/'
 
-    command_captions = {
-        # 'command' : ('title', 'message', 'button_caption'),
-        'take-ownership' : ('Prendi in carico', 'L\'oggetto verrà preso in carico.', 'Prendi in carico'),
-        'release' : ('Rilascia', 'L\'oggetto  verrà rilasciato e tornerà disponibile per la presa in carico.', 'Rilascia' ),
-        'reject' : ('Respingi a stato precedente', 'L\'oggetto verrà respinto alla fase e all\'utente precedente che te l\'ha assegnato', 'Respingi'),
-        'delegate' : ('Delega', 'L\'oggetto verrà delegato all\'utente selezionato.', 'Delega'),
-        'assign' : ('Assegna', 'L\'oggetto verrà assegnato all\'utente selezionato.', 'Assegna'),
-        'suspend' : ('Sospendi', 'L\'oggetto verrà sospeso.', 'Sospendi'),
-        'resume' : ('Riprendi', 'L\'oggetto verrà ripreso.', 'Riprendi'),
-    }
+    @property
+    def command_captions(self):
+        # 'command' : ('title', 'message', 'button_caption')
+        return {
+            'take-ownership': (
+                wgettext('Take ownership'),
+                wgettext('The object will be taken in charge.'),
+                wgettext('Take ownership'),
+            ),
+            'release': (
+                wgettext('Release'),
+                wgettext('The object will be released and become available again for take ownership.'),
+                wgettext('Release'),
+            ),
+            'reject': (
+                wgettext('Reject to previous state'),
+                wgettext('The object will be rejected to the phase and user that previously assigned it to you.'),
+                wgettext('Reject'),
+            ),
+            'delegate': (
+                wgettext('Delegate'),
+                wgettext('The object will be delegated to the selected user.'),
+                wgettext('Delegate'),
+            ),
+            'assign': (
+                wgettext('Assign'),
+                wgettext('The object will be assigned to the selected user.'),
+                wgettext('Assign'),
+            ),
+            'suspend': (
+                wgettext('Suspend'),
+                wgettext('The object will be suspended.'),
+                wgettext('Suspend'),
+            ),
+            'resume': (
+                wgettext('Resume'),
+                wgettext('The object will be resumed.'),
+                wgettext('Resume'),
+            ),
+        }
 
     def get(self, request, *args, **kwargs):
         if not self.check_transition_is_valid():
@@ -60,7 +91,7 @@ class ChangeStateView(CachedGetObjectMixin, WorkflowModelChangeState, UpdateView
 
 
     def get_transition_gui_message(self, transition):
-        return f"Confermare il passaggio alla fase: {transition.destination}"
+        return wgettext('Confirm the transition to phase: %(phase)s') % {'phase': transition.destination}
 
 
     def get_context_data(self, *args, **kwargs):
@@ -72,7 +103,7 @@ class ChangeStateView(CachedGetObjectMixin, WorkflowModelChangeState, UpdateView
         if transition.command:
             context['title'], context['message'], context['button_caption'] = self.command_captions[self.destination_state]
         else:
-            context['title'] = 'Passaggio a fase: '  + transition.destination
+            context['title'] = wgettext('Transition to phase: %(phase)s') % {'phase': transition.destination}
             context['message'] = self.get_transition_gui_message(transition)
             context['button_caption'] = transition.caption
         context['show_user'] = transition.show_owner
@@ -81,7 +112,7 @@ class ChangeStateView(CachedGetObjectMixin, WorkflowModelChangeState, UpdateView
             if dest_owner:
                 context['dest_owner'] = dest_owner.username
             else:
-                context['dest_owner'] = 'Nessuno'
+                context['dest_owner'] = wgettext('None')
         context['show_message'] = True
         context['cancel_url'] = self.get_cancel_url()
         return context
@@ -141,10 +172,18 @@ class ChangeStateView(CachedGetObjectMixin, WorkflowModelChangeState, UpdateView
         return super(ChangeStateView, self).form_valid(form)
 
 
+    def get_success_url(self):
+        # ModelFormMixin.get_success_url() defaults to self.object.get_absolute_url(),
+        # but self.object gets set to ChangeStateForm.save()'s return value (None) by
+        # the time form_valid() reaches that default -- use get_object() (cached by
+        # CachedGetObjectMixin) instead of the possibly-None self.object.
+        return self.get_object().get_absolute_url()
+
+
 
 class ObjectHistoryView(CachedGetObjectMixin, AccessDeniedMixin, DetailView):
     model = None
-    template_name = "workflow/object_history.html"
+    template_name = "workflango/django/object_history.html"
 
     def get_context_data(self, *args, **kwargs):
         context = super(ObjectHistoryView, self).get_context_data(*args, **kwargs)
@@ -155,5 +194,5 @@ class ObjectHistoryView(CachedGetObjectMixin, AccessDeniedMixin, DetailView):
 
     def access_denied_error(self, request, *args, **kwargs):
         if not self.get_object().wfm.can_read(request.user):
-            return "L'utente non può accedere a questa risorsa."
+            return wgettext("You do not have access to this resource.")
 

@@ -8,6 +8,7 @@ from django.db.models import Q, F
 from django.utils.html import escape
 
 from .exceptions import get_exception_error_msg
+from .i18n import wgettext, wgettext_lazy
 
 
 # ---------------------------------------------------------------------------
@@ -20,8 +21,8 @@ class FilterException(ValueError):
 
 TRUEFALSE_CHOICES = (
     ('', ''),
-    (True, 'Si'),
-    (False, 'No'),
+    (True, wgettext_lazy('Yes')),
+    (False, wgettext_lazy('No')),
 )
 
 
@@ -31,7 +32,11 @@ def boolstr(strval):
         return True
     if v in ('0', 'f', 'false', 'falso', 'n', 'no'):
         return False
-    raise FilterException(f'Valore booleano non valido ({escape(strval)}): ammessi 1/0, t(rue)/f(alse), s(i)/(n)o, y(es)/n(o)')
+    raise FilterException(
+        wgettext('Invalid boolean value (%(value)s): allowed 1/0, t(rue)/f(alse), y(es)/n(o)') % {
+            'value': escape(strval),
+        }
+    )
 
 
 def datestr_local2iso(date_str):
@@ -179,7 +184,11 @@ class BaseFilter:
                             filter_dict = {model_field + search_operator: request_field_value}
                             or_query = or_query | Q(**filter_dict) if or_query else Q(**filter_dict)
                     except Exception as e:
-                        raise FilterException(f'Errore nel filtro per il campo {model_field}: {escape(get_exception_error_msg(e))}')
+                        raise FilterException(
+                            wgettext('Error in the filter for field %(field)s: %(error)s') % {
+                                'field': model_field, 'error': escape(get_exception_error_msg(e)),
+                            }
+                        )
                 fixed_filters_q = Q()
                 if fixed_filters:
                     if callable(fixed_filters):
@@ -196,19 +205,19 @@ class BaseFilter:
 
 USER_CHOICES = (
     ('', ''),
-    ('-1', 'Io'),            # in [user.id]
-    ('-2', 'Io o nessuno'),  # in [null, user.id]
-    ('-3', 'Nessuno'),       # is null
-    ('-4', 'Qualcuno'),      # is not null
-    ('-5', 'Non io'),        # not in [user.id]
-    ('-6', 'Non attivo'),    # owner__is_active=False
-    ('-7', 'Assente'),       # owner__user_config__away=True
+    ('-1', wgettext_lazy('Me')),            # in [user.id]
+    ('-2', wgettext_lazy('Me or none')),    # in [null, user.id]
+    ('-3', wgettext_lazy('None')),          # is null
+    ('-4', wgettext_lazy('Someone')),       # is not null
+    ('-5', wgettext_lazy('Not me')),        # not in [user.id]
+    ('-6', wgettext_lazy('Not active')),    # owner__is_active=False
+    ('-7', wgettext_lazy('Away')),          # owner__user_config__away=True
 )
 
 STATE_CHOICES = (
-    ('', 'Corrente'),
-    ('all', 'Anche passato'),
-    ('past', 'Solo passato'),
+    ('', wgettext_lazy('Current')),
+    ('all', wgettext_lazy('Also past')),
+    ('past', wgettext_lazy('Only past')),
 )
 
 
@@ -318,53 +327,53 @@ class WorkflowFilter(BaseFilter):
             'custom_query': filter_by_state,
             'multiple': True,
             'fields': ['states__phase'],
-            'description': 'Fase del workflow',
+            'description': wgettext_lazy('Workflow phase'),
             'type': 'string',
         },
         'search_wf_messaggio': {
             'fields': ['states__message'],
             'custom_query': filter_by_message,
-            'description': 'Messaggio di transizione workflow',
+            'description': wgettext_lazy('Workflow transition message'),
             'type': 'string',
             'advanced_text_search': True,
         },
         'search_wf_sospeso': {
             'custom_query': filter_by_suspended,
             'fields': ['states__suspended'],
-            'description': 'Il workflow è in stato sospeso',
+            'description': wgettext_lazy('The workflow is in a suspended state'),
             'type': 'boolean',
         },
         'search_wf_da_leggere': {
             'custom_query': filter_by_unread,
             'fields': ['states__unread'],
-            'description': "Il record non è ancora stato letto dall'assegnatario",
+            'description': wgettext_lazy('The record has not yet been read by the assignee'),
             'type': 'boolean',
         },
         'search_wf_proprietario': {
             'fields': ['states__owner_id'],
             'custom_query': filter_by_owner,
             'multiple': True,
-            'description': 'Proprietario del record',
+            'description': wgettext_lazy('Record owner'),
             'type': 'integer',
-            'choices': USER_CHOICES + (('id', 'Codice utente'), ),
+            'choices': USER_CHOICES + (('id', wgettext_lazy('User id')), ),
         },
         'search_wf_data_min': {
             'fields': ['states__state_date'],
             'custom_query': filter_by_date_min,
-            'description': 'Data minima di ingresso nella fase',
+            'description': wgettext_lazy('Minimum entry date into the phase'),
             'type': 'date',
             'value_mapper': datestr_local2iso,
         },
         'search_wf_data_max': {
             'fields': ['states__state_date'],
             'custom_query': filter_by_date_max,
-            'description': 'Data massima di ingresso nella fase',
+            'description': wgettext_lazy('Maximum entry date into the phase'),
             'type': 'date',
             'value_mapper': datestr_local2iso,
         },
         'search_wf_stato_old': {
             'ignore': True,
-            'description': 'Ricerca negli stati passati',
+            'description': wgettext_lazy('Search past states'),
             'type': 'string',
             'choices': STATE_CHOICES,
         },

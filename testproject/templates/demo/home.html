@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}workflango demo{% endblock %}
+
+{% block content %}
+<h1>workflango demo</h1>
+<p class="text-muted">
+    A traditional Django project (plain class-based views, no REST framework) showing
+    workflango's workflow engine driving two related models: <strong>Supplier</strong>
+    (proposed &rarr; active &rarr; archived) and <strong>Request</strong>
+    (draft &rarr; submitted &rarr; approved / rejected).
+</p>
+<div class="row g-3 mt-2">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Suppliers</h5>
+                <p class="card-text">Anyone can propose a supplier; only managers can activate or archive it.</p>
+                <a href="{% url 'supplier_list' %}" class="btn btn-primary">Browse suppliers</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Requests</h5>
+                <p class="card-text">A request can only target an active supplier, and only a manager can approve or reject it.</p>
+                <a href="{% url 'request_list' %}" class="btn btn-primary">Browse requests</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

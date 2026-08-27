@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load workflow_tags %}
+
+{% block title %}{{ object.title }} - workflango demo{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>{{ object.title }}</h1>
+    {% include "workflango/django/workflow_edit_btn.html" %}
+</div>
+
+<table class="table table-bordered">
+    <tr><th>Description</th><td>{{ object.description|linebreaks|default:"-" }}</td></tr>
+    <tr><th>Budget</th><td>{{ object.budget }}</td></tr>
+    <tr><th>Supplier</th><td><a href="{{ object.supplier.get_absolute_url }}">{{ object.supplier }}</a></td></tr>
+    <tr><th>Manager notes</th><td>{{ object.manager_notes|linebreaks|default:"-" }}</td></tr>
+    <tr><th>Reference code</th><td>{{ object.reference_code|default:"-" }}</td></tr>
+    {% include "workflango/django/workflow_state_detail.html" %}
+</table>
+
+<h2 class="h5">Actions</h2>
+{% include "workflango/django/workflow_buttons.html" %}
+
+<h2 class="h5 mt-4">Attachments</h2>
+<ul class="list-group mb-2">
+    {% for attachment in object.attachments.all %}
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+        <a href="{{ attachment.file.url }}">{{ attachment.description }}</a>
+        <a href="{% url 'attachment_delete' attachment.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+    </li>
+    {% empty %}
+    <li class="list-group-item text-muted">No attachments.</li>
+    {% endfor %}
+</ul>
+<a href="{% url 'attachment_create' object.pk %}" class="btn btn-outline-primary btn-sm">Add attachment</a>
+
+<p class="mt-4"><a href="{% url 'request_list' %}">&laquo; Back to requests</a></p>
+{% endblock %}
