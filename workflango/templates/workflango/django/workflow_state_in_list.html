@@ -4,11 +4,11 @@
     <span class="icon-in-list" title="{% wtrans "from" %} {{ st|state_operator_text }}: {{ st.message }}">&#9998;</span>
     {% endif %}
     <a href="{{ object.get_history_url }}">
-    {% if st.owner == request.user or st.user == request.user %}
+    {% if st|owned_by:request or st.user == request.user %}
         {% if st.transition_type == 'reject' %}
-            <span{% if st.owner == request.user %} style="font-weight:bold; color:red"{% endif %}>{% wtrans "REJECTED" %}</span><br>
+            <span{% if st|owned_by:request %} style="font-weight:bold; color:red"{% endif %}>{% wtrans "REJECTED" %}</span><br>
         {% elif st.transition_type == 'resubmit' %}
-            <span{% if st.owner == request.user %} style="font-weight:bold; color:orange"{% endif %}>{% wtrans "RESUBMITTED" %}</span><br>
+            <span{% if st|owned_by:request %} style="font-weight:bold; color:orange"{% endif %}>{% wtrans "RESUBMITTED" %}</span><br>
         {% endif %}
     {% endif %}
     {% if st.suspended %}<span class="suspended" title="{% wtrans "suspended" %}"><b>s:</b>{{ st.phase }}</span>{% else %}{{ st.phase }}{% endif %}{% if not hide_owner %} ({{ st.owner|default:"n/a" }}){% endif %}

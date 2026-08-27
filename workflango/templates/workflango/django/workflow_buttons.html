@@ -3,7 +3,7 @@
 {% with st=object.current_state %}
 <div id="workflow_buttons_id">
 
-    {% if request.user == st.owner or not st.owner %}
+    {% if st|owned_by:request or not st.owner %}
 
         {% if not st.suspended %}
             {% if wf_can_take_ownership %}
@@ -27,7 +27,7 @@
 
     {% endif %}
 
-    {% if st.owner == request.user %}
+    {% if st|owned_by:request %}
         {% if st.suspended %}
                 <a class="btn btn-primary" href="{{ object|change_state_url:"resume" }}">{% wtrans "Resume" %}</a>
         {% else %}

@@ -86,7 +86,8 @@ class ChangeStateView(CachedGetObjectMixin, WorkflowModelChangeState, UpdateView
     def get_transition(self):
         if not self.transition:
             obj = self.get_object()
-            self.transition = obj.wfm.get_transition(self.destination_state, self.request.user)
+            impersonated_by = getattr(self.request, 'impersonated_by', None)
+            self.transition = obj.wfm.get_transition(self.destination_state, self.request.user, impersonated_by=impersonated_by)
         return self.transition
 
 

@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: workflango 1.0.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-27 12:30+0200\n"
+"POT-Creation-Date: 2026-08-27 15:58+0200\n"
 "PO-Revision-Date: 2026-08-27 12:00+0200\n"
 "Last-Translator: workflango maintainers\n"
 "Language-Team: Italian\n"
@@ -70,6 +70,14 @@ msgstr "Sospensione"
 msgctxt "workflango"
 msgid "Resumed"
 msgstr "Ripresa"
+
+msgctxt "workflango"
+msgid "Claimed via impersonation"
+msgstr "Rivendicato per impersonazione"
+
+msgctxt "workflango"
+msgid "Reclaimed"
+msgstr "Rivendicato"
 
 #. Translators: %(admin)s/%(user)s are usernames, substituted after translation --
 #. keep them verbatim.

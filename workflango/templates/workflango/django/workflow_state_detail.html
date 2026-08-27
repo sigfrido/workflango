@@ -11,7 +11,7 @@
         {% if st.suspended %}<span class="suspended"><b>{% wtrans "suspended" %}</b> - {{ st.phase }}</span>{% else %}{{ st.phase }}{% endif %} ({{ object.current_state.owner|default:unassigned_label }})
         {{ st.state_date|date:"d/m/y" }}
         {% if object.current_state.message %}
-        <br>{% wtrans "Message" %}{% if request.user == object.current_state.owner %} {% wtrans "from" %} <b>{% state_operator object.current_state %}</b>{% endif %}: <i>{{ object.current_state.message|linebreaks }}</i>
+        <br>{% wtrans "Message" %}{% if object.current_state|owned_by:request %} {% wtrans "from" %} <b>{% state_operator object.current_state %}</b>{% endif %}: <i>{{ object.current_state.message|linebreaks }}</i>
         {% endif %}
     </td>
 </tr>

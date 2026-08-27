@@ -52,6 +52,22 @@ def change_state_url(obj, destination):
     return obj.get_change_state_url(destination)
 
 
+@register.filter
+def owned_by(state, request):
+    """
+    Impersonation-aware ownership check for templates: true only if request.user is the
+    same actor that produced `state` -- correctly distinguishing an admin impersonating
+    the owner (before an explicit take_ownership() reclaim) from the owner acting for
+    themselves, unlike a raw `state.owner == request.user` comparison. See
+    State.owned_by() and GitHub issue #1.
+    Usage::
+        {% if st|owned_by:request %}
+    """
+    if not state:
+        return False
+    return state.owned_by(request.user, getattr(request, 'impersonated_by', None))
+
+
 @register.simple_tag
 def state_operator(state):
     """

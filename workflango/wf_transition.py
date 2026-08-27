@@ -137,7 +137,10 @@ class WFTransitionDescriptor(object):
 
     def allowed(self):
         try:
-            return self.obj.wfm.transition_allowed(self.user, self.destination, self.owner, suspended=self._suspended)
+            return self.obj.wfm.transition_allowed(
+                self.user, self.destination, self.owner,
+                suspended=self._suspended, impersonated_by=self._impersonated_by,
+            )
         except Exception as e:
             messages = getattr(e, 'messages', None)
             self.error_msg = "; ".join(messages) if messages else str(e)
@@ -226,7 +229,7 @@ class WFTransitionDescriptor(object):
 
     @property
     def is_free(self):
-        return (self.destination == self.phase_str) and (self.state.owner == self.user)
+        return (self.destination == self.phase_str) and self.state.owned_by(self.user, self._impersonated_by)
 
 
     @property
@@ -382,7 +385,7 @@ class WFTransitionDescriptor(object):
         return 'info'
 
     @classmethod
-    def get_workflow_transitions(cls, obj, user):
+    def get_workflow_transitions(cls, obj, user, impersonated_by=None):
         """
         Returns a WorkflowTransitions named tuple for (obj, user).
 
@@ -406,12 +409,21 @@ class WFTransitionDescriptor(object):
 
         owner = cur_state.owner
         is_admin = obj.wfm.can_admin(user)
-        is_owner = (owner == user)
+        # Effective ownership: owner alone isn't enough once impersonation exists -- see
+        # State.owned_by() and GitHub issue #1. An admin impersonating owner without
+        # having explicitly reclaimed ownership (State.impersonated_by) is not the same
+        # actor as owner acting for themselves.
+        is_owner = cur_state.owned_by(user, impersonated_by)
+        # Reclaiming: the acting identity is already the raw recorded owner, regardless
+        # of impersonation context -- mirrors InstanceWorkflowManager.transition_allowed()'s
+        # `reclaiming_own_identity` bypass, offering the reclaim command even when `user`
+        # has no admin-group membership of their own.
+        can_reclaim = owner is not None and owner == user and not is_owner
 
         # When suspended, the only available action is Resume.
         if cur_state.suspended:
             if is_owner or is_admin:
-                command_transitions.append(cls(obj, 'resume', user))
+                command_transitions.append(cls(obj, 'resume', user, impersonated_by=impersonated_by))
             return WorkflowTransitions(phase_transitions, reject_transition, command_transitions)
 
         # Build phase_transitions + reject_transition — only for owner.
@@ -419,10 +431,10 @@ class WFTransitionDescriptor(object):
         # they use command_transitions (take-ownership, delegate) instead.
         if is_owner:
             if cur_state.can_reject and prev_state and prev_state.phase == cur_state.phase:
-                reject_transition = cls(obj, cur_state.phase, user, cur_state.user)
+                reject_transition = cls(obj, cur_state.phase, user, cur_state.user, impersonated_by=impersonated_by)
 
             for dest_state in reachable_states:
-                transition = cls(obj, dest_state, user)
+                transition = cls(obj, dest_state, user, impersonated_by=impersonated_by)
                 if transition.is_reject and prev_state and transition.destination == prev_state.phase:
                     if cur_state.can_reject:
                         reject_transition = transition
@@ -433,18 +445,18 @@ class WFTransitionDescriptor(object):
 
         if owner is None:
             if obj.wfm.can_edit(user) or is_admin:
-                command_transitions.append(cls(obj, 'take-ownership', user))
+                command_transitions.append(cls(obj, 'take-ownership', user, impersonated_by=impersonated_by))
 
-        if owner == user:
-            command_transitions.append(cls(obj, 'suspend', user))
+        if is_owner:
+            command_transitions.append(cls(obj, 'suspend', user, impersonated_by=impersonated_by))
             if cur_state.can_delegate:
-                command_transitions.append(cls(obj, 'delegate', user))
+                command_transitions.append(cls(obj, 'delegate', user, impersonated_by=impersonated_by))
             if cur_state.can_release:
-                command_transitions.append(cls(obj, 'release', user))
+                command_transitions.append(cls(obj, 'release', user, impersonated_by=impersonated_by))
 
-        if is_admin and owner is not None and owner != user:
-            command_transitions.append(cls(obj, 'take-ownership', user))  # snatch → severity=error
-            command_transitions.append(cls(obj, 'delegate', user))        # reassign → severity=error
+        if owner is not None and not is_owner and (is_admin or can_reclaim):
+            command_transitions.append(cls(obj, 'take-ownership', user, impersonated_by=impersonated_by))  # snatch/reclaim → severity=error
+            command_transitions.append(cls(obj, 'delegate', user, impersonated_by=impersonated_by))         # reassign → severity=error
 
         return WorkflowTransitions(phase_transitions, reject_transition, command_transitions)
 

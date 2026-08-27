@@ -44,6 +44,8 @@ TRANS_TYPE_MAP = {
     'take'          : 'Taken in charge',
     'suspend'       : 'Suspension',
     'resume'        : 'Resumed',
+    'impersonate'   : 'Claimed via impersonation',
+    'reclaim'       : 'Reclaimed',
 }
 
 
@@ -252,6 +254,23 @@ class State(models.Model):
         return (allow_delegate != 'no') or self.get_instance().wfm.can_admin(self.owner)
 
 
+    def owned_by(self, user, impersonated_by=None):
+        """
+        True if `user`, acting on their own behalf (impersonated_by=None) or via an
+        admin impersonating them (impersonated_by=<the real admin>), is the same actor
+        that produced this state.
+
+        owner alone is not enough once impersonation exists: an admin impersonating
+        userx is not the same actor as userx acting for themselves, even though both
+        satisfy owner == userx. Every ownership-based permission check in the engine
+        should go through this method (or InstanceWorkflowManager.is_owner(), which
+        wraps it) rather than comparing .owner directly, so that reclaiming ownership
+        while impersonating (see InstanceWorkflowManager.take_ownership()) is required
+        before an impersonator can act -- see GitHub issue #1.
+        """
+        return self.owner == user and self.impersonated_by == impersonated_by
+
+
     def get_transition_type(self, previous_state):
         if not previous_state:
             return 'new'
@@ -278,6 +297,15 @@ class State(models.Model):
         if self.owner == self.user:
             if previous_state.owner:
                 if self.user == previous_state.owner:
+                    # Same owner/user as before -- only the impersonation context
+                    # changed (transition_allowed()'s "reclaiming_own_identity" rule is
+                    # what let this through instead of being rejected as a no-op; see
+                    # GitHub issue #1). Distinguish explicitly rather than mislabeling
+                    # either direction as a plain 'resume'.
+                    if self.impersonated_by and self.impersonated_by != previous_state.impersonated_by:
+                        return 'impersonate'
+                    if not self.impersonated_by and previous_state.impersonated_by:
+                        return 'reclaim'
                     return 'resume'
                 return 'snatch'
             return 'take'
@@ -489,8 +517,8 @@ class WorkflowModel(models.Model):
         return str(self)
 
 
-    def user_can_delete_error(self, user):
-        if not self.wfm.is_owner(user) and not self.wfm.can_delete(user):
+    def user_can_delete_error(self, user, impersonated_by=None):
+        if not self.wfm.is_owner(user, impersonated_by) and not self.wfm.can_delete(user):
             return 'Access is denied'
         return ''
 
@@ -610,8 +638,8 @@ class InstanceWorkflowManager(object):
         return 'a' in self.user_permissions(user)
 
 
-    def is_owner(self, user):
-        return self.instance.wfm_state.owner == user
+    def is_owner(self, user, impersonated_by=None):
+        return self.instance.wfm_state.owned_by(user, impersonated_by)
 
 
     def can_delete(self, user):
@@ -622,19 +650,19 @@ class InstanceWorkflowManager(object):
         return False
 
 
-    def can_take_ownership(self, user):
+    def can_take_ownership(self, user, impersonated_by=None):
         """
         To take ownership: acting user must be admin or (user must be editor and current user is null)
         """
         current_state = self.instance.current_state
         try:
-            self.instance.wfm.transition_allowed(user, current_state, user)
+            self.instance.wfm.transition_allowed(user, current_state, user, impersonated_by=impersonated_by)
             return True
         except Exception:
             return False
 
 
-    def transition_allowed(self, user, new_state, new_owner, suspended=False):
+    def transition_allowed(self, user, new_state, new_owner, suspended=False, impersonated_by=None):
         """
         Checks if a transition is allowed. Raises an exception if not.
         Returns model config if successful.
@@ -674,8 +702,9 @@ class InstanceWorkflowManager(object):
             if source_state == new_state:
                 if new_owner == current_owner:
                     if suspended == current_state.suspended:
-                        self.raise_transition_error("Not a transition: same owner(%s) and same state (%s)" %(current_owner,source_state))
-            is_owner = (user == current_state.owner)
+                        if impersonated_by == current_state.impersonated_by:
+                            self.raise_transition_error("Not a transition: same owner(%s) and same state (%s)" %(current_owner,source_state))
+            is_owner = current_state.owned_by(user, impersonated_by)
 
         config = self.instance.wfm_config
 
@@ -706,7 +735,16 @@ class InstanceWorkflowManager(object):
                 if not is_owner:
                     self.raise_transition_error("User must be owner to change state in a transition")
             elif current_owner:
-                if not (is_admin or is_owner):
+                # Reclaiming: the acting identity is already the recorded owner (as a
+                # raw identity, regardless of impersonation context) and is becoming
+                # owner again -- always allowed, without needing group membership. This
+                # is symmetric: it covers both an admin impersonating current_owner
+                # explicitly taking ownership (InstanceWorkflowManager.take_ownership()),
+                # and current_owner reclaiming it back afterwards. See GitHub issue #1 --
+                # this is the one explicit gate the issue asks for, distinct from (and
+                # narrower than) the general is_admin reassign-to-anyone bypass.
+                reclaiming_own_identity = (user == new_owner == current_owner)
+                if not (is_admin or is_owner or reclaiming_own_identity):
                     self.raise_transition_error("User must be owner or admin to change owner in a transition")
             else:
                 if (user != new_owner) and not (is_admin):
@@ -816,7 +854,7 @@ class InstanceWorkflowManager(object):
                 raise e
 
 
-        config = self.transition_allowed(user, new_state, new_owner, suspended=suspended)
+        config = self.transition_allowed(user, new_state, new_owner, suspended=suspended, impersonated_by=impersonated_by)
         next_state = State(instance=self.instance, user=user, phase=new_state, owner=new_owner,
                            message=message, suspended=suspended, impersonated_by=impersonated_by)
         if force_transition_type:
@@ -888,7 +926,7 @@ class InstanceWorkflowManager(object):
 
     def take_ownership(self, user, message=None, impersonated_by=None):
         cst = self.state_or_error()
-        if cst.owner and cst.owner.pk == user.pk:
+        if cst.owned_by(user, impersonated_by):
             return cst
         return self.transition(user, cst.phase, user,
                                suspended=False, message=message, impersonated_by=impersonated_by)
@@ -901,8 +939,8 @@ class InstanceWorkflowManager(object):
                                suspended=False, message=message, impersonated_by=impersonated_by)
 
 
-    def get_transition(self, dest_state, user, owner='auto'):
-        return WFTransitionDescriptor(self.instance, dest_state, user, owner)
+    def get_transition(self, dest_state, user, owner='auto', impersonated_by=None):
+        return WFTransitionDescriptor(self.instance, dest_state, user, owner, impersonated_by=impersonated_by)
 
 
     def get_states(self):

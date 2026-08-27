@@ -60,6 +60,8 @@ def _strings():  # pragma: no cover - never called, see module docstring
         pgettext('workflango', 'Taken in charge'),
         pgettext('workflango', 'Suspension'),
         pgettext('workflango', 'Resumed'),
+        pgettext('workflango', 'Claimed via impersonation'),
+        pgettext('workflango', 'Reclaimed'),
 
         # templatetags/workflow_tags.py -- state_operator / state_operator_text
         # Translators: %(admin)s/%(user)s are usernames, substituted after translation --

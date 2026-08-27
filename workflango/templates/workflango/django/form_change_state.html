@@ -14,7 +14,7 @@
             <p{% if transition.state_description %} title="{{ transition.state_description }}"{% endif %}>{% wtrans "Current phase" %}: {{ object.current_state.phase }}</p>
             <p>{% wtrans "Owner" %}: <i>
             {% if object.current_state.owner %}
-                {% if object.current_state.owner == request.user %}
+                {% if object.current_state|owned_by:request %}
                     {% wtrans "Me" %}
                 {% else %}
                     <b>{{ object.current_state.owner }}</b>
@@ -51,7 +51,7 @@
                 {% endif %}
                 <p{% if transition.phase_str != transition.destination and transition.destination_description %} title="{{ transition.destination_description }}"{% endif %}>{{ message }}</p>
                 <div class="d-flex">
-                <button class="btn {% if object.current_state.owner and object.current_state.owner != request.user %}btn-danger{% else %}btn-primary{% endif %}" type="submit">{{ button_caption }}</button>
+                <button class="btn {% if object.current_state.owner and not object.current_state|owned_by:request %}btn-danger{% else %}btn-primary{% endif %}" type="submit">{{ button_caption }}</button>
                 <a class="btn btn-outline-primary ms-3" href="{{ cancel_url }}">{% wtrans "Cancel" %}</a>
                 </div>
             </form>

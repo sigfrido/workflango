@@ -208,3 +208,106 @@ class ImpersonationTests(GUITestMixin, WorkflowTestMixin, TestCase):
         self.assertEqual(supplier.current_state.owner, self.user1)
         self.assertEqual(supplier.current_state.user, self.user1)
         self.assertEqual(supplier.current_state.impersonated_by, self.admin)
+
+    def test_edit_locked_until_admin_reclaims_ownership_then_locked_again_until_user_reclaims(self):
+        """
+        End-to-end mirror of GitHub issue #1's own example: an admin impersonating
+        user1 cannot edit or transition a request user1 genuinely owns until they
+        explicitly take ownership (a real, audited transition); genuine user1 is then
+        locked out in turn until *they* reclaim it back.
+        """
+        supplier = Supplier.objects.create(company_name='Acme', tax_code='ACME12345')
+        supplier.wfm.transition(self.manager1, 'proposed', self.manager1)
+        supplier.wfm.transition(self.manager1, 'active', self.manager1)
+
+        self.login('user1')
+        self.post_view(reverse('request_create'), {
+            'title': 'Buy widgets', 'description': '', 'budget': '100.00', 'supplier': supplier.pk,
+        })
+        request = Request.objects.get(title='Buy widgets')
+        self.assertEqual(request.current_state.owner, self.user1)
+        self.assertIsNone(request.current_state.impersonated_by)
+
+        # --- Admin impersonates user1, BEFORE reclaiming ownership: locked out. ---
+        self.login('admin')
+        self.post_view(reverse('impersonate_start'), {'user': self.user1.pk})
+
+        detail = self.get_view(request.get_absolute_url())
+        self.assertFalse(detail.context['wf_editable'])
+        self.assertNotContains(detail, '>Submit<')
+
+        edit_response = self.get_view(reverse('request_edit', kwargs={'pk': request.pk}), follow=False)
+        self.assertEqual(edit_response.status_code, 302)  # access denied -> redirected, not the form
+
+        # --- Admin explicitly takes ownership while impersonating: a real, audited transition. ---
+        take_url = reverse('request_change_state', kwargs={'pk': request.pk, 'nuovo_stato': 'take-ownership'})
+        self.post_view(take_url, {})
+        request = self.reload_inst(request)
+        self.assertEqual(request.current_state.owner, self.user1)
+        self.assertEqual(request.current_state.impersonated_by, self.admin)
+
+        # --- Now editing/transitioning as admin-impersonating-user1 is offered and works. ---
+        detail2 = self.get_view(request.get_absolute_url())
+        self.assertTrue(detail2.context['wf_editable'])
+        self.assertContains(detail2, '>Submit<')
+
+        edit_response2 = self.get_view(reverse('request_edit', kwargs={'pk': request.pk}))
+        self.assertEqual(edit_response2.status_code, 200)
+
+        # --- Stop impersonating: genuine user1 is now locked out, symmetrically. ---
+        self.post_view(reverse('impersonate_stop'), {})
+        self.login('user1')
+
+        detail3 = self.get_view(request.get_absolute_url())
+        self.assertFalse(detail3.context['wf_editable'])
+        self.assertNotContains(detail3, '>Submit<')
+
+        edit_response3 = self.get_view(reverse('request_edit', kwargs={'pk': request.pk}), follow=False)
+        self.assertEqual(edit_response3.status_code, 302)
+
+        # --- Genuine user1 reclaims it back: normal access restored. ---
+        self.post_view(take_url, {})
+        request = self.reload_inst(request)
+        self.assertEqual(request.current_state.owner, self.user1)
+        self.assertIsNone(request.current_state.impersonated_by)
+
+        detail4 = self.get_view(request.get_absolute_url())
+        self.assertTrue(detail4.context['wf_editable'])
+        self.assertContains(detail4, '>Submit<')
+
+    def test_release_suspend_delegate_buttons_hidden_before_reclaim(self):
+        """
+        Regression: workflow_buttons.html's Release/Suspend/Delegate block was gated
+        by a raw `st.owner == request.user` comparison, which -- unlike the
+        `wf_editable`/`allowed_transitions` context vars -- was never made
+        impersonation-aware. Since request.user is swapped to the impersonated target,
+        that comparison was still (wrongly) true before an explicit reclaim, so these
+        buttons rendered even though clicking them would (correctly) fail at
+        transition_allowed(). Fixed with the `owned_by` template filter.
+        """
+        supplier = self.make_active_supplier()
+        request = Request.objects.create(title='Buy widgets', budget='500.00', supplier=supplier)
+        request.wfm.transition(self.user1, 'draft', self.user1)
+
+        self.login('admin')
+        self.post_view(reverse('impersonate_start'), {'user': self.user1.pk})
+
+        detail = self.get_view(request.get_absolute_url())
+        self.assertNotContains(detail, 'change-state/release/')
+        self.assertNotContains(detail, 'change-state/suspend/')
+        self.assertNotContains(detail, 'change-state/delegate/')
+        self.assertContains(detail, 'change-state/take-ownership/')
+
+        take_url = reverse('request_change_state', kwargs={'pk': request.pk, 'nuovo_stato': 'take-ownership'})
+        self.post_view(take_url, {})
+
+        detail2 = self.get_view(request.get_absolute_url())
+        self.assertContains(detail2, 'change-state/release/')
+        self.assertContains(detail2, 'change-state/suspend/')
+        self.assertContains(detail2, 'change-state/delegate/')
+
+    def make_active_supplier(self):
+        supplier = Supplier.objects.create(company_name='Acme Corp', tax_code='ACME12345')
+        supplier.wfm.transition(self.manager1, 'proposed', self.manager1)
+        supplier.wfm.transition(self.manager1, 'active', self.manager1)
+        return supplier

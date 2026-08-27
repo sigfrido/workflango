@@ -139,7 +139,8 @@ class WorkflowSerializerMixin(serializers.Serializer):  # pylint: disable=too-fe
         if getattr(request, 'sebastian_gui', False):
             state = instance.wfm_state
             if state:
-                ret['__can_update'] = (state.owner == request.user) and not state.suspended
+                impersonated_by = getattr(request, 'impersonated_by', None)
+                ret['__can_update'] = state.owned_by(request.user, impersonated_by) and not state.suspended
             # No __can_update when unmanaged: template falls back to view.can_update (True)
         return ret
 
@@ -252,7 +253,8 @@ class WorkflowViewSetMixin:
             return True
         if not obj.wfm_state:
             return True   # object not yet under workflow management
-        return obj.wfm.is_owner(self.request.user) and not obj.wfm_state.suspended
+        impersonated_by = getattr(self.request, 'impersonated_by', None)
+        return obj.wfm.is_owner(self.request.user, impersonated_by) and not obj.wfm_state.suspended
 
     def can_delete(self):
         """Workflow-managed objects cannot be deleted via the GUI."""

@@ -1249,3 +1249,195 @@ class WorkflowImpersonationTest(TransactionTestCase):
         self.assertEqual(reloaded.impersonated_by, self.superuser)
 
 
+class WorkflowImpersonationOwnershipTest(TransactionTestCase):
+    """
+    GitHub issue #1: impersonation was audited only as a side-effect of a transition
+    (State.user + .impersonated_by), but every ownership check (is_owner, and the
+    inline equivalent inside transition_allowed()) compared only state.owner == user --
+    since the library's documented contract has consumers swap request.user to the
+    impersonated target, an admin impersonating userx satisfied every ownership check
+    exactly as if they *were* userx, with no forced audit trail and no distinction from
+    userx acting for themselves. Plain field edits (WorkflowModelUpdate) never even
+    create a State row, so such an edit left zero trace.
+
+    Fix: State.owned_by(user, impersonated_by) requires both the raw owner match *and*
+    an impersonation-context match; InstanceWorkflowManager.take_ownership() /
+    transition_allowed() require an impersonating admin (or the genuine owner reclaiming
+    afterwards) to explicitly go through take_ownership() -- a real, audited transition
+    -- before is_owner()-gated actions succeed. This uses `user == new_owner ==
+    current_owner` ("reclaiming_own_identity"), not group membership, so it works
+    identically for both directions regardless of whether the target is an admin.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.OkModel = WorkflowModelValid
+        cls.OkModel.configure_workflow(snapshot_serializer=WorkflowModelValidSerializer)
+
+    def setUp(self):
+        State.objects.all().delete()
+        self.OkModel.objects.all().delete()
+        User.objects.all().delete()
+        self.superuser = User.objects.create_superuser('superadmin', email='', password='pwd')
+        # A regular user with no admin-group membership at phase 1 (group1/group4 are
+        # admin there; group2 is merely an editor) -- deliberately NOT a manager, so any
+        # passing check here can't be attributed to group-based admin bypass.
+        self.user_1 = User.objects.create(username='user1', password='pol')
+        user_group_add(self.user_1, 'group2')
+        # Setup-only helper: creating an instance requires group1 (workflow_defaults'
+        # edit group), which is *also* phase 1's admin group -- using it for user_1 would
+        # confound "reclaim needs no admin group" with "user_1 happens to be admin".
+        # setup_creator creates the instance and immediately reassigns it to user_1 (as
+        # phase-1 admin themselves, via group1) so user_1 ends up as owner without ever
+        # touching an admin group.
+        self.setup_creator = User.objects.create(username='setup_creator', password='pol')
+        user_group_add(self.setup_creator, 'group1')
+        self.OkModel.wfm_config.clear_cached_admins()
+
+    def make_owned_instance(self):
+        instance = self.OkModel.objects.create()
+        instance.wfm.transition(self.setup_creator, 1, self.setup_creator)
+        instance.wfm.transition(self.setup_creator, 1, self.user_1)  # admin reassigns to user_1
+        return instance
+
+    def test_is_owner_false_for_impersonator_before_reclaim(self):
+        instance = self.make_owned_instance()
+        self.assertTrue(instance.wfm.is_owner(self.user_1))
+        self.assertFalse(instance.wfm.is_owner(self.user_1, impersonated_by=self.superuser))
+
+    def test_can_take_ownership_true_for_impersonator_of_a_regular_user(self):
+        """The reclaim must work even though user_1 has no admin-group membership --
+        it's identity-based (user == new_owner == current_owner), not group-based."""
+        instance = self.make_owned_instance()
+        self.assertTrue(instance.wfm.can_take_ownership(self.user_1, impersonated_by=self.superuser))
+
+    def test_take_ownership_while_impersonating_creates_a_new_state(self):
+        instance = self.make_owned_instance()
+        state_count_before = instance.states.count()
+        new_state = instance.wfm.take_ownership(self.user_1, impersonated_by=self.superuser)
+        self.assertEqual(instance.states.count(), state_count_before + 1)  # not a silent no-op
+        self.assertEqual(new_state.owner, self.user_1)
+        self.assertEqual(new_state.user, self.user_1)
+        self.assertEqual(new_state.impersonated_by, self.superuser)
+
+    def test_take_ownership_already_reclaimed_is_a_no_op(self):
+        instance = self.make_owned_instance()
+        instance.wfm.take_ownership(self.user_1, impersonated_by=self.superuser)
+        state_count = instance.states.count()
+        same_state = instance.wfm.take_ownership(self.user_1, impersonated_by=self.superuser)
+        self.assertEqual(instance.states.count(), state_count)  # genuinely a no-op this time
+        self.assertEqual(same_state.impersonated_by, self.superuser)
+
+    def test_is_owner_true_for_impersonator_after_reclaim(self):
+        instance = self.make_owned_instance()
+        instance.wfm.take_ownership(self.user_1, impersonated_by=self.superuser)
+        self.assertTrue(instance.wfm.is_owner(self.user_1, impersonated_by=self.superuser))
+
+    def test_genuine_user_locked_out_after_admin_reclaims(self):
+        instance = self.make_owned_instance()
+        instance.wfm.take_ownership(self.user_1, impersonated_by=self.superuser)
+        self.assertFalse(instance.wfm.is_owner(self.user_1))
+        with self.assertRaises(TransitionNotAllowed):
+            instance.wfm.transition(self.user_1, 3, self.user_1)
+
+    def test_genuine_user_can_reclaim_ownership_back(self):
+        instance = self.make_owned_instance()
+        instance.wfm.take_ownership(self.user_1, impersonated_by=self.superuser)
+        new_state = instance.wfm.take_ownership(self.user_1)
+        self.assertIsNone(new_state.impersonated_by)
+        self.assertTrue(instance.wfm.is_owner(self.user_1))
+        # and the genuine user can now transition normally again (phase 3 is a closed
+        # terminal state with no edit/admin group at all, so it can't have an owner --
+        # same pattern as the demo's 'approved'/'archived' phases)
+        instance.wfm.transition(self.user_1, 3, None)
+
+    def test_plain_field_edit_gate_blocked_before_reclaim(self):
+        """The exact gap the issue reports: WorkflowModelUpdate.access_denied_error()
+        never creates a State at all, so is_owner() is the *only* audit-relevant gate for
+        a plain field edit while impersonating."""
+        instance = self.make_owned_instance()
+        self.assertFalse(instance.wfm.is_owner(self.user_1, impersonated_by=self.superuser))
+        instance.wfm.take_ownership(self.user_1, impersonated_by=self.superuser)
+        self.assertTrue(instance.wfm.is_owner(self.user_1, impersonated_by=self.superuser))
+
+    def test_not_a_transition_early_exit_requires_impersonation_match_too(self):
+        """transition_allowed()'s "Not a transition: same owner and same state" early exit
+        must not misfire just because owner/phase/suspended match -- the whole point of
+        take_ownership() while impersonating is that owner and phase *don't* change, only
+        the impersonation context does."""
+        instance = self.make_owned_instance()
+        current_state = instance.current_state
+        with self.assertRaises(TransitionNotAllowed) as ctx:
+            instance.wfm.transition_allowed(self.user_1, current_state.phase, self.user_1, impersonated_by=None)
+        self.assertIn('Not a transition', str(ctx.exception))
+        # Same owner/phase/suspended, but impersonated_by differs from the current
+        # state's -- must NOT raise "Not a transition" (must proceed to the real check,
+        # which passes here via reclaiming_own_identity).
+        try:
+            instance.wfm.transition_allowed(self.user_1, current_state.phase, self.user_1, impersonated_by=self.superuser)
+        except TransitionNotAllowed as e:
+            self.fail(f"Wrongly treated as a no-op transition: {e}")
+
+    def test_unrelated_user_cannot_exploit_the_reclaim_bypass(self):
+        """reclaiming_own_identity requires user == new_owner == current_owner -- an
+        unrelated third party (not owner, not admin, not becoming the owner themselves)
+        must still be rejected, confirming the bypass isn't a general reassignment hole.
+        Uses a mismatched impersonated_by so the attempt isn't trivially caught by the
+        earlier "Not a transition: same owner and same state" no-op check first (which
+        would otherwise reject it for an uninteresting reason)."""
+        instance = self.make_owned_instance()
+        user_2 = User.objects.create(username='user2', password='pol')
+        user_group_add(user_2, 'group2')
+        with self.assertRaises(TransitionNotAllowed) as ctx:
+            instance.wfm.transition_allowed(
+                user_2, instance.current_state.phase, self.user_1, impersonated_by=self.superuser,
+            )
+        self.assertNotIn('Not a transition', str(ctx.exception))
+
+    def test_transition_type_impersonate_on_first_claim(self):
+        instance = self.make_owned_instance()
+        state = instance.wfm.take_ownership(self.user_1, impersonated_by=self.superuser)
+        self.assertEqual(state.transition_type, 'impersonate')
+
+    def test_transition_type_reclaim_when_genuine_owner_takes_back(self):
+        instance = self.make_owned_instance()
+        instance.wfm.take_ownership(self.user_1, impersonated_by=self.superuser)
+        state = instance.wfm.take_ownership(self.user_1)
+        self.assertEqual(state.transition_type, 'reclaim')
+
+    def test_transition_type_impersonate_when_a_different_admin_takes_over(self):
+        """
+        is_admin has nothing to do with impersonation authorization -- workflango
+        itself doesn't gate *who* may impersonate *whom* (that's entirely up to the
+        consumer app: WORKFLANGO_ALLOW_IMPERSONATE + WorkflowConfig.get_impersonable_users(),
+        or a custom `impersonable_users` policy, e.g. a temporary delegation). So a
+        second, differently-privileged admin who is themselves authorized to
+        impersonate the same target can take over from the first admin's claim --
+        this is by design, not a bug. Both claims are labeled 'impersonate' (not
+        'reclaim', which is reserved for the genuine, non-impersonated owner), and
+        each is independently, correctly audited via State.impersonated_by.
+        """
+        instance = self.make_owned_instance()
+        other_admin = User.objects.create_superuser('otheradmin', email='', password='pwd')
+
+        state_1 = instance.wfm.take_ownership(self.user_1, impersonated_by=self.superuser)
+        self.assertEqual(state_1.transition_type, 'impersonate')
+        self.assertEqual(state_1.impersonated_by, self.superuser)
+
+        state_2 = instance.wfm.take_ownership(self.user_1, impersonated_by=other_admin)
+        self.assertEqual(state_2.transition_type, 'impersonate')
+        self.assertEqual(state_2.impersonated_by, other_admin)
+        self.assertTrue(instance.wfm.is_owner(self.user_1, impersonated_by=other_admin))
+        self.assertFalse(instance.wfm.is_owner(self.user_1, impersonated_by=self.superuser))
+
+    def test_transition_type_resume_unaffected_by_impersonation_labeling(self):
+        """A genuine resume-after-suspend (no impersonation involved on either side)
+        must still be labeled 'resume', not swallowed by the new 'impersonate'/'reclaim'
+        branches."""
+        instance = self.make_owned_instance()
+        instance.wfm.transition(self.user_1, instance.current_state.phase, self.user_1, suspended=True)
+        state = instance.wfm.transition(self.user_1, instance.current_state.phase, self.user_1, suspended=False)
+        self.assertEqual(state.transition_type, 'resume')
+
+

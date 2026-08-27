@@ -127,7 +127,7 @@ django-admin compilemessages
 
 ## Impersonation
 
-Allows an admin (or delegate) to perform transitions on behalf of another user. The real actor is recorded in `State.impersonated_by`; `State.user` holds the impersonated identity.
+Allows one user to perform transitions on behalf of another. The real actor is recorded in `State.impersonated_by`; `State.user` holds the impersonated identity. **workflango does not decide who may impersonate whom** — that's entirely an application concern (see below); the engine only records and, since `1.0.0rc1`, enforces an explicit hand-off (see "Ownership and impersonation" below).
 
 Enable globally in settings:
 
@@ -135,7 +135,7 @@ Enable globally in settings:
 WORKFLANGO_ALLOW_IMPERSONATE = True
 ```
 
-By default, superusers and members of `WORKFLOW_ADMIN_GROUP` can impersonate any active user. Override per workflow:
+`WorkflowConfig.get_impersonable_users(user)` is the policy hook consulted by the DRF layer's `resolve_acting_user()`. Its **default** — superusers and `WORKFLOW_ADMIN_GROUP` members may impersonate any active user — is only a default, not a rule the engine enforces elsewhere; override it per workflow with any policy that fits your app:
 
 ```python
 MyDocument.configure_workflow(
@@ -143,6 +143,8 @@ MyDocument.configure_workflow(
     impersonable_users=lambda user: Delegation.active_delegates_for(user),
 )
 ```
+
+This is symmetric, not just "admin down to regular user": a temporary-delegation policy (a manager delegates to a specific subordinate while on leave, via a `Delegation` model like the sketch above) is just as valid a use of the same mechanism. Nothing about `is_owner()`, `transition_allowed()`, or the `impersonate`/`reclaim` transition types below cares whether the impersonator happens to be a workflow "admin" for the relevant state — group-based admin rights and impersonation authorization are unrelated axes.
 
 Programmatic use:
 
@@ -157,6 +159,20 @@ qs = MyDocument.wfm_config.get_impersonable_users(real_user)
 ```
 
 In the DRF API, pass `"user": <id>` in the `change_state` POST body to act as that user; use `?as_user=<id>` on GET endpoints to scope list results.
+
+For a GUI (non-DRF) consumer, the contract is: middleware swaps `request.user` to the impersonated target for the rest of the request and stashes the real actor on `request.impersonated_by` — `_BaseWorkflowTransitionMixin.check_and_transition()` and every other ownership check in the library already read both attributes this way. `testproject/demo/middleware.py`'s `ImpersonateMiddleware` is a complete, runnable example (superuser-only, session-based) — one way to wire the contract up, not the only one.
+
+### Ownership and impersonation
+
+`state.owner == user` alone does not mean `user` is really acting: an admin impersonating userx would satisfy that comparison exactly as if they *were* userx, with no distinction and no forced audit trail. `State.owned_by(user, impersonated_by=None)` is the real check — it requires **both** the owner match **and** an impersonation-context match against what's already recorded on the state:
+
+```python
+state.owned_by(user, impersonated_by)  # == state.owner == user and state.impersonated_by == impersonated_by
+```
+
+`InstanceWorkflowManager.is_owner()` (and everything gated by it — plain field edits via `WorkflowModelUpdate`, `wf_editable`, phase-changing transitions, ...) goes through this. Practically: an admin impersonating userx on a record userx genuinely owns must explicitly call `take_ownership(userx, impersonated_by=admin)` — a real, audited `transition()` — before `is_owner()`-gated actions succeed; userx is symmetrically locked out until they call `take_ownership(userx)` (with no `impersonated_by`) to reclaim it back. This works purely by identity (`user == new_owner == current_owner`, see `transition_allowed()`), not by group membership, so it doesn't matter whether the impersonated target is a workflow "admin" for the state or not. A *different*, separately-authorized impersonator can also take over an existing claim the same way (workflango doesn't track which impersonator "owns" the impersonation itself, only which identity currently holds the record) — each claim is independently audited via `State.impersonated_by`.
+
+Two transition types make this explicit in the history (`State.transition_type`, shown by `transition_type_display()`): **`impersonate`** — same owner/user as the previous state, but `impersonated_by` is now set and differs from what the previous state recorded (covers both a first claim and a hand-off between two different impersonators) — and **`reclaim`** — same owner/user, but `impersonated_by` is now cleared, i.e. the genuine owner took it back.
 
 ## Snapshot
 

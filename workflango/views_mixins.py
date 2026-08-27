@@ -91,7 +91,8 @@ class _WorkflowContextMixin:
 
     def get_allowed_transitions(self):
         """Return (phase_transitions, reject_transition) for the object's current state."""
-        wt = WFTransitionDescriptor.get_workflow_transitions(self.get_object(), self.request.user)
+        impersonated_by = getattr(self.request, 'impersonated_by', None)
+        wt = WFTransitionDescriptor.get_workflow_transitions(self.get_object(), self.request.user, impersonated_by=impersonated_by)
         return wt.phase_transitions, wt.reject_transition
 
 
@@ -232,7 +233,14 @@ class WorkflowModelChangeState(AccessDeniedMixin, _BaseWorkflowTransitionMixin, 
 
     def access_denied_error(self, request, *args, **kwargs):
         obj = self.get_object()
-        if obj.wfm.is_owner(request.user):
+        impersonated_by = getattr(request, 'impersonated_by', None)
+        if obj.wfm.is_owner(request.user, impersonated_by):
+            return ''
+        if obj.current_state.owner == request.user:
+            # Reclaiming: request.user is already the raw recorded owner (regardless of
+            # impersonation context) -- let them through to attempt it; the precise gate
+            # is InstanceWorkflowManager.transition_allowed()'s own "reclaiming_own_identity"
+            # check at POST time. See GitHub issue #1.
             return ''
         if obj.current_state.owner:
             req = obj.wfm.can_admin(request.user)
@@ -277,7 +285,8 @@ class WorkflowModelUpdate(AccessDeniedMixin, _WorkflowContextMixin):
 
     def access_denied_error(self, request, *args, **kwargs):
         obj = self.get_object()
-        if not obj.wfm.is_owner(request.user):
+        impersonated_by = getattr(request, 'impersonated_by', None)
+        if not obj.wfm.is_owner(request.user, impersonated_by):
             return wgettext("You do not have access to this resource.")
         cur_state = obj.current_state
         if cur_state and cur_state.suspended:
@@ -308,7 +317,8 @@ class WorkflowDetailMixin(CachedGetObjectMixin, AccessDeniedMixin, _WorkflowCont
         instance = context['object']
         st = instance.current_state
         user = self.request.user
-        if st.owner == user:
+        impersonated_by = getattr(self.request, 'impersonated_by', None)
+        if st.owned_by(user, impersonated_by):
             try:
                 unread = bool(int(self.request.GET.get('unread', 0)))
             except Exception:
@@ -322,9 +332,9 @@ class WorkflowDetailMixin(CachedGetObjectMixin, AccessDeniedMixin, _WorkflowCont
                     else wgettext("The object was marked as read."),
                 )
 
-        wf_editable = instance.wfm.is_owner(user) and not st.suspended and not st.get_state_property('disable_editing')
-        wf_admin_owned = instance.wfm.is_owner(user) and instance.wfm.can_admin(user)
-        context['wf_can_take_ownership'] = instance.wfm.can_take_ownership(user)
+        wf_editable = instance.wfm.is_owner(user, impersonated_by) and not st.suspended and not st.get_state_property('disable_editing')
+        wf_admin_owned = instance.wfm.is_owner(user, impersonated_by) and instance.wfm.can_admin(user)
+        context['wf_can_take_ownership'] = instance.wfm.can_take_ownership(user, impersonated_by)
         context['wf_editable'] = wf_editable
         context['wf_admin_owned'] = wf_admin_owned
         context['wf_can_delete'] = self.wf_can_delete(user, instance)
@@ -333,4 +343,5 @@ class WorkflowDetailMixin(CachedGetObjectMixin, AccessDeniedMixin, _WorkflowCont
         return self.get_workflow_context(context)
 
     def wf_can_delete(self, user, instance):
-        return not instance.user_can_delete_error(user)
+        impersonated_by = getattr(self.request, 'impersonated_by', None)
+        return not instance.user_can_delete_error(user, impersonated_by)
