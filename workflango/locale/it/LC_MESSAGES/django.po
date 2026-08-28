@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: workflango 1.0.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-27 15:58+0200\n"
+"POT-Creation-Date: 2026-08-28 10:21+0200\n"
 "PO-Revision-Date: 2026-08-27 12:00+0200\n"
 "Last-Translator: workflango maintainers\n"
 "Language-Team: Italian\n"
@@ -102,6 +102,31 @@ msgstr "L'oggetto non ha ancora uno stato attivo."
 msgctxt "workflango"
 msgid "Only the current owner can change the read state."
 msgstr "Solo il proprietario corrente può modificare lo stato di lettura."
+
+msgctxt "workflango"
+msgid "Impersonation is not enabled (WORKFLANGO_ALLOW_IMPERSONATE)."
+msgstr "Impersonazione non abilitata (WORKFLANGO_ALLOW_IMPERSONATE)."
+
+#. Translators: %(user_id)s is a numeric id, substituted after translation.
+#, python-format
+msgctxt "workflango"
+msgid "User %(user_id)s not found or not active."
+msgstr "Utente %(user_id)s non trovato o non attivo."
+
+#, python-format
+msgctxt "workflango"
+msgid "User %(user_id)s not found."
+msgstr "Utente %(user_id)s non trovato."
+
+#. Translators: %(user)s is a username, substituted after translation.
+#, python-format
+msgctxt "workflango"
+msgid "Not authorized to act as %(user)s."
+msgstr "Non autorizzato a operare come %(user)s."
+
+msgctxt "workflango"
+msgid "Invalid value: expected an integer."
+msgstr "Valore non valido: atteso intero."
 
 msgctxt "workflango"
 msgid "State"

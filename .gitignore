@@ -209,6 +209,9 @@ tempCodeRunnerFile.py
 # PyPI configuration file
 .pypirc
 
+# Local-only dev setup (sibling-checkout editable installs, machine-specific)
+requirements-dev-local.txt
+
 # Marimo
 marimo/_static/
 marimo/_lsp/

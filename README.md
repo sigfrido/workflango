@@ -264,6 +264,8 @@ Returns `{"unread": false}`. Defaults to `read: true` if body is omitted (auto-m
 }
 ```
 
+Using [drf-sebastian](https://github.com/sigfrido/drf-sebastian) as your GUI layer? `workflango.contrib.sebastian` is an optional module — never imported by core workflango — that adds the GUI-aware behavior sebastian's `GUIMixin`/renderer/router expect (a list-badge column, `template_namespace`, `can_update`/`can_delete`, the `history`/`change_state_form` actions) as drop-in replacements for the mixins above. See [docs/sebastian-integration.md](docs/sebastian-integration.md).
+
 ## Settings
 
 ```python

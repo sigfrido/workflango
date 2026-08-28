@@ -69,10 +69,19 @@ def _strings():  # pragma: no cover - never called, see module docstring
         pgettext('workflango', 'impersonated by %(admin)s'),
         pgettext('workflango', '%(user)s (impersonated by %(admin)s)'),
 
-        # drf.py -- API-level PermissionDenied messages and sebastian GUI field/action labels
+        # drf.py -- API-level PermissionDenied/ValidationError messages
         pgettext('workflango', 'Access denied: user is neither the owner nor an administrator.'),
         pgettext('workflango', 'The object does not have an active state yet.'),
         pgettext('workflango', 'Only the current owner can change the read state.'),
+        pgettext('workflango', 'Impersonation is not enabled (WORKFLANGO_ALLOW_IMPERSONATE).'),
+        # Translators: %(user_id)s is a numeric id, substituted after translation.
+        pgettext('workflango', 'User %(user_id)s not found or not active.'),
+        pgettext('workflango', 'User %(user_id)s not found.'),
+        # Translators: %(user)s is a username, substituted after translation.
+        pgettext('workflango', 'Not authorized to act as %(user)s.'),
+        pgettext('workflango', 'Invalid value: expected an integer.'),
+
+        # contrib/sebastian.py -- optional drf-sebastian integration, GUI field/action labels
         pgettext('workflango', 'State'),
 
         # wf_transition.py -- WFTransitionDescriptor.caption fallback (no explicit
