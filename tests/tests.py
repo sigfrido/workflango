@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+from unittest.mock import MagicMock
+
+from django.core.exceptions import ImproperlyConfigured, ValidationError
+from rest_framework.exceptions import PermissionDenied as DRFPermissionDenied
 from django.test import TransactionTestCase, TestCase, override_settings
-from django.core.exceptions import  ImproperlyConfigured, ValidationError
 from django.contrib.auth.models import User
+from workflango.drf import WorkflowViewSetMixin
 from workflango.exceptions import (InvalidWorkflowConfiguration, InvalidState,
     TransitionNotAllowed, UnmanagedObject, StaleObject)
 from workflango.models import State, transition_done, WorkflowModel
@@ -1439,5 +1443,73 @@ class WorkflowImpersonationOwnershipTest(TransactionTestCase):
         instance.wfm.transition(self.user_1, instance.current_state.phase, self.user_1, suspended=True)
         state = instance.wfm.transition(self.user_1, instance.current_state.phase, self.user_1, suspended=False)
         self.assertEqual(state.transition_type, 'resume')
+
+
+class CheckWfPermissionImpersonationRegressionTest(TransactionTestCase):
+    """
+    Regression: WorkflowViewSetMixin.check_wf_permission did not pass impersonated_by
+    to is_owner(), so any state created during an impersonation session
+    (impersonated_by != None) raised PermissionDenied for both the impersonated session
+    that created it and the real owner trying to reclaim it.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Model = WorkflowModelValid
+        cls.Model.configure_workflow(snapshot_serializer=WorkflowModelValidSerializer)
+
+    def setUp(self):
+        State.objects.all().delete()
+        self.Model.objects.all().delete()
+        User.objects.all().delete()
+
+        # admin_user: in group1 — admin at phase 1 and can do the first transition
+        self.admin_user = User.objects.create(username='adm', password='x')
+        user_group_add(self.admin_user, 'group1')
+        # owner_user: in group2 — editor at phase 1 (eligible to own)
+        self.owner_user = User.objects.create(username='own', password='x')
+        user_group_add(self.owner_user, 'group2')
+        # unrelated: in group3 — reader only, no admin or edit rights
+        self.unrelated = User.objects.create(username='unrel', password='x')
+        user_group_add(self.unrelated, 'group3')
+
+        self.Model.wfm_config.clear_cached_admins()
+
+        # Build state: owner=owner_user, impersonated_by=admin_user, phase=1.
+        # Step 1: admin_user creates the object (first transition requires user==owner).
+        # Step 2: admin_user (as admin) reassigns to owner_user.
+        # Step 3: owner_user takes ownership while being impersonated by admin_user
+        #         (same-state transition that only changes impersonated_by).
+        # This replicates what happens when admin impersonates a user and creates/
+        # duplicates an object — the resulting state has impersonated_by != None.
+        instance = self.Model.objects.create()
+        instance.wfm.transition(self.admin_user, 1, self.admin_user)
+        instance.wfm.transition(self.admin_user, 1, self.owner_user)
+        instance.wfm.transition(self.owner_user, 1, self.owner_user, impersonated_by=self.admin_user)
+        self.instance = instance
+
+    def _viewset(self, impersonated_by=None):
+        vs = WorkflowViewSetMixin()
+        request = MagicMock()
+        request.impersonated_by = impersonated_by
+        vs.request = request
+        return vs
+
+    def test_owner_while_impersonating_passes_check(self):
+        """Admin impersonating owner passes check_wf_permission — was blocked before fix."""
+        vs = self._viewset(impersonated_by=self.admin_user)
+        vs.check_wf_permission(self.instance, self.owner_user)  # must not raise
+
+    def test_owner_reclaiming_without_impersonation_passes_check(self):
+        """Owner acting as themselves passes check_wf_permission for their impersonated state — was blocked before fix."""
+        vs = self._viewset(impersonated_by=None)
+        vs.check_wf_permission(self.instance, self.owner_user)  # must not raise
+
+    def test_unrelated_user_is_denied(self):
+        """User with no ownership or admin rights is denied."""
+        vs = self._viewset(impersonated_by=None)
+        with self.assertRaises(DRFPermissionDenied):
+            vs.check_wf_permission(self.instance, self.unrelated)
 
 

@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here, starting from this release. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Fixed
+
+- `WorkflowViewSetMixin.check_wf_permission` (DRF) did not pass `impersonated_by` to `is_owner()`, so any state created during an impersonation session (`State.impersonated_by != None`) raised `PermissionDenied` for two valid callers: the admin-impersonating-owner session that created it, and the real owner reclaiming it afterwards without impersonation. `check_wf_permission` now reads `impersonated_by` from `self.request` and passes it to `is_owner()`; a second guard (`state.owner == acting_user`) lets the real owner through when `is_owner()` returns False due to impersonation-context mismatch, so `transition_allowed()`'s existing `reclaiming_own_identity` logic can do its job. Three regression tests added to `tests/tests.py` (`CheckWfPermissionImpersonationRegressionTest`)
+
 ## [1.0.0rc1] - 2026-08-27
 
 First release candidate. Feature-complete and used in production (as the `workflow` app inside WebGPV, at Comune di Milano since 2014); this candidate exists to get more real-world mileage as a standalone package before committing to the API-stability guarantee of a full `1.0.0`.

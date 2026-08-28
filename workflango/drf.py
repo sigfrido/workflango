@@ -251,14 +251,19 @@ class WorkflowViewSetMixin:
         a workflow transition. Skipped for unmanaged objects (first transition).
 
         Allowed if any of:
-        - acting_user is the current owner
+        - acting_user is the current owner (with matching impersonation context)
+        - acting_user is the recorded owner acting outside any impersonation
+          (allows reclaiming own identity — transition_allowed handles the rest)
         - acting_user is an admin for this instance
         - the instance has no owner and acting_user can edit in the current phase
           (i.e. they are eligible to take ownership)
         """
         if not instance.wfm_state:
             return
-        if instance.wfm.is_owner(acting_user):
+        impersonated_by = getattr(self.request, 'impersonated_by', None)
+        if instance.wfm.is_owner(acting_user, impersonated_by):
+            return
+        if instance.wfm_state.owner == acting_user:
             return
         if instance.wfm.can_admin(acting_user):
             return
