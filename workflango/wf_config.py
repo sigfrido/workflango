@@ -264,7 +264,7 @@ class WorkflowConfig(dict):
         cls = self.__class__
         if cls._workflow_admin == None:
             try:
-                admin_name = getattr(settings, 'WORKFLOW_ADMIN', None)
+                admin_name = getattr(settings, 'WF_ADMIN', None)
                 if admin_name:
                     cls._workflow_admin = get_user_model().objects.get(username=admin_name)
                 else:
@@ -277,18 +277,18 @@ class WorkflowConfig(dict):
     def is_admin(self, user):
         if user.is_superuser:
             return True
-        admin_name = getattr(settings, 'WORKFLOW_ADMIN', None)
+        admin_name = getattr(settings, 'WF_ADMIN', None)
         if admin_name and user.username == admin_name:
             return True
-        admin_group = getattr(settings, 'WORKFLOW_ADMIN_GROUP', None)
+        admin_group = getattr(settings, 'WF_ADMIN_GROUP', None)
         if admin_group and user_in_groups(user, admin_group):
             return True
         return False
         # cls = self.__class__
         # if cls._workflow_admins == None:
-        #     cls._workflow_admins = tuple(get_user_model().objects.filter(groups__name=settings.WORKFLOW_ADMIN_GROUP).values_list('id', flat=True))
+        #     cls._workflow_admins = tuple(get_user_model().objects.filter(groups__name=settings.WF_ADMIN_GROUP).values_list('id', flat=True))
         #     if not len(cls._workflow_admins):
-        #         raise ConfigurationException('Nessun utente trovato per il gruppo dichiarato in WORKFLOW_ADMIN_GROUP')
+        #         raise ConfigurationException('Nessun utente trovato per il gruppo dichiarato in WF_ADMIN_GROUP')
         # return user.id in cls._workflow_admins
 
 
@@ -302,7 +302,7 @@ class WorkflowConfig(dict):
         """
         Returns a queryset of users that ``user`` is allowed to impersonate in this workflow.
 
-        Default: superuser or WORKFLOW_ADMIN_GROUP members can impersonate any
+        Default: superuser or WF_ADMIN_GROUP members can impersonate any
         other active user; everyone else gets an empty queryset.
 
         Override by passing ``impersonable_users`` to ``configure_workflow()``::
@@ -354,7 +354,7 @@ class WorkflowConfig(dict):
 
 
     def check_defined_groups(self):
-        wfgroups = [group for (group, descr) in settings.WORKFLOW_USERS_GROUPS]
+        wfgroups = [group for (group, descr) in settings.WF_USERS_GROUPS]
         for state in self.keys():
             for priv in ['read', 'edit', 'admin']:
                 for group in self[state][priv]:

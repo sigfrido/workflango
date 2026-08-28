@@ -205,8 +205,8 @@ class WorkflowViewSetMixin:
         if not user_id or user_id == request.user.pk:
             return request.user, None
 
-        if not getattr(settings, 'WORKFLANGO_ALLOW_IMPERSONATE', False):
-            raise PermissionDenied(wgettext("Impersonation is not enabled (WORKFLANGO_ALLOW_IMPERSONATE)."))
+        if not getattr(settings, 'WF_ALLOW_IMPERSONATE', False):
+            raise PermissionDenied(wgettext("Impersonation is not enabled (WF_ALLOW_IMPERSONATE)."))
 
         try:
             target_user = get_user_model().objects.get(pk=user_id, is_active=True)

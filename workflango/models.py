@@ -865,7 +865,7 @@ class InstanceWorkflowManager(object):
             next_state.transition_type = next_state.get_transition_type(current_state)
         next_state.previous_state = current_state
         next_state.unread = bool(new_owner and (new_owner != user))
-        if getattr(settings, 'WORKFLANGO_SNAPSHOT_ENABLED', False):
+        if getattr(settings, 'WF_SNAPSHOT_ENABLED', False):
             source_phase = current_state.phase if current_state else None
             if config[source_phase].get('snapshot', False):
                 next_state.snapshot = self.instance.get_workflow_snapshot(new_state)

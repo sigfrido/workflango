@@ -11,9 +11,9 @@ from workflango.models import WorkflowModel
 def send_email_to_admins(subject, message):
     """
     Send an email to Django ADMINS.
-    Override by setting WORKFLANGO_NOTIFY_FUNC in settings to a callable(subject, message).
+    Override by setting WF_NOTIFY_FUNC in settings to a callable(subject, message).
     """
-    notify_func = getattr(settings, 'WORKFLANGO_NOTIFY_FUNC', None)
+    notify_func = getattr(settings, 'WF_NOTIFY_FUNC', None)
     if notify_func:
         notify_func(subject, message)
     else:

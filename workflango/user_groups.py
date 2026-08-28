@@ -7,7 +7,7 @@ from django.utils.encoding import force_str
 
 
 def group_is_valid(group_name):
-    configured_groups = getattr(settings, 'WORKFLOW_USERS_GROUPS', None)
+    configured_groups = getattr(settings, 'WF_USERS_GROUPS', None)
     if not configured_groups:
         return True
 
@@ -82,12 +82,12 @@ def _user_group_add_remove(user, group_name, do_add):
 def get_or_create_group(group_name):
     """
     Return a group, will create it if needed
-    Will raise excepion if group is not defined in settings.WORKFLOW_USERS_GROUPS (if any)
+    Will raise excepion if group is not defined in settings.WF_USERS_GROUPS (if any)
     """
     # Test if group has been defined in settings.
     # This is mainly for documentation purposes: we don't want users to create groups on the fly
     if not group_is_valid(group_name):
-        raise ImproperlyConfigured(f'Group {group_name} does not exist in settings.WORKFLOW_USERS_GROUPS.')
+        raise ImproperlyConfigured(f'Group {group_name} does not exist in settings.WF_USERS_GROUPS.')
     try:
         group = Group.objects.get(name = group_name)
         created = False
@@ -104,18 +104,18 @@ def init_all_groups(verbose=False):
     Initializes all configured groups
     """
     try:
-        for (grp, descr) in settings.WORKFLOW_USERS_GROUPS:
+        for (grp, descr) in settings.WF_USERS_GROUPS:
             group, created = get_or_create_group(grp)
             if verbose:
                 action = 'CREATED' if created else 'EXISTING'
                 print(f'[{action}] {grp}: {descr}')
     except:
-        raise ImproperlyConfigured('settings.WORKFLOW_USERS_GROUPS not found')
+        raise ImproperlyConfigured('settings.WF_USERS_GROUPS not found')
 
 
 
 def get_groups_dict():
     groups_dict = {}
-    for (name, descr) in settings.WORKFLOW_USERS_GROUPS:
+    for (name, descr) in settings.WF_USERS_GROUPS:
         groups_dict[name] = descr
     return groups_dict

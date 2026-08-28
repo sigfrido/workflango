@@ -8,7 +8,7 @@ from .i18n import wgettext, wgettext_lazy
 
 from django.conf import settings
 
-MSG_MAX_LEN = getattr(settings, 'WORKFLOW_TRANS_MSG_MAX_LEN', 4096)
+MSG_MAX_LEN = getattr(settings, 'WF_TRANS_MSG_MAX_LEN', 4096)
 
 class ChangeStateForm(forms.Form):
 

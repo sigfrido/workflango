@@ -1160,7 +1160,7 @@ class WorkflowSnapshotTest(TransactionTestCase):
         state = instance.wfm.transition(self.user_1, 2, self.user_3)
         self.assertIsNone(state.snapshot)
 
-    @override_settings(WORKFLANGO_SNAPSHOT_ENABLED=True)
+    @override_settings(WF_SNAPSHOT_ENABLED=True)
     def test_snapshot_populated_on_exit_from_snapshot_state(self):
         instance = self._create_at_state_1(name='test doc', size=42, active=True)
         state = instance.wfm.transition(self.user_1, 2, self.user_3)
@@ -1169,7 +1169,7 @@ class WorkflowSnapshotTest(TransactionTestCase):
         self.assertEqual(state.snapshot['size'], 42)
         self.assertTrue(state.snapshot['active'])
 
-    @override_settings(WORKFLANGO_SNAPSHOT_ENABLED=True)
+    @override_settings(WF_SNAPSHOT_ENABLED=True)
     def test_snapshot_reflects_state_at_transition_time(self):
         instance = self._create_at_state_1(name='original', size=1)
         instance.name = 'modified'
@@ -1179,13 +1179,13 @@ class WorkflowSnapshotTest(TransactionTestCase):
         self.assertEqual(state.snapshot['name'], 'modified')
         self.assertEqual(state.snapshot['size'], 99)
 
-    @override_settings(WORKFLANGO_SNAPSHOT_ENABLED=True)
+    @override_settings(WF_SNAPSHOT_ENABLED=True)
     def test_snapshot_not_taken_for_non_snapshot_state(self):
         instance = self.OkModel.objects.create(name='doc', size=5)
         state = instance.wfm.transition(self.user_1, 1, self.user_1)
         self.assertIsNone(state.snapshot)
 
-    @override_settings(WORKFLANGO_SNAPSHOT_ENABLED=True)
+    @override_settings(WF_SNAPSHOT_ENABLED=True)
     def test_snapshot_weight_decimal(self):
         import decimal
         instance = self._create_at_state_1(weight=decimal.Decimal('3.75'))

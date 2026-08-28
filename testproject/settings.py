@@ -77,9 +77,9 @@ LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
 
 # workflango settings -- see README.md for the full reference
-WORKFLOW_USERS_GROUPS = (
+WF_USERS_GROUPS = (
     ('MANAGERS', 'Managers'),
     ('USERS', 'Regular users'),
 )
-WORKFLOW_ADMIN_GROUP = 'MANAGERS'
-WORKFLANGO_ALLOW_IMPERSONATE = True
+WF_ADMIN_GROUP = 'MANAGERS'
+WF_ALLOW_IMPERSONATE = True

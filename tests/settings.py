@@ -20,7 +20,7 @@ SETTINGS = dict(
     #     },
     # },
 
-    WORKFLOW_USERS_GROUPS = (
+    WF_USERS_GROUPS = (
         ('group1', 'test group 1'),
         ('group2', 'test group 2'),
         ('group3', 'test group 2'),
@@ -29,12 +29,12 @@ SETTINGS = dict(
         ('APP_ADMIN', 'Application admin'),
     ),
 
-    WORKFLOW_ADMIN = 'admin',
+    WF_ADMIN = 'admin',
 
-    WORKFLOW_ADMIN_GROUP = 'APP_ADMIN',
+    WF_ADMIN_GROUP = 'APP_ADMIN',
 
     # Limit transition message length
-    WORKFLOW_TRANS_MSG_MAX_LEN = 4096,
+    WF_TRANS_MSG_MAX_LEN = 4096,
     
     DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 

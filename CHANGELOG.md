@@ -4,6 +4,10 @@ All notable changes to this project are documented here, starting from this rele
 
 ## [Unreleased]
 
+### Changed
+
+- All Django settings renamed to a unified `WF_` prefix: `WORKFLOW_USERS_GROUPS` → `WF_USERS_GROUPS`, `WORKFLOW_ADMIN` → `WF_ADMIN`, `WORKFLOW_ADMIN_GROUP` → `WF_ADMIN_GROUP`, `WORKFLOW_TRANS_MSG_MAX_LEN` → `WF_TRANS_MSG_MAX_LEN`, `WORKFLANGO_ALLOW_IMPERSONATE` → `WF_ALLOW_IMPERSONATE`, `WORKFLANGO_SNAPSHOT_ENABLED` → `WF_SNAPSHOT_ENABLED`, `WORKFLANGO_ACCESS_DENIED_URL` → `WF_ACCESS_DENIED_URL`, `WORKFLANGO_NOTIFY_FUNC` → `WF_NOTIFY_FUNC`. `WF_HISTORY_TRANS_TYPE` (added this cycle) already had the correct prefix. **Breaking for projects upgrading from `1.0.0rc1`**: update `settings.py` before restarting.
+
 ### Fixed
 
 - `WorkflowViewSetMixin.check_wf_permission` (DRF) did not pass `impersonated_by` to `is_owner()`, so any state created during an impersonation session (`State.impersonated_by != None`) raised `PermissionDenied` for two valid callers: the admin-impersonating-owner session that created it, and the real owner reclaiming it afterwards without impersonation. `check_wf_permission` now reads `impersonated_by` from `self.request` and passes it to `is_owner()`; a second guard (`state.owner == acting_user`) lets the real owner through when `is_owner()` returns False due to impersonation-context mismatch, so `transition_allowed()`'s existing `reclaiming_own_identity` logic can do its job. Three regression tests added to `tests/tests.py` (`CheckWfPermissionImpersonationRegressionTest`)

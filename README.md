@@ -268,24 +268,29 @@ Using [drf-sebastian](https://github.com/sigfrido/drf-sebastian) as your GUI lay
 
 ## Settings
 
+All settings use the `WF_` prefix.
+
 ```python
-WORKFLOW_USERS_GROUPS = (
+WF_USERS_GROUPS = (
     ('EDITORS', 'Content editors'),
     ('ADMINS', 'Workflow administrators'),
 )
-WORKFLOW_ADMIN = 'admin'
-WORKFLOW_ADMIN_GROUP = 'ADMINS'
-WORKFLOW_TRANS_MSG_MAX_LEN = 4096           # optional
+WF_ADMIN = 'admin'
+WF_ADMIN_GROUP = 'ADMINS'
+WF_TRANS_MSG_MAX_LEN = 4096           # optional, default: 4096
 
 # Impersonation
-WORKFLANGO_ALLOW_IMPERSONATE = False        # default: disabled
+WF_ALLOW_IMPERSONATE = False        # default: disabled
 
 # Snapshot
-WORKFLANGO_SNAPSHOT_ENABLED = False         # default: disabled
+WF_SNAPSHOT_ENABLED = False         # default: disabled
 
 # Optional overrides
-WORKFLANGO_ACCESS_DENIED_URL = '/forbidden/'        # default: '/'
-WORKFLANGO_NOTIFY_FUNC = 'myapp.utils.notify_admins'  # default: Django mail_admins
+WF_ACCESS_DENIED_URL = '/forbidden/'        # default: '/'
+WF_NOTIFY_FUNC = 'myapp.utils.notify_admins'  # default: Django mail_admins
+
+# History view
+WF_HISTORY_TRANS_TYPE = True        # default: show transition-type column
 ```
 
 ## Demo project

@@ -65,7 +65,7 @@ class AccessDeniedMixin:
         redirect_url = self.get_access_denied_url()
         if redirect_url:
             return HttpResponseRedirect(redirect_url)
-        return HttpResponseRedirect(getattr(settings, 'WORKFLANGO_ACCESS_DENIED_URL', '/'))
+        return HttpResponseRedirect(getattr(settings, 'WF_ACCESS_DENIED_URL', '/'))
 
 
 class CachedGetObjectMixin:
