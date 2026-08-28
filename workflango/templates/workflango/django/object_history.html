@@ -2,6 +2,7 @@
 {% load workflow_tags %}
 
 {% block content %}
+{% wf_history_show_trans_type as show_trans_type %}
 
 <div class="container min-height-page">
     <div class="card mt-2 mb-4">
@@ -17,7 +18,7 @@
             </div>
             <table class="table table-bordered table-condensed mt-4">
                 <tr>
-                    <th>{% wtrans "Transition" %}</th>
+                    {% if show_trans_type %}<th>{% wtrans "Transition" %}</th>{% endif %}
                     <th>{% wtrans "Phase" %}</th>
                     <th>{% wtrans "Date" %}</th>
                     <th>{% wtrans "Operator" %}</th>
@@ -27,7 +28,7 @@
 
                 {% for state in states %}
                 <tr>
-                    <td><span title="{{ state.transition_type }}">{{ state.transition_type_display }}</span></td>
+                    {% if show_trans_type %}<td><span title="{{ state.transition_type }}">{{ state.transition_type_display }}</span></td>{% endif %}
                     <td>{% if state.suspended %}<span class="suspended" title="{% wtrans "suspended" %}"><b>s</b>:{{ state.phase }}</span>{% else %}{{ state.phase }}{% endif %}
                     </td>
                     <td>{{ state.state_date|date:"D d-m-Y H:i:s" }}</td>

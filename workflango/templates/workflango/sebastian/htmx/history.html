@@ -1,9 +1,10 @@
 {% extends pack_base %}
-{% load sebastian_tags %}
+{% load sebastian_tags workflow_tags %}
 
 {% block title %}Storico workflow{% endblock %}
 
 {% block content %}
+{% wf_history_show_trans_type as show_trans_type %}
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h4>
     Storico workflow —
@@ -23,7 +24,7 @@
         <th>Fase</th>
         <th>Proprietario</th>
         <th>Operatore</th>
-        <th>Tipo</th>
+        {% if show_trans_type %}<th>Tipo</th>{% endif %}
         <th>Messaggio</th>
       </tr>
     </thead>
@@ -39,7 +40,7 @@
           <small class="text-muted">(come {{ state.impersonated_by_display }})</small>
           {% endif %}
         </td>
-        <td>{{ state.transition_type_display|default:"—" }}</td>
+        {% if show_trans_type %}<td>{{ state.transition_type_display|default:"—" }}</td>{% endif %}
         <td>{{ state.message|default:"" }}</td>
       </tr>
       {% endfor %}

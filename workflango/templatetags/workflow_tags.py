@@ -1,9 +1,23 @@
 from django import template
+from django.conf import settings
 from django.utils.html import format_html
 
 from ..i18n import wgettext
 
 register = template.Library()
+
+@register.simple_tag
+def wf_history_show_trans_type():
+    """
+    Returns True (default) or False based on the WF_HISTORY_TRANS_TYPE Django setting.
+    Set WF_HISTORY_TRANS_TYPE = False to hide the transition-type column from
+    the workflow history page.
+    Usage::
+        {% wf_history_show_trans_type as show_trans_type %}
+        {% if show_trans_type %}<th>Tipo</th>{% endif %}
+    """
+    return getattr(settings, 'WF_HISTORY_TRANS_TYPE', True)
+
 
 @register.simple_tag
 def wtrans(message):
