@@ -81,12 +81,17 @@ class SebastianWorkflowSerializerMixin(WorkflowSerializerMixin):  # pylint: disa
     sebastian's list/detail templates read to decide whether to show an edit link.
     """
 
-    datetime_format = 'SHORT_DATETIME_FORMAT'
+    wf_datetime_format = 'SHORT_DATETIME_FORMAT'
     """
-    A Django format-variable name (resolved locale-aware via ``django.utils.formats``),
-    not a raw strftime pattern. Override with another recognized name (e.g.
-    ``'DATETIME_FORMAT'``) or a literal Django format string (Django's own template
-    filter syntax, e.g. ``'d/m/Y H:i'`` -- not Python's ``%d/%m/%Y``).
+    Django format-variable name used to format ``State.state_date`` in the
+    ``current_state_for_list`` badge.  Resolved locale-aware via
+    ``django.utils.formats.date_format`` — not a strftime pattern.
+    Override with another recognised name (e.g. ``'DATETIME_FORMAT'``) or a
+    literal Django template-filter format string (e.g. ``'d/m/Y H:i'``).
+
+    Deliberately distinct from ``GUISerializerMixin.datetime_format`` (a strftime
+    pattern used by drf-sebastian to format DateTimeField values in the API
+    response).  Setting this attribute does not affect those field renderings.
     """
 
     def to_representation(self, instance):
@@ -110,7 +115,7 @@ class SebastianWorkflowSerializerMixin(WorkflowSerializerMixin):  # pylint: disa
         state = obj.wfm_state
         if not state:
             return '—'
-        date_str = date_format(localtime(state.state_date), self.datetime_format) if state.state_date else ''
+        date_str = date_format(localtime(state.state_date), self.wf_datetime_format) if state.state_date else ''
         owner_str = str(state.owner) if state.owner else '—'
         icons = ''
         if state.suspended:
