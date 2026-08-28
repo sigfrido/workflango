@@ -5,6 +5,7 @@ import copy
 import datetime
 
 from django.db.models import Q, F
+from django.utils import formats
 from django.utils.html import escape
 
 from .exceptions import get_exception_error_msg
@@ -40,7 +41,7 @@ def boolstr(strval):
 
 
 def datestr_local2iso(date_str):
-    for fmt in ['%d/%m/%Y', '%d/%m/%y']:
+    for fmt in formats.get_format('DATE_INPUT_FORMATS'):
         try:
             dt = datetime.datetime.strptime(date_str, fmt)
             return dt.strftime('%Y-%m-%d')

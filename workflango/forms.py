@@ -127,10 +127,9 @@ class WorkflowFilterForm(forms.Form):
 
     search_data_min = forms.DateField(
                     label=wgettext_lazy('Min date'),
-                    input_formats=['%Y-%m-%d', '%d/%m/%Y'],
                     widget=forms.DateInput(
                         attrs={'class':'form-control fs-12', 'type': 'date'},
-                        format='%d/%m/%Y'
+                        format='%Y-%m-%d'  # HTML5 date input: browser requires ISO regardless of locale
                     ),
                     help_text=wgettext_lazy('Minimum entry date into the current phase or the selected phases')
     )
@@ -138,10 +137,9 @@ class WorkflowFilterForm(forms.Form):
 
     search_data_max = forms.DateField(
                     label=wgettext_lazy('Max date'),
-                    input_formats=['%Y-%m-%d', '%d/%m/%Y'],
                     widget=forms.DateInput(
                         attrs={'class':'form-control fs-12', 'type': 'date'},
-                        format='%d/%m/%Y'
+                        format='%Y-%m-%d'  # HTML5 date input: browser requires ISO regardless of locale
                     ),
                     help_text=wgettext_lazy('Maximum entry date into the current phase or the selected phases')
     )

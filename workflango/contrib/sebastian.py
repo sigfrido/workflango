@@ -81,7 +81,13 @@ class SebastianWorkflowSerializerMixin(WorkflowSerializerMixin):  # pylint: disa
     sebastian's list/detail templates read to decide whether to show an edit link.
     """
 
-    datetime_format = '%d/%m/%Y %H:%M'
+    datetime_format = 'SHORT_DATETIME_FORMAT'
+    """
+    A Django format-variable name (resolved locale-aware via ``django.utils.formats``),
+    not a raw strftime pattern. Override with another recognized name (e.g.
+    ``'DATETIME_FORMAT'``) or a literal Django format string (Django's own template
+    filter syntax, e.g. ``'d/m/Y H:i'`` -- not Python's ``%d/%m/%Y``).
+    """
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
@@ -97,13 +103,14 @@ class SebastianWorkflowSerializerMixin(WorkflowSerializerMixin):  # pylint: disa
     @gui_field(wgettext_lazy('State'))
     def current_state_for_list(self, obj):
         """Rendered as a Sebastian.list_fields column; never in the JSON API response."""
+        from django.utils.formats import date_format
         from django.utils.html import format_html, conditional_escape
         from django.utils.safestring import mark_safe
         from django.utils.timezone import localtime
         state = obj.wfm_state
         if not state:
             return '—'
-        date_str = localtime(state.state_date).strftime(self.datetime_format) if state.state_date else ''
+        date_str = date_format(localtime(state.state_date), self.datetime_format) if state.state_date else ''
         owner_str = str(state.owner) if state.owner else '—'
         icons = ''
         if state.suspended:
