@@ -293,6 +293,43 @@ WF_NOTIFY_FUNC = 'myapp.utils.notify_admins'  # default: Django mail_admins
 WF_HISTORY_TRANS_TYPE = True        # default: show transition-type column
 ```
 
+### Owner filter shortcuts
+
+The "Owner" filter (`search_wf_owner`, shared by `WorkflowFilter`/`WorkflowFilterForm`
+and the DRF/`django_filters` path) ships with a handful of builtin shortcuts —
+`me`, `me_or_none`, `none`, `someone`, `not_me`, `not_active` — alongside plain
+numeric user ids. `WF_CUSTOM_OWNER_FILTERS` lets a consuming project register its
+own, keyed off whatever its own User model exposes (e.g. an "Away" status, or a
+"My own direction" shortcut) without patching workflango:
+
+```python
+from workflango.filters import build_Q
+
+WF_CUSTOM_OWNER_FILTERS = {
+    'away': (
+        _('Away'),
+        lambda lookup, request: build_Q(lookup, 'owner__user_config__away', True),
+    ),
+    'present': (
+        _('Present'),
+        lambda lookup, request: build_Q(lookup, 'owner__user_config__away', False),
+    ),
+    'my_direction': (
+        _('My own direction'),
+        lambda lookup, request: build_Q(lookup, 'owner__direction_id', request.user.direction_id),
+    ),
+}
+```
+
+`{id: (label, callable)}`, `callable(lookup, request) -> Q`. `lookup` is the same
+`'wfm_state'`/`'states'` prefix the builtin shortcuts use internally (current vs.
+also-past mode, driven by `search_wf_history`) — call `build_Q(lookup, field, value)`
+yourself to stay consistent with it, exactly like the example above. Keys should be
+short, non-numeric strings so they can never collide with a real user id. A
+misbehaving callable (e.g. referencing a field that doesn't exist on your User model)
+doesn't crash the request — it surfaces as a normal filter error instead, the same as
+any other filter mistake.
+
 ## Demo project
 
 `testproject/` (repository only, not part of the installed package) is a small, traditional Django project — plain class-based views, no REST framework — demonstrating workflango driving two related models with group-based permissions instead of sebastian's field-level ones:

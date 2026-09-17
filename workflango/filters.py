@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import copy
 import datetime
 
+from django.conf import settings
 from django.db.models import Q, F
 from django.utils import formats
 from django.utils.html import escape
@@ -206,12 +207,12 @@ class BaseFilter:
 
 USER_CHOICES = (
     ('', ''),
-    ('-1', wgettext_lazy('Me')),            # in [user.id]
-    ('-2', wgettext_lazy('Me or none')),    # in [null, user.id]
-    ('-3', wgettext_lazy('None')),          # is null
-    ('-4', wgettext_lazy('Someone')),       # is not null
-    ('-5', wgettext_lazy('Not me')),        # not in [user.id]
-    ('-6', wgettext_lazy('Not active')),    # owner__is_active=False
+    ('me', wgettext_lazy('Me')),                    # in [user.id]
+    ('me_or_none', wgettext_lazy('Me or none')),    # in [null, user.id]
+    ('none', wgettext_lazy('None')),                # is null
+    ('someone', wgettext_lazy('Someone')),          # is not null
+    ('not_me', wgettext_lazy('Not me')),            # not in [user.id]
+    ('not_active', wgettext_lazy('Not active')),    # owner__is_active=False
 )
 
 STATE_CHOICES = (
@@ -221,29 +222,63 @@ STATE_CHOICES = (
 )
 
 
+def get_custom_owner_filters():
+    """
+    Returns the WF_CUSTOM_OWNER_FILTERS setting: a ``{id: (label, callable)}`` mapping
+    letting a consuming project register its own owner-filter shortcuts (e.g. an
+    "Away" status, or "My own direction") without patching workflango itself.
+
+    ``callable(lookup, request) -> Q``, where ``lookup`` is the same
+    ``'wfm_state'``/``'states'`` prefix ``_get_status_lookup()`` resolves for every
+    other owner-filter branch (current vs. also-past mode) -- a custom callable
+    should call ``build_Q(lookup, field, value)`` itself, exactly like the builtin
+    branches in ``filter_by_owner()`` below, to stay correct under that mode. Example::
+
+        WF_CUSTOM_OWNER_FILTERS = {
+            'away': (
+                _('Away'),
+                lambda lookup, request: build_Q(lookup, 'owner__user_config__away', True),
+            ),
+        }
+
+    Keys should be short, non-numeric strings (unlike the builtin ``me``/``none``/...
+    shortcuts, a bare numeric string would risk colliding with a real user pk in
+    ``filter_by_owner()``'s final fallback branch). A misbehaving callable (e.g.
+    referencing a field that doesn't exist on the consumer's User model) doesn't
+    crash the request -- ``BaseFilter.filter_queryset()`` already wraps the whole
+    query-building step in a try/except, surfacing it as a normal ``search_errors``
+    entry instead, the same as any other ``custom_query`` failure.
+    """
+    return getattr(settings, 'WF_CUSTOM_OWNER_FILTERS', {})
+
+
 def filter_by_owner(field, owners, request):
     status, lookup = _get_status_lookup(request)
+    custom_filters = get_custom_owner_filters()
     q = None
     for owner_id in owners:
-        if owner_id == '-1':
+        if owner_id == 'me':
             req = build_Q(lookup, 'owner', request.user)
-        elif owner_id == '-2':
+        elif owner_id == 'me_or_none':
             req = build_Q(lookup, 'owner', request.user) | build_Q(lookup, 'owner', None)
-        elif owner_id == '-3':
+        elif owner_id == 'none':
             req = build_Q(lookup, 'owner', None)
-        elif owner_id == '-4':
+        elif owner_id == 'someone':
             req = build_Q(lookup, 'owner__isnull', False)
-        elif owner_id == '-5':
+        elif owner_id == 'not_me':
             req = ~build_Q(lookup, 'owner', request.user) & build_Q(lookup, 'owner__isnull', False)
-        elif owner_id == '-6':
+        elif owner_id == 'not_active':
             req = build_Q(lookup, 'owner__is_active', False)
+        elif owner_id in custom_filters:
+            _, filter_fn = custom_filters[owner_id]
+            req = filter_fn(lookup, request)
         else:
             req = build_Q(lookup, 'owner__id', owner_id)
         q = q | req if q else req
     return _fixed_filter(q, status)
 
 
-def filter_by_state(field, states, request):
+def filter_by_phase(field, states, request):
     status, lookup = _get_status_lookup(request)
     req = build_Q(lookup, 'phase__in', states)
     return _fixed_filter(req, status)
@@ -286,7 +321,7 @@ def build_Q(lookup, field, value):
 
 
 def _get_status_lookup(request):
-    status = request.GET.get('search_wf_stato_old', '')
+    status = request.GET.get('search_wf_history', '')
     if status == '':
         lookup = 'wfm_state'
     else:
@@ -321,33 +356,33 @@ class WorkflowFilter(BaseFilter):
     model = None
 
     search_fields = {
-        'search_wf_fase': {
-            'custom_query': filter_by_state,
+        'search_wf_phase': {
+            'custom_query': filter_by_phase,
             'multiple': True,
             'fields': ['states__phase'],
             'description': wgettext_lazy('Workflow phase'),
             'type': 'string',
         },
-        'search_wf_messaggio': {
+        'search_wf_message': {
             'fields': ['states__message'],
             'custom_query': filter_by_message,
             'description': wgettext_lazy('Workflow transition message'),
             'type': 'string',
             'advanced_text_search': True,
         },
-        'search_wf_sospeso': {
+        'search_wf_suspended': {
             'custom_query': filter_by_suspended,
             'fields': ['states__suspended'],
             'description': wgettext_lazy('The workflow is in a suspended state'),
             'type': 'boolean',
         },
-        'search_wf_da_leggere': {
+        'search_wf_unread': {
             'custom_query': filter_by_unread,
             'fields': ['states__unread'],
             'description': wgettext_lazy('The record has not yet been read by the assignee'),
             'type': 'boolean',
         },
-        'search_wf_proprietario': {
+        'search_wf_owner': {
             'fields': ['states__owner_id'],
             'custom_query': filter_by_owner,
             'multiple': True,
@@ -355,21 +390,21 @@ class WorkflowFilter(BaseFilter):
             'type': 'integer',
             'choices': USER_CHOICES + (('id', wgettext_lazy('User id')), ),
         },
-        'search_wf_data_min': {
+        'search_wf_date_min': {
             'fields': ['states__state_date'],
             'custom_query': filter_by_date_min,
             'description': wgettext_lazy('Minimum entry date into the phase'),
             'type': 'date',
             'value_mapper': datestr_local2iso,
         },
-        'search_wf_data_max': {
+        'search_wf_date_max': {
             'fields': ['states__state_date'],
             'custom_query': filter_by_date_max,
             'description': wgettext_lazy('Maximum entry date into the phase'),
             'type': 'date',
             'value_mapper': datestr_local2iso,
         },
-        'search_wf_stato_old': {
+        'search_wf_history': {
             'ignore': True,
             'description': wgettext_lazy('Search past states'),
             'type': 'string',
@@ -379,8 +414,8 @@ class WorkflowFilter(BaseFilter):
 
     @classmethod
     def post_process_search_fields(cls, sfdict):
-        if hasattr(cls, 'model') and hasattr(cls.model, 'wfm_config') and 'search_fase' in sfdict:
-            sfdict['search_fase']['choices'] = cls.model.wfm_config.get_states_list()
+        if hasattr(cls, 'model') and hasattr(cls.model, 'wfm_config') and 'search_wf_phase' in sfdict:
+            sfdict['search_wf_phase']['choices'] = cls.model.wfm_config.get_states_list()
 
 
 # ---------------------------------------------------------------------------
@@ -394,8 +429,8 @@ try:
         """
         DRF filter backend wrapping WorkflowFilter.
 
-        Reads the same query parameters as WorkflowFilter (search_wf_fase,
-        search_wf_proprietario, search_wf_sospeso, etc.) from request.query_params.
+        Reads the same query parameters as WorkflowFilter (search_wf_phase,
+        search_wf_owner, search_wf_suspended, etc.) from request.query_params.
 
         Usage::
 

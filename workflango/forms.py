@@ -3,7 +3,7 @@
 from django import forms
 from django.forms.widgets import Select
 
-from .filters import USER_CHOICES, STATE_CHOICES, TRUEFALSE_CHOICES
+from .filters import USER_CHOICES, STATE_CHOICES, TRUEFALSE_CHOICES, get_custom_owner_filters
 from .i18n import wgettext, wgettext_lazy
 
 from django.conf import settings
@@ -70,19 +70,19 @@ class WorkflowFilterForm(forms.Form):
     """
     Every field is `required=False`: this is a search/filter form, not a data-entry
     form -- an unfilled field must mean "don't filter on this", not "please pick
-    something before submitting". Concretely: search_wf_stato_old's first choice is
+    something before submitting". Concretely: search_wf_history's first choice is
     `('', 'Current')` (an empty *value*, not an empty *selection*); with the field
     left at Django's default `required=True`, the browser's HTML5 validation refuses
     to submit an empty-valued selection at all, blocking the form even though a
     perfectly meaningful choice ("Current") is already selected. Same issue on every
     other field here (blank Select/date/text left untouched by the user). Leaving
-    search_wf_proprietario/search_wf_fase blank means "no filter", which is a
+    search_wf_owner/search_wf_phase blank means "no filter", which is a
     distinct, still-selectable choice from explicitly picking e.g. owner "None"
-    (`-3` in USER_CHOICES, meaning "owner is null") -- required=False doesn't change
+    (`none` in USER_CHOICES, meaning "owner is null") -- required=False doesn't change
     that distinction, it only stops the browser from forcing a choice.
     """
 
-    search_wf_proprietario = forms.ChoiceField(
+    search_wf_owner = forms.ChoiceField(
                     label=wgettext_lazy('Owner'),
                     choices=USER_CHOICES,
                     required=False,
@@ -91,7 +91,7 @@ class WorkflowFilterForm(forms.Form):
                     ),
     )
 
-    search_wf_fase =  forms.MultipleChoiceField(
+    search_wf_phase =  forms.MultipleChoiceField(
                         label=wgettext_lazy('Phase'),
                         required=False,
                         widget=forms.SelectMultiple(
@@ -99,14 +99,14 @@ class WorkflowFilterForm(forms.Form):
                         ),
                       )
 
-    search_wf_messaggio =  forms.CharField(
+    search_wf_message =  forms.CharField(
                         label=wgettext_lazy('Message'),
                         required=False,
                         widget=forms.TextInput(attrs={'placeholder': wgettext_lazy('Text contained in the message'), 'class': 'form-control'}),
                         help_text=wgettext_lazy('Advanced text search: adoption or signature')
                       )
 
-    search_wf_sospeso = forms.NullBooleanField(
+    search_wf_suspended = forms.NullBooleanField(
                         label=wgettext_lazy('Suspended'),
                         required=False,
                         widget=Select(
@@ -116,7 +116,7 @@ class WorkflowFilterForm(forms.Form):
                     )
 
 
-    search_wf_da_leggere = forms.NullBooleanField(
+    search_wf_unread = forms.NullBooleanField(
                         label=wgettext_lazy('Unread'),
                         required=False,
                         widget=Select(
@@ -126,7 +126,7 @@ class WorkflowFilterForm(forms.Form):
                     )
 
 
-    search_wf_stato_old =  forms.ChoiceField(
+    search_wf_history =  forms.ChoiceField(
                         label=wgettext_lazy('History'),
                         choices = STATE_CHOICES,
                         required=False,
@@ -146,7 +146,7 @@ class WorkflowFilterForm(forms.Form):
     )
 
 
-    search_wf_data_min = forms.DateField(
+    search_wf_date_min = forms.DateField(
                     label=wgettext_lazy('Min date'),
                     required=False,
                     widget=forms.DateInput(
@@ -157,7 +157,7 @@ class WorkflowFilterForm(forms.Form):
     )
 
 
-    search_wf_data_max = forms.DateField(
+    search_wf_date_max = forms.DateField(
                     label=wgettext_lazy('Max date'),
                     required=False,
                     widget=forms.DateInput(
@@ -172,12 +172,17 @@ class WorkflowFilterForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super(WorkflowFilterForm, self).__init__(*args, **kwargs)
-        self.fields['search_wf_fase'].widget.choices = self.get_state_choices()
+        self.fields['search_wf_phase'].widget.choices = self.get_state_choices()
+        self.fields['search_wf_owner'].widget.choices = self.get_owner_choices()
 
 
     def get_state_choices(self):
         state_choices = [(x, x) for x in self.model.wfm_config.get_states_list()]
         return state_choices
+
+
+    def get_owner_choices(self):
+        return USER_CHOICES + tuple((key, label) for key, (label, _fn) in get_custom_owner_filters().items())
 
 
 class SearchListForm(forms.Form):

@@ -164,10 +164,11 @@ class DemoWorkflowTests(GUITestMixin, WorkflowTestMixin, TestCase):
         return supplier
 
     def test_supplier_list_owner_filter_blank_vs_explicit_none(self):
-        # Regression: search_wf_proprietario left blank must mean "no owner filter",
-        # distinct from explicitly selecting owner "None" (-3 in USER_CHOICES, meaning
-        # "owner is null") -- making WorkflowFilterForm's fields required=False (so the
-        # browser stops blocking submission of an unfilled filter) must not blur this.
+        # Regression: search_wf_owner left blank must mean "no owner filter",
+        # distinct from explicitly selecting owner "None" ('none' in USER_CHOICES,
+        # meaning "owner is null") -- making WorkflowFilterForm's fields required=False
+        # (so the browser stops blocking submission of an unfilled filter) must not
+        # blur this.
         owned = self.make_active_supplier()  # owned by manager1
         unowned = self._activate_supplier('Empty Co', 'EMPTY6789')
         unowned.current_state.owner = None
@@ -177,7 +178,7 @@ class DemoWorkflowTests(GUITestMixin, WorkflowTestMixin, TestCase):
         response = self.get_list_view(Supplier, data={})
         self.assertCountEqual([s.pk for s in response.context['object_list']], [owned.pk, unowned.pk])
 
-        response = self.get_list_view(Supplier, data={'search_wf_proprietario': '-3'})
+        response = self.get_list_view(Supplier, data={'search_wf_owner': 'none'})
         self.assertEqual([s.pk for s in response.context['object_list']], [unowned.pk])
 
     def test_supplier_list_filters_by_name_and_tax_code(self):
@@ -225,7 +226,7 @@ class DemoWorkflowTests(GUITestMixin, WorkflowTestMixin, TestCase):
         req.wfm.transition(self.user1, 'draft', self.user1)
 
         self.login('user1')
-        response = self.get_list_view(Request, data={'search_budget_min': '1000', 'search_wf_fase': 'draft'})
+        response = self.get_list_view(Request, data={'search_budget_min': '1000', 'search_wf_phase': 'draft'})
         self.assertEqual([r.pk for r in response.context['object_list']], [req.pk])
         self.assertEqual(response.context['search_errors'], [])
 

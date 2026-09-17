@@ -1632,33 +1632,33 @@ Returns 404 if the instance has no active state yet.</p>
 
     </div>
     <a class="headerlink" href="#WorkflowFilterBackend"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="WorkflowFilterBackend-394"><a href="#WorkflowFilterBackend-394"><span class="linenos">394</span></a>    <span class="k">class</span><span class="w"> </span><span class="nc">WorkflowFilterBackend</span><span class="p">(</span><span class="n">BaseFilterBackend</span><span class="p">):</span>
-</span><span id="WorkflowFilterBackend-395"><a href="#WorkflowFilterBackend-395"><span class="linenos">395</span></a><span class="w">        </span><span class="sd">"""</span>
-</span><span id="WorkflowFilterBackend-396"><a href="#WorkflowFilterBackend-396"><span class="linenos">396</span></a><span class="sd">        DRF filter backend wrapping WorkflowFilter.</span>
-</span><span id="WorkflowFilterBackend-397"><a href="#WorkflowFilterBackend-397"><span class="linenos">397</span></a>
-</span><span id="WorkflowFilterBackend-398"><a href="#WorkflowFilterBackend-398"><span class="linenos">398</span></a><span class="sd">        Reads the same query parameters as WorkflowFilter (search_wf_fase,</span>
-</span><span id="WorkflowFilterBackend-399"><a href="#WorkflowFilterBackend-399"><span class="linenos">399</span></a><span class="sd">        search_wf_proprietario, search_wf_sospeso, etc.) from request.query_params.</span>
-</span><span id="WorkflowFilterBackend-400"><a href="#WorkflowFilterBackend-400"><span class="linenos">400</span></a>
-</span><span id="WorkflowFilterBackend-401"><a href="#WorkflowFilterBackend-401"><span class="linenos">401</span></a><span class="sd">        Usage::</span>
-</span><span id="WorkflowFilterBackend-402"><a href="#WorkflowFilterBackend-402"><span class="linenos">402</span></a>
-</span><span id="WorkflowFilterBackend-403"><a href="#WorkflowFilterBackend-403"><span class="linenos">403</span></a><span class="sd">            class MyModelViewSet(ModelViewSet):</span>
-</span><span id="WorkflowFilterBackend-404"><a href="#WorkflowFilterBackend-404"><span class="linenos">404</span></a><span class="sd">                filter_backends = [WorkflowFilterBackend]</span>
-</span><span id="WorkflowFilterBackend-405"><a href="#WorkflowFilterBackend-405"><span class="linenos">405</span></a><span class="sd">        """</span>
-</span><span id="WorkflowFilterBackend-406"><a href="#WorkflowFilterBackend-406"><span class="linenos">406</span></a>        <span class="n">workflow_filter_class</span> <span class="o">=</span> <span class="n">WorkflowFilter</span>
-</span><span id="WorkflowFilterBackend-407"><a href="#WorkflowFilterBackend-407"><span class="linenos">407</span></a>
-</span><span id="WorkflowFilterBackend-408"><a href="#WorkflowFilterBackend-408"><span class="linenos">408</span></a>        <span class="k">def</span><span class="w"> </span><span class="nf">filter_queryset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">queryset</span><span class="p">,</span> <span class="n">view</span><span class="p">):</span>
-</span><span id="WorkflowFilterBackend-409"><a href="#WorkflowFilterBackend-409"><span class="linenos">409</span></a>            <span class="c1"># DRF request.query_params is a QueryDict, compatible with .get()/.getlist()</span>
-</span><span id="WorkflowFilterBackend-410"><a href="#WorkflowFilterBackend-410"><span class="linenos">410</span></a>            <span class="c1"># BaseFilter.filter_queryset expects request.GET — adapt via a proxy</span>
-</span><span id="WorkflowFilterBackend-411"><a href="#WorkflowFilterBackend-411"><span class="linenos">411</span></a>            <span class="n">_request</span> <span class="o">=</span> <span class="n">_DRFRequestProxy</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
-</span><span id="WorkflowFilterBackend-412"><a href="#WorkflowFilterBackend-412"><span class="linenos">412</span></a>            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflow_filter_class</span><span class="o">.</span><span class="n">filter_queryset</span><span class="p">(</span><span class="n">_request</span><span class="p">,</span> <span class="n">queryset</span><span class="p">)</span>
-</span><span id="WorkflowFilterBackend-413"><a href="#WorkflowFilterBackend-413"><span class="linenos">413</span></a>            <span class="k">return</span> <span class="n">result</span><span class="p">[</span><span class="s1">'object_list'</span><span class="p">]</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="WorkflowFilterBackend-429"><a href="#WorkflowFilterBackend-429"><span class="linenos">429</span></a>    <span class="k">class</span><span class="w"> </span><span class="nc">WorkflowFilterBackend</span><span class="p">(</span><span class="n">BaseFilterBackend</span><span class="p">):</span>
+</span><span id="WorkflowFilterBackend-430"><a href="#WorkflowFilterBackend-430"><span class="linenos">430</span></a><span class="w">        </span><span class="sd">"""</span>
+</span><span id="WorkflowFilterBackend-431"><a href="#WorkflowFilterBackend-431"><span class="linenos">431</span></a><span class="sd">        DRF filter backend wrapping WorkflowFilter.</span>
+</span><span id="WorkflowFilterBackend-432"><a href="#WorkflowFilterBackend-432"><span class="linenos">432</span></a>
+</span><span id="WorkflowFilterBackend-433"><a href="#WorkflowFilterBackend-433"><span class="linenos">433</span></a><span class="sd">        Reads the same query parameters as WorkflowFilter (search_wf_phase,</span>
+</span><span id="WorkflowFilterBackend-434"><a href="#WorkflowFilterBackend-434"><span class="linenos">434</span></a><span class="sd">        search_wf_owner, search_wf_suspended, etc.) from request.query_params.</span>
+</span><span id="WorkflowFilterBackend-435"><a href="#WorkflowFilterBackend-435"><span class="linenos">435</span></a>
+</span><span id="WorkflowFilterBackend-436"><a href="#WorkflowFilterBackend-436"><span class="linenos">436</span></a><span class="sd">        Usage::</span>
+</span><span id="WorkflowFilterBackend-437"><a href="#WorkflowFilterBackend-437"><span class="linenos">437</span></a>
+</span><span id="WorkflowFilterBackend-438"><a href="#WorkflowFilterBackend-438"><span class="linenos">438</span></a><span class="sd">            class MyModelViewSet(ModelViewSet):</span>
+</span><span id="WorkflowFilterBackend-439"><a href="#WorkflowFilterBackend-439"><span class="linenos">439</span></a><span class="sd">                filter_backends = [WorkflowFilterBackend]</span>
+</span><span id="WorkflowFilterBackend-440"><a href="#WorkflowFilterBackend-440"><span class="linenos">440</span></a><span class="sd">        """</span>
+</span><span id="WorkflowFilterBackend-441"><a href="#WorkflowFilterBackend-441"><span class="linenos">441</span></a>        <span class="n">workflow_filter_class</span> <span class="o">=</span> <span class="n">WorkflowFilter</span>
+</span><span id="WorkflowFilterBackend-442"><a href="#WorkflowFilterBackend-442"><span class="linenos">442</span></a>
+</span><span id="WorkflowFilterBackend-443"><a href="#WorkflowFilterBackend-443"><span class="linenos">443</span></a>        <span class="k">def</span><span class="w"> </span><span class="nf">filter_queryset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">queryset</span><span class="p">,</span> <span class="n">view</span><span class="p">):</span>
+</span><span id="WorkflowFilterBackend-444"><a href="#WorkflowFilterBackend-444"><span class="linenos">444</span></a>            <span class="c1"># DRF request.query_params is a QueryDict, compatible with .get()/.getlist()</span>
+</span><span id="WorkflowFilterBackend-445"><a href="#WorkflowFilterBackend-445"><span class="linenos">445</span></a>            <span class="c1"># BaseFilter.filter_queryset expects request.GET — adapt via a proxy</span>
+</span><span id="WorkflowFilterBackend-446"><a href="#WorkflowFilterBackend-446"><span class="linenos">446</span></a>            <span class="n">_request</span> <span class="o">=</span> <span class="n">_DRFRequestProxy</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+</span><span id="WorkflowFilterBackend-447"><a href="#WorkflowFilterBackend-447"><span class="linenos">447</span></a>            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflow_filter_class</span><span class="o">.</span><span class="n">filter_queryset</span><span class="p">(</span><span class="n">_request</span><span class="p">,</span> <span class="n">queryset</span><span class="p">)</span>
+</span><span id="WorkflowFilterBackend-448"><a href="#WorkflowFilterBackend-448"><span class="linenos">448</span></a>            <span class="k">return</span> <span class="n">result</span><span class="p">[</span><span class="s1">'object_list'</span><span class="p">]</span>
 </span></pre></div>
 
 
             <div class="docstring"><p>DRF filter backend wrapping WorkflowFilter.</p>
 
-<p>Reads the same query parameters as WorkflowFilter (search_wf_fase,
-search_wf_proprietario, search_wf_sospeso, etc.) from request.query_params.</p>
+<p>Reads the same query parameters as WorkflowFilter (search_wf_phase,
+search_wf_owner, search_wf_suspended, etc.) from request.query_params.</p>
 
 <p>Usage::</p>
 
@@ -1691,12 +1691,12 @@ search_wf_proprietario, search_wf_sospeso, etc.) from request.query_params.</p>
 
     </div>
     <a class="headerlink" href="#WorkflowFilterBackend.filter_queryset"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="WorkflowFilterBackend.filter_queryset-408"><a href="#WorkflowFilterBackend.filter_queryset-408"><span class="linenos">408</span></a>        <span class="k">def</span><span class="w"> </span><span class="nf">filter_queryset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">queryset</span><span class="p">,</span> <span class="n">view</span><span class="p">):</span>
-</span><span id="WorkflowFilterBackend.filter_queryset-409"><a href="#WorkflowFilterBackend.filter_queryset-409"><span class="linenos">409</span></a>            <span class="c1"># DRF request.query_params is a QueryDict, compatible with .get()/.getlist()</span>
-</span><span id="WorkflowFilterBackend.filter_queryset-410"><a href="#WorkflowFilterBackend.filter_queryset-410"><span class="linenos">410</span></a>            <span class="c1"># BaseFilter.filter_queryset expects request.GET — adapt via a proxy</span>
-</span><span id="WorkflowFilterBackend.filter_queryset-411"><a href="#WorkflowFilterBackend.filter_queryset-411"><span class="linenos">411</span></a>            <span class="n">_request</span> <span class="o">=</span> <span class="n">_DRFRequestProxy</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
-</span><span id="WorkflowFilterBackend.filter_queryset-412"><a href="#WorkflowFilterBackend.filter_queryset-412"><span class="linenos">412</span></a>            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflow_filter_class</span><span class="o">.</span><span class="n">filter_queryset</span><span class="p">(</span><span class="n">_request</span><span class="p">,</span> <span class="n">queryset</span><span class="p">)</span>
-</span><span id="WorkflowFilterBackend.filter_queryset-413"><a href="#WorkflowFilterBackend.filter_queryset-413"><span class="linenos">413</span></a>            <span class="k">return</span> <span class="n">result</span><span class="p">[</span><span class="s1">'object_list'</span><span class="p">]</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="WorkflowFilterBackend.filter_queryset-443"><a href="#WorkflowFilterBackend.filter_queryset-443"><span class="linenos">443</span></a>        <span class="k">def</span><span class="w"> </span><span class="nf">filter_queryset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">queryset</span><span class="p">,</span> <span class="n">view</span><span class="p">):</span>
+</span><span id="WorkflowFilterBackend.filter_queryset-444"><a href="#WorkflowFilterBackend.filter_queryset-444"><span class="linenos">444</span></a>            <span class="c1"># DRF request.query_params is a QueryDict, compatible with .get()/.getlist()</span>
+</span><span id="WorkflowFilterBackend.filter_queryset-445"><a href="#WorkflowFilterBackend.filter_queryset-445"><span class="linenos">445</span></a>            <span class="c1"># BaseFilter.filter_queryset expects request.GET — adapt via a proxy</span>
+</span><span id="WorkflowFilterBackend.filter_queryset-446"><a href="#WorkflowFilterBackend.filter_queryset-446"><span class="linenos">446</span></a>            <span class="n">_request</span> <span class="o">=</span> <span class="n">_DRFRequestProxy</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+</span><span id="WorkflowFilterBackend.filter_queryset-447"><a href="#WorkflowFilterBackend.filter_queryset-447"><span class="linenos">447</span></a>            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflow_filter_class</span><span class="o">.</span><span class="n">filter_queryset</span><span class="p">(</span><span class="n">_request</span><span class="p">,</span> <span class="n">queryset</span><span class="p">)</span>
+</span><span id="WorkflowFilterBackend.filter_queryset-448"><a href="#WorkflowFilterBackend.filter_queryset-448"><span class="linenos">448</span></a>            <span class="k">return</span> <span class="n">result</span><span class="p">[</span><span class="s1">'object_list'</span><span class="p">]</span>
 </span></pre></div>
 
 

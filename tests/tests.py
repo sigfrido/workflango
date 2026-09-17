@@ -4,12 +4,15 @@ from __future__ import unicode_literals
 from unittest.mock import MagicMock
 
 from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.db.models import Q
 from rest_framework.exceptions import PermissionDenied as DRFPermissionDenied
-from django.test import TransactionTestCase, TestCase, override_settings
+from django.test import RequestFactory, TransactionTestCase, TestCase, override_settings
 from django.contrib.auth.models import User
 from workflango.drf import WorkflowViewSetMixin
 from workflango.exceptions import (InvalidWorkflowConfiguration, InvalidState,
     TransitionNotAllowed, UnmanagedObject, StaleObject)
+from workflango.filters import WorkflowFilter, build_Q
+from workflango.forms import WorkflowFilterForm
 from workflango.models import State, transition_done, WorkflowModel
 from workflango.wf_config import WorkflowConfig
 from workflango.wf_transition import WFTransitionDescriptor
@@ -1126,6 +1129,83 @@ class WorkflowTest(TransactionTestCase):
         trans = WFTransitionDescriptor(inst, 0, self.user_4)
         self.assertFalse(trans.is_disabled)
         inst.wfm.transition(self.user_4, 0, None)
+
+
+class OwnerFilterTest(TransactionTestCase):
+    """
+    Covers filter_by_owner()'s dispatch: the renamed builtin shortcuts (me/none/...),
+    the WF_CUSTOM_OWNER_FILTERS hook, and that a real numeric owner id still resolves
+    via the unchanged fallback branch without colliding with either.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.OkModel = WorkflowModelValid
+        cls.OkModel.configure_workflow(snapshot_serializer=WorkflowModelValidSerializer)
+
+    def setUp(self):
+        State.objects.all().delete()
+        self.OkModel.objects.all().delete()
+        User.objects.all().delete()
+        self.user_1 = User.objects.create(username='user1', password='pol', is_staff=True)
+        self.user_3 = User.objects.create(username='user3', password='pol', is_staff=False)
+        user_group_add(self.user_1, 'group1')
+        user_group_add(self.user_3, 'group3')
+        self.OkModel.wfm_config.clear_cached_admins()
+
+    def _create_owned_by(self, owner):
+        instance = self.OkModel.objects.create()
+        instance.wfm.transition(self.user_1, 1, self.user_1)
+        if owner is not self.user_1:
+            instance.wfm.transition(self.user_1, 2, owner)
+        return instance
+
+    def _make_request(self, **get_params):
+        request = RequestFactory().get('/', data=get_params)
+        request.user = self.user_1
+        return request
+
+    def test_renamed_builtin_shortcut_still_filters(self):
+        owned_by_1 = self._create_owned_by(self.user_1)
+        self._create_owned_by(self.user_3)
+
+        request = self._make_request(search_wf_owner='me')
+        result = WorkflowFilter.filter_queryset(request, self.OkModel.objects.all())
+        self.assertEqual(result['search_errors'], [])
+        self.assertEqual(list(result['object_list']), [owned_by_1])
+
+    @override_settings(WF_CUSTOM_OWNER_FILTERS={
+        'staff': ('Staff', lambda lookup, request: build_Q(lookup, 'owner__is_staff', True)),
+    })
+    def test_custom_owner_filter_shortcut(self):
+        owned_by_staff = self._create_owned_by(self.user_1)  # user_1.is_staff = True
+        self._create_owned_by(self.user_3)  # user_3.is_staff = False
+
+        request = self._make_request(search_wf_owner='staff')
+        result = WorkflowFilter.filter_queryset(request, self.OkModel.objects.all())
+        self.assertEqual(result['search_errors'], [])
+        self.assertEqual(list(result['object_list']), [owned_by_staff])
+
+    def test_real_owner_id_unaffected_by_renamed_or_custom_keys(self):
+        owned_by_3 = self._create_owned_by(self.user_3)
+        self._create_owned_by(self.user_1)
+
+        request = self._make_request(search_wf_owner=str(self.user_3.pk))
+        result = WorkflowFilter.filter_queryset(request, self.OkModel.objects.all())
+        self.assertEqual(result['search_errors'], [])
+        self.assertEqual(list(result['object_list']), [owned_by_3])
+
+    def test_form_widget_choices_include_custom_entries_only_when_configured(self):
+        class _TestFilterForm(WorkflowFilterForm):
+            model = WorkflowModelValid
+
+        html = str(_TestFilterForm()['search_wf_owner'])
+        self.assertNotIn('value="staff"', html)
+
+        with override_settings(WF_CUSTOM_OWNER_FILTERS={'staff': ('Staff', lambda lookup, request: Q())}):
+            html = str(_TestFilterForm()['search_wf_owner'])
+            self.assertIn('value="staff"', html)
 
 
 class WorkflowSnapshotTest(TransactionTestCase):
