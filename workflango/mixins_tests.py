@@ -50,17 +50,17 @@ class WorkflowTestMixin(object):
     def obj(self):
         return self._obj
 
-    def transition(self, user, new_state, owner, suspended=False, message=''):
-        return self.obj.wfm.transition(self.users[user], new_state, self.users[owner], suspended=suspended, message=message)
+    def transition(self, user, new_phase, owner, suspended=False, message=''):
+        return self.obj.wfm.transition(self.users[user], new_phase, self.users[owner], suspended=suspended, message=message)
 
 
-    def transition_allowed(self, user, new_state, owner):
-        return self.obj.wfm.transition_allowed(self.users[user], new_state, self.users[owner])
+    def transition_allowed(self, user, new_phase, owner):
+        return self.obj.wfm.transition_allowed(self.users[user], new_phase, self.users[owner])
 
 
-    def ok_transition(self, user, new_state, owner):
-        state = self.transition(user, new_state, owner)
-        self.assertEqual(state.phase, new_state)
+    def ok_transition(self, user, new_phase, owner):
+        state = self.transition(user, new_phase, owner)
+        self.assertEqual(state.phase, new_phase)
         return state
 
     # End test methods single instance
@@ -145,23 +145,23 @@ class GUITestMixin(object):
         return self.response
 
 
-    def get_change_state_view(self, instance, state):
+    def get_change_state_view(self, instance, phase):
         self.response = self.client.get(
-            reverse(f'{instance.view_base_name}_change_state', kwargs={'pk': instance.pk, 'nuovo_stato': state}),
+            reverse(f'{instance.view_base_name}_change_state', kwargs={'pk': instance.pk, 'destination_phase': phase}),
             follow=True)
         return self.response
 
 
-    def post_change_state_view(self, instance, state, owner=None, msg=None):
+    def post_change_state_view(self, instance, phase, owner=None, msg=None):
         data = {}
         if msg:
             data['message'] = msg
         if owner:
             data['owner'] = owner.id
-        elif (state != instance.wfm_state.phase) or state in ('release', ):
+        elif (phase != instance.wfm_state.phase) or phase in ('release', ):
             data['owner'] = 0
         return self.post_view(
-            reverse(f'{instance.view_base_name}_change_state', kwargs={'pk': instance.pk, 'nuovo_stato': state}),
+            reverse(f'{instance.view_base_name}_change_state', kwargs={'pk': instance.pk, 'destination_phase': phase}),
             data)
 
 

@@ -183,7 +183,7 @@ class WorkflowViewSetMixin:
         Returns a queryset of users that ``user`` is allowed to impersonate.
 
         Delegates to ``WorkflowConfig.get_impersonable_users(user)``, which
-        applies the default policy (superuser / WORKFLOW_ADMIN_GROUP) unless
+        applies the default policy (superuser / WF_ADMIN_GROUP) unless
         the workflow was configured with a custom ``impersonable_users`` callable.
 
         Override this method on the ViewSet to bypass the WorkflowConfig lookup.

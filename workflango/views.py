@@ -38,7 +38,7 @@ class ChangeStateView(CachedGetObjectMixin, WorkflowModelChangeState, UpdateView
                 wgettext('Release'),
             ),
             'reject': (
-                wgettext('Reject to previous state'),
+                wgettext('Reject to previous phase'),
                 wgettext('The object will be rejected to the phase and user that previously assigned it to you.'),
                 wgettext('Reject'),
             ),
@@ -87,7 +87,7 @@ class ChangeStateView(CachedGetObjectMixin, WorkflowModelChangeState, UpdateView
         if not self.transition:
             obj = self.get_object()
             impersonated_by = getattr(self.request, 'impersonated_by', None)
-            self.transition = obj.wfm.get_transition(self.destination_state, self.request.user, impersonated_by=impersonated_by)
+            self.transition = obj.wfm.get_transition(self.destination_phase, self.request.user, impersonated_by=impersonated_by)
         return self.transition
 
 
@@ -102,7 +102,7 @@ class ChangeStateView(CachedGetObjectMixin, WorkflowModelChangeState, UpdateView
         context['transition'] = transition
         context['last_owner'] = transition.get_last_owner()
         if transition.command:
-            context['title'], context['message'], context['button_caption'] = self.command_captions[self.destination_state]
+            context['title'], context['message'], context['button_caption'] = self.command_captions[self.destination_phase]
         else:
             context['title'] = wgettext('Transition to phase: %(phase)s') % {'phase': transition.destination}
             context['message'] = self.get_transition_gui_message(transition)
@@ -119,11 +119,10 @@ class ChangeStateView(CachedGetObjectMixin, WorkflowModelChangeState, UpdateView
         return context
 
 
-    # TODO change nuovo_stato => destination_state
-    def dispatch(self, request, pk, nuovo_stato):
-        self.destination_state = nuovo_stato
-        if nuovo_stato in ['delegate', 'reject']:
-            self.force_transition_type = nuovo_stato
+    def dispatch(self, request, pk, destination_phase):
+        self.destination_phase = destination_phase
+        if destination_phase in ['delegate', 'reject']:
+            self.force_transition_type = destination_phase
         # TODO ??????
         self.object = self.get_object()
         return super(ChangeStateView, self).dispatch(request, pk=pk)
@@ -133,7 +132,7 @@ class ChangeStateView(CachedGetObjectMixin, WorkflowModelChangeState, UpdateView
         return self.get_transition().owner
 
 
-    def get_destination_state(self):
+    def get_destination_phase(self):
         return self.get_transition().destination
 
 

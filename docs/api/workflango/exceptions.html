@@ -58,7 +58,7 @@
 
             </li>
             <li>
-                    <a class="class" href="#InvalidState">InvalidState</a>
+                    <a class="class" href="#InvalidPhase">InvalidPhase</a>
                             <ul class="memberlist">
                 </ul>
 
@@ -168,8 +168,8 @@
 </span><span id="L-46"><a href="#L-46"><span class="linenos">46</span></a><span class="w">    </span><span class="sd">"""A workflow operation was attempted on a model that has not been configured."""</span>
 </span><span id="L-47"><a href="#L-47"><span class="linenos">47</span></a>
 </span><span id="L-48"><a href="#L-48"><span class="linenos">48</span></a>
-</span><span id="L-49"><a href="#L-49"><span class="linenos">49</span></a><span class="k">class</span><span class="w"> </span><span class="nc">InvalidState</span><span class="p">(</span><span class="n">ConfigurationException</span><span class="p">):</span>
-</span><span id="L-50"><a href="#L-50"><span class="linenos">50</span></a><span class="w">    </span><span class="sd">"""A state name referenced in config or a transition does not exist."""</span>
+</span><span id="L-49"><a href="#L-49"><span class="linenos">49</span></a><span class="k">class</span><span class="w"> </span><span class="nc">InvalidPhase</span><span class="p">(</span><span class="n">ConfigurationException</span><span class="p">):</span>
+</span><span id="L-50"><a href="#L-50"><span class="linenos">50</span></a><span class="w">    </span><span class="sd">"""A phase name referenced in config or a transition does not exist."""</span>
 </span><span id="L-51"><a href="#L-51"><span class="linenos">51</span></a>
 </span><span id="L-52"><a href="#L-52"><span class="linenos">52</span></a>
 </span><span id="L-53"><a href="#L-53"><span class="linenos">53</span></a><span class="c1"># Business-logic exceptions — raised during transition() or permission checks.</span>
@@ -332,23 +332,23 @@ and lists of errors — flattening them into a single space-joined string.</p>
 
 
                 </section>
-                <section id="InvalidState">
-                            <input id="InvalidState-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+                <section id="InvalidPhase">
+                            <input id="InvalidPhase-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr class">
             
     <span class="def">class</span>
-    <span class="name">InvalidState</span><wbr>(<span class="base"><a href="#ConfigurationException">ConfigurationException</a></span>):
+    <span class="name">InvalidPhase</span><wbr>(<span class="base"><a href="#ConfigurationException">ConfigurationException</a></span>):
 
-                <label class="view-source-button" for="InvalidState-view-source"><span>View Source</span></label>
+                <label class="view-source-button" for="InvalidPhase-view-source"><span>View Source</span></label>
 
     </div>
-    <a class="headerlink" href="#InvalidState"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="InvalidState-50"><a href="#InvalidState-50"><span class="linenos">50</span></a><span class="k">class</span><span class="w"> </span><span class="nc">InvalidState</span><span class="p">(</span><span class="n">ConfigurationException</span><span class="p">):</span>
-</span><span id="InvalidState-51"><a href="#InvalidState-51"><span class="linenos">51</span></a><span class="w">    </span><span class="sd">"""A state name referenced in config or a transition does not exist."""</span>
+    <a class="headerlink" href="#InvalidPhase"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="InvalidPhase-50"><a href="#InvalidPhase-50"><span class="linenos">50</span></a><span class="k">class</span><span class="w"> </span><span class="nc">InvalidPhase</span><span class="p">(</span><span class="n">ConfigurationException</span><span class="p">):</span>
+</span><span id="InvalidPhase-51"><a href="#InvalidPhase-51"><span class="linenos">51</span></a><span class="w">    </span><span class="sd">"""A phase name referenced in config or a transition does not exist."""</span>
 </span></pre></div>
 
 
-            <div class="docstring"><p>A state name referenced in config or a transition does not exist.</p>
+            <div class="docstring"><p>A phase name referenced in config or a transition does not exist.</p>
 </div>
 
 

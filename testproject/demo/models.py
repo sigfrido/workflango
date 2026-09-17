@@ -56,18 +56,18 @@ class Supplier(WorkflowModel):
 
     workflow_phases = (
         (None, {
-            'reachable_states': {'proposed': {}},
+            'reachable_phases': {'proposed': {}},
             'edit': ['USERS', 'MANAGERS'],
         }),
         ('proposed', {
-            'reachable_states': {
+            'reachable_phases': {
                 'active': {'allowed_groups': ['MANAGERS'], 'caption': 'Activate'},
             },
             'edit': ['USERS', 'MANAGERS'],
             'admin': ['MANAGERS'],
         }),
         ('active', {
-            'reachable_states': {
+            'reachable_phases': {
                 'archived': {'allowed_groups': ['MANAGERS'], 'caption': 'Archive'},
             },
             'edit': ['MANAGERS'],
@@ -75,7 +75,7 @@ class Supplier(WorkflowModel):
         }),
         ('archived', {
             'is_closed': True,
-            'reachable_states': {},
+            'reachable_phases': {},
             'edit': [],
         }),
     )
@@ -132,18 +132,18 @@ class Request(WorkflowModel):
 
     workflow_phases = (
         (None, {
-            'reachable_states': {'draft': {}},
+            'reachable_phases': {'draft': {}},
             'edit': ['USERS', 'MANAGERS'],
         }),
         ('draft', {
-            'reachable_states': {
+            'reachable_phases': {
                 'submitted': {'caption': 'Submit'},
             },
             'edit': ['USERS', 'MANAGERS'],
             'admin': ['MANAGERS'],
         }),
         ('submitted', {
-            'reachable_states': {
+            'reachable_phases': {
                 'approved': {'allowed_groups': ['MANAGERS'], 'caption': 'Approve'},
                 'rejected': {'allowed_groups': ['MANAGERS'], 'caption': 'Reject'},
             },
@@ -152,12 +152,12 @@ class Request(WorkflowModel):
         }),
         ('approved', {
             'is_closed': True,
-            'reachable_states': {},
+            'reachable_phases': {},
             'edit': [],
         }),
         ('rejected', {
             'is_closed': True,
-            'reachable_states': {},
+            'reachable_phases': {},
             'edit': [],
         }),
     )

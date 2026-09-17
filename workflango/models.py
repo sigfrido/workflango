@@ -155,52 +155,52 @@ class State(models.Model):
         return self._previous_state_cached
 
 
-    def get_previous_different_state(self, state_str=None):
+    def get_previous_different_phase(self, phase=None):
         """
-        Returns previous state different from current one, ignoring all the delegate/suspend transitions in the current state
+        Returns previous phase different from current one, ignoring all the delegate/suspend transitions in the current state
         """
-        if not state_str:
-            state_str = self.phase
-        elif self.phase != state_str:
+        if not phase:
+            phase = self.phase
+        elif self.phase != phase:
             return None
         state = self
-        while state and state.phase == state_str:
+        while state and state.phase == phase:
             state = state.get_previous_state()
         if state:
             return state.phase
         return None
 
 
-    def find_last_state(self, state):
+    def find_last_state(self, phase):
         """
-        Returns the nearest instance's State before this one which has the given state
+        Returns the nearest instance's State before this one which has the given phase
         """
         try:
-            return State.objects.filter(content_type_object=self.content_type_object, id_object=self.id_object, phase=state, pk__lt=self.pk).order_by('-id')[0]
+            return State.objects.filter(content_type_object=self.content_type_object, id_object=self.id_object, phase=phase, pk__lt=self.pk).order_by('-id')[0]
         except:
             return None
 
 
-    def wfm_state_config(self):
+    def wfm_phase_config(self):
         """
-        Returns configuration for current state
+        Returns configuration for current phase
         """
         return self.get_instance().wfm_config[self.phase]
 
 
-    def get_state_order(self, relative_to=None):
+    def get_phase_order(self, relative_to=None):
         """
-        Returns definition order for current state
+        Returns definition order for current phase
         """
         inst = self.get_instance()
-        my_state_order = inst.wfm_config.get_state_order(self.phase)
-        other_state_order = inst.wfm_config.get_state_order(relative_to) if relative_to else 0
-        return my_state_order - other_state_order
+        my_phase_order = inst.wfm_config.get_phase_order(self.phase)
+        other_phase_order = inst.wfm_config.get_phase_order(relative_to) if relative_to else 0
+        return my_phase_order - other_phase_order
 
 
 
-    def get_state_property(self, property_name):
-        cfg = self.wfm_state_config()
+    def get_phase_property(self, property_name):
+        cfg = self.wfm_phase_config()
         properties = cfg.get("properties", {})
         value = properties.get(property_name, None)
         return value
@@ -208,7 +208,7 @@ class State(models.Model):
 
 
     def is_closed(self):
-        cfg = self.wfm_state_config()
+        cfg = self.wfm_phase_config()
         return cfg.get('is_closed', False)
 
 
@@ -220,7 +220,7 @@ class State(models.Model):
         """
         if self.suspended:
             return False
-        conf = self.wfm_state_config()
+        conf = self.wfm_phase_config()
         allow_release = conf.get('allow_release', 'strict')
         if allow_release == 'no' or not self.owner:
             return False
@@ -249,7 +249,7 @@ class State(models.Model):
         """
         if self.suspended:
             return False
-        conf = self.wfm_state_config()
+        conf = self.wfm_phase_config()
         allow_delegate = conf.get('allow_delegate', 'yes')
         return (allow_delegate != 'no') or self.get_instance().wfm.can_admin(self.owner)
 
@@ -377,7 +377,7 @@ class WorkflowModel(models.Model):
         Creates the workflow configuration for this model.
 
         ``impersonable_users``: optional callable ``(user) -> queryset`` returning the
-        users ``user`` is allowed to impersonate. Default: superuser / WORKFLOW_ADMIN / WORKFLOW_ADMIN_GROUP.
+        users ``user`` is allowed to impersonate. Default: superuser / WF_ADMIN / WF_ADMIN_GROUP.
 
         ``snapshot_serializer``: optional DRF serializer class used by the default
         ``get_workflow_snapshot()`` implementation to produce the snapshot dict.
@@ -451,7 +451,7 @@ class WorkflowModel(models.Model):
         return self.wfm_state
 
 
-    def current_state_str(self, for_none=''):
+    def current_phase_str(self, for_none=''):
         return State.phase_str(self.current_state, for_none)
 
 
@@ -461,8 +461,8 @@ class WorkflowModel(models.Model):
         transition, to be stored in ``State.snapshot``.
 
         Called automatically by ``transition()`` when:
-        - ``settings.WORKFLANGO_SNAPSHOT_ENABLED`` is ``True``
-        - the source state's config has ``'snapshot': True``
+        - ``settings.WF_SNAPSHOT_ENABLED`` is ``True``
+        - the source phase's config has ``'snapshot': True``
 
         Default implementation: uses the serializer class declared via
         ``configure_workflow(snapshot_serializer=MySerializer)``, or returns ``None``
@@ -509,7 +509,7 @@ class WorkflowModel(models.Model):
         return reverse(f'{self.view_base_name}_history', kwargs={'pk': self.pk})
 
     def get_change_state_url(self, destination):
-        return reverse(f'{self.view_base_name}_change_state', kwargs={'pk': self.pk, 'nuovo_stato': destination})
+        return reverse(f'{self.view_base_name}_change_state', kwargs={'pk': self.pk, 'destination_phase': destination})
 
 
     # Required by WF error messages - should briefly identify the object
@@ -523,9 +523,9 @@ class WorkflowModel(models.Model):
         return ''
 
 
-    def get_candidate_users(self, for_state=None, privileges='ea', active=None):
-        for_state = for_state or self.current_state
-        return self.wfm_config.get_candidate_users_for_state(for_state, privileges, active)
+    def get_candidate_users(self, for_phase=None, privileges='ea', active=None):
+        for_phase = for_phase or (self.current_state.phase if self.current_state else None)
+        return self.wfm_config.get_candidate_users_for_phase(for_phase, privileges, active)
 
 
     @transaction.atomic
@@ -563,7 +563,7 @@ class InstanceWorkflowManager(object):
     are a global admin.
 
     Key methods:
-    - transition(user, new_state, new_owner, ...)  — perform a state change
+    - transition(user, new_phase, new_owner, ...)  — perform a phase change
     - transition_allowed(...)  — validate without performing (raises on failure)
     - can_read / can_edit / can_admin(user)  — group-based permission checks
     - is_owner(user)  — True if user is the current owner
@@ -604,7 +604,7 @@ class InstanceWorkflowManager(object):
             return None
         groups = user.groups_set
         state = self.state_or_error()
-        conf = state.wfm_state_config()
+        conf = state.wfm_phase_config()
         if not groups.isdisjoint(set(conf['admin'])):
             return 'rea'
         if not groups.isdisjoint(set(conf['edit'])):
@@ -662,14 +662,14 @@ class InstanceWorkflowManager(object):
             return False
 
 
-    def transition_allowed(self, user, new_state, new_owner, suspended=False, impersonated_by=None):
+    def transition_allowed(self, user, new_phase, new_owner, suspended=False, impersonated_by=None):
         """
         Checks if a transition is allowed. Raises an exception if not.
         Returns model config if successful.
         """
-        new_state = State.phase_str(new_state)
-        if not new_state:
-            raise TypeError("New state cannot be null or empty")
+        new_phase = State.phase_str(new_phase)
+        if not new_phase:
+            raise TypeError("New phase cannot be null or empty")
 
         if not user:
             self.raise_transition_error("Transition user cannot be null")
@@ -686,54 +686,54 @@ class InstanceWorkflowManager(object):
 
         if not current_state:
             # object is not tracked yet.
-            # check if user can create the object in new_state
+            # check if user can create the object in new_phase
             if user != new_owner:
                 self.raise_transition_error("When creating an object, acting user must be owner")
             if suspended:
                 self.raise_transition_error("Cannot create an object in a suspended state")
             current_owner = None
-            source_state = None
+            source_phase = None
             is_owner = True
         else:
             if current_state.suspended and suspended:
                 self.raise_transition_error("Cannot have two consecutive suspended states")
-            source_state = current_state.phase
+            source_phase = current_state.phase
             current_owner = current_state.owner
-            if source_state == new_state:
+            if source_phase == new_phase:
                 if new_owner == current_owner:
                     if suspended == current_state.suspended:
                         if impersonated_by == current_state.impersonated_by:
-                            self.raise_transition_error("Not a transition: same owner(%s) and same state (%s)" %(current_owner,source_state))
+                            self.raise_transition_error("Not a transition: same owner(%s) and same phase (%s)" %(current_owner,source_phase))
             is_owner = current_state.owned_by(user, impersonated_by)
 
         config = self.instance.wfm_config
 
-        source_state_config = config.get_state_config(source_state)
-        target_state_config = config.get_state_config(new_state)
+        source_phase_config = config.get_phase_config(source_phase)
+        target_phase_config = config.get_phase_config(new_phase)
 
-        #check that user is editor or an admin for this state
-        is_admin =  user_in_groups(user, source_state_config['admin'])
-        is_editor = user_in_groups(user, source_state_config['edit'])
+        #check that user is editor or an admin for this phase
+        is_admin =  user_in_groups(user, source_phase_config['admin'])
+        is_editor = user_in_groups(user, source_phase_config['edit'])
 
         # Handle suspension
         if current_state and (suspended != current_state.suspended):
-            if source_state != new_state:
-                self.raise_transition_error("Cannot change suspension in a transition between two different states")
+            if source_phase != new_phase:
+                self.raise_transition_error("Cannot change suspension in a transition between two different phases")
             if not is_owner:
                 if suspended:
                     self.raise_transition_error("Only owner can suspend and object")
                 if not is_admin:
                     self.raise_transition_error("Only owner or admins can act on a suspended object")
-            self.run_transition_validations(user, current_state, new_state, new_owner, suspended)
+            self.run_transition_validations(user, current_state, new_phase, new_owner, suspended)
             return config
 
-        if source_state is None:
+        if source_phase is None:
             if not is_editor and not is_admin:
                 self.raise_transition_error("User must be editor or admin to create a new instance")
         else:
-            if source_state != new_state:
+            if source_phase != new_phase:
                 if not is_owner:
-                    self.raise_transition_error("User must be owner to change state in a transition")
+                    self.raise_transition_error("User must be owner to change phase in a transition")
             elif current_owner:
                 # Reclaiming: the acting identity is already the recorded owner (as a
                 # raw identity, regardless of impersonation context) and is becoming
@@ -751,37 +751,37 @@ class InstanceWorkflowManager(object):
                     self.raise_transition_error("User must be admin to set owner in a transition")
 
         if current_owner and new_owner and current_owner != new_owner and not current_state.can_delegate:
-            self.raise_transition_error(f"User is not allowed to delegate in this state ({source_state})")
+            self.raise_transition_error(f"User is not allowed to delegate in this phase ({source_phase})")
 
-        reachable_states = source_state_config['reachable_states']
-        if new_state not in reachable_states and new_state != source_state:
-            self.raise_transition_error(f"Unreachable state: {new_state} from {source_state}")
+        reachable_phases = source_phase_config['reachable_phases']
+        if new_phase not in reachable_phases and new_phase != source_phase:
+            self.raise_transition_error(f"Unreachable phase: {new_phase} from {source_phase}")
 
-        allowed_groups = reachable_states.get(new_state, {}).get('allowed_groups', [])
+        allowed_groups = reachable_phases.get(new_phase, {}).get('allowed_groups', [])
         if allowed_groups and not user.in_groups(allowed_groups):
             self.raise_transition_error(f"Only users from groups {','.join(allowed_groups)} are allowed to perform this transition")
 
         #unless not specifified by 'allow_no_owner', the new owner can be none
-        allow_release = target_state_config.get('allow_release', 'strict')
+        allow_release = target_phase_config.get('allow_release', 'strict')
         if new_owner is None and allow_release == 'no':
-            self.raise_transition_error("The target state does not allow null owner")
+            self.raise_transition_error("The target phase does not allow null owner")
         # TODO should check allow_release == 'strict', current_state.transition_type...
 
         # check that new owner has editing privileges for the target status, otherwise
         # the record will not be editable by its owner
         if new_owner is not None:
-            new_owner_is_editor = user_in_groups(new_owner, target_state_config['edit'])
-            new_owner_is_admin = user_in_groups(new_owner, target_state_config['admin'])
+            new_owner_is_editor = user_in_groups(new_owner, target_phase_config['edit'])
+            new_owner_is_admin = user_in_groups(new_owner, target_phase_config['admin'])
             if not (new_owner_is_editor or new_owner_is_admin):
                 self.raise_transition_error("The new owner for the record would not be able to edit or administer the record")
 
         # Custom transition validators can raise ValidationError thus aborting the transaction
-        self.run_transition_validations(user, current_state, new_state, new_owner, suspended)
+        self.run_transition_validations(user, current_state, new_phase, new_owner, suspended)
 
         return config
 
 
-    def run_transition_validations(self, user, current_state, new_state, new_owner, suspended):
+    def run_transition_validations(self, user, current_state, new_phase, new_owner, suspended):
         """
         Calls custom transition validators if defined:
         validators can raise ValidationError to prevent the status transition.
@@ -789,12 +789,12 @@ class InstanceWorkflowManager(object):
         """
         self.warnings = []
         self.infos = []
-        current_state = State.phase_str(current_state, 'none')
-        self._call_handler_if_exists('validate_state_transition', user, current_state, new_state, new_owner, suspended)
-        if current_state != new_state:
-            self._call_handler_if_exists(f'validate_any_to_{new_state}', user)
-            self._call_handler_if_exists(f'validate_{current_state}_to_any', user)
-        self._call_handler_if_exists(f'validate_{current_state}_to_{new_state}', user)
+        current_phase = State.phase_str(current_state, 'none')
+        self._call_handler_if_exists('validate_phase_transition', user, current_phase, new_phase, new_owner, suspended)
+        if current_phase != new_phase:
+            self._call_handler_if_exists(f'validate_any_to_{new_phase}', user)
+            self._call_handler_if_exists(f'validate_{current_phase}_to_any', user)
+        self._call_handler_if_exists(f'validate_{current_phase}_to_{new_phase}', user)
 
 
     def _call_handler_if_exists(self, methodname, *args, **kwargs):
@@ -817,10 +817,10 @@ class InstanceWorkflowManager(object):
 
 
     @transaction.atomic
-    def transition(self, user, new_state, new_owner, message='', suspended=False,
+    def transition(self, user, new_phase, new_owner, message='', suspended=False,
                    force_transition_type=None, impersonated_by=None):
         """
-        Performs a transition between two states.
+        Performs a transition between two phases.
         First, instance is validated (but not saved) through a call to full_clean().
         Transition is validated by 'transition_allowed' method, where all the validation
         logic stands.
@@ -836,7 +836,7 @@ class InstanceWorkflowManager(object):
         # TODO record changes other than transitions should also lock the record (on POST)
         self.instance.lock_instance()
 
-        new_state = State.phase_str(new_state)
+        new_phase = State.phase_str(new_phase)
 
         current_state = self.instance.reload_current_state()
         if current_state != self.instance.current_state:
@@ -848,18 +848,18 @@ class InstanceWorkflowManager(object):
             self.instance.full_clean()
         except Exception as e:
             if isinstance(e, (ValidationError, FileNotFoundError)):
-                if (user == new_owner) and current_state and (current_state.phase == new_state) and self.can_admin(user):
+                if (user == new_owner) and current_state and (current_state.phase == new_phase) and self.can_admin(user):
                     e = None
             if e:
                 raise e
 
 
-        config = self.transition_allowed(user, new_state, new_owner, suspended=suspended, impersonated_by=impersonated_by)
-        next_state = State(instance=self.instance, user=user, phase=new_state, owner=new_owner,
+        config = self.transition_allowed(user, new_phase, new_owner, suspended=suspended, impersonated_by=impersonated_by)
+        next_state = State(instance=self.instance, user=user, phase=new_phase, owner=new_owner,
                            message=message, suspended=suspended, impersonated_by=impersonated_by)
         if force_transition_type:
             next_state.transition_type = force_transition_type
-        elif current_state and current_state.phase != new_state and config[current_state.phase]['reachable_states'][new_state].get('reject', False):
+        elif current_state and current_state.phase != new_phase and config[current_state.phase]['reachable_phases'][new_phase].get('reject', False):
             next_state.transition_type = 'reject'
         else:
             next_state.transition_type = next_state.get_transition_type(current_state)
@@ -868,7 +868,7 @@ class InstanceWorkflowManager(object):
         if getattr(settings, 'WF_SNAPSHOT_ENABLED', False):
             source_phase = current_state.phase if current_state else None
             if config[source_phase].get('snapshot', False):
-                next_state.snapshot = self.instance.get_workflow_snapshot(new_state)
+                next_state.snapshot = self.instance.get_workflow_snapshot(new_phase)
         next_state.save()
 
         self.instance.materialize_current_state(next_state)
@@ -914,12 +914,12 @@ class InstanceWorkflowManager(object):
 
 
     # TODO unused but in tests
-    def reject_to_state(self, user, state, message=None, impersonated_by=None):
+    def reject_to_phase(self, user, phase, message=None, impersonated_by=None):
         current_state = self.instance.current_state
         if current_state:
-            reject_to = current_state.find_last_state(state)
+            reject_to = current_state.find_last_state(phase)
             if reject_to:
-                return self.transition(user, state, reject_to.owner,
+                return self.transition(user, phase, reject_to.owner,
                                        message=message, impersonated_by=impersonated_by)
         self.raise_transition_error("Cannot reject record")
 
@@ -939,8 +939,8 @@ class InstanceWorkflowManager(object):
                                suspended=False, message=message, impersonated_by=impersonated_by)
 
 
-    def get_transition(self, dest_state, user, owner='auto', impersonated_by=None):
-        return WFTransitionDescriptor(self.instance, dest_state, user, owner, impersonated_by=impersonated_by)
+    def get_transition(self, dest_phase, user, owner='auto', impersonated_by=None):
+        return WFTransitionDescriptor(self.instance, dest_phase, user, owner, impersonated_by=impersonated_by)
 
 
     def get_states(self):

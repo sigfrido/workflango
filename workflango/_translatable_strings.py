@@ -95,7 +95,7 @@ def _strings():  # pragma: no cover - never called, see module docstring
         # Translators: %(destination)s/%(phase)s/%(error)s tokens are placeholders
         # substituted after translation -- keep them verbatim.
         pgettext('workflango', 'The transition to %(destination)s failed: %(error)s.'),
-        pgettext('workflango', 'Transition to state completed: %(phase)s'),
+        pgettext('workflango', 'Transition to phase completed: %(phase)s'),
         pgettext('workflango', 'The transition will be performed as ADMIN; the following errors were detected: %(error)s.'),
         pgettext('workflango', 'Cannot perform the transition: %(error)s.'),
         pgettext('workflango', 'Unexpected error: %(error)s.'),
@@ -111,7 +111,7 @@ def _strings():  # pragma: no cover - never called, see module docstring
         pgettext('workflango', 'The object will be taken in charge.'),
         pgettext('workflango', 'Release'),
         pgettext('workflango', 'The object will be released and become available again for take ownership.'),
-        pgettext('workflango', 'Reject to previous state'),
+        pgettext('workflango', 'Reject to previous phase'),
         pgettext('workflango', 'The object will be rejected to the phase and user that previously assigned it to you.'),
         pgettext('workflango', 'Reject'),
         pgettext('workflango', 'Delegate'),

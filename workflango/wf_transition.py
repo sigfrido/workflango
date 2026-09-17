@@ -24,26 +24,26 @@ class WFTransitionDescriptor(object):
     """
     Read-only descriptor for a potential workflow transition, used by the view layer.
 
-    Obtained via instance.wfm.get_transition(dest_state, user). Encapsulates
+    Obtained via instance.wfm.get_transition(dest_phase, user). Encapsulates
     everything a template or view needs to render a transition button and the
     corresponding form: caption, owner selection, message requirement, allowed
     groups, and whether the transition is currently permitted.
 
     Special command strings ('release', 'delegate', 'assign', 'reject',
     'take-ownership', 'suspend', 'resume') are resolved to the appropriate
-    destination state and owner automatically.
+    destination phase and owner automatically.
 
     Key properties:
     - destination / owner / message  — transition parameters
     - caption / is_reject / is_forward / is_free / is_take_ownership  — display hints
     - show_owner / require_message  — form field visibility
-    - allowed() — True if transition_allowed() would pass for current user/state
+    - allowed() — True if transition_allowed() would pass for current user/phase
     - execute() — perform the transition (calls obj.wfm.transition())
     """
 
     # destination_owner_modes = ('user', 'none', 'assign', 'last_owner') # , 'admin', 'random', 'workload'
-    # TODO check errors (obj registered & managed, valid dest_state, can_reject...)
-    def __init__(self, obj, dest_state, user, owner='auto', message=None, suspended=False,
+    # TODO check errors (obj registered & managed, valid dest_phase, can_reject...)
+    def __init__(self, obj, dest_phase, user, owner='auto', message=None, suspended=False,
                  impersonated_by=None):
         self._obj = obj
         self.wfconfig = obj.wfm_config
@@ -52,9 +52,9 @@ class WFTransitionDescriptor(object):
         self._message = message
         self._suspended = suspended
         self._impersonated_by = impersonated_by
-        dest_state = State.phase_str(dest_state)
-        if dest_state in ['release', 'delegate', 'assign', 'reject', 'take-ownership', 'suspend', 'resume']:
-            self.command = dest_state
+        dest_phase = State.phase_str(dest_phase)
+        if dest_phase in ['release', 'delegate', 'assign', 'reject', 'take-ownership', 'suspend', 'resume']:
+            self.command = dest_phase
             if self.command == 'reject':
                 prev_state = self.state.get_previous_state()
                 self._destination = prev_state.phase
@@ -71,8 +71,8 @@ class WFTransitionDescriptor(object):
                 self._suspended = False
         else:
             self.command = ''
-            self._destination = dest_state
-        self.config = self.wfconfig[self.phase_str]['reachable_states'].get(self._destination, None)
+            self._destination = dest_phase
+        self.config = self.wfconfig[self.phase_str]['reachable_phases'].get(self._destination, None)
         if self._owner == 'auto':
             self.guess_owner()
 
@@ -90,7 +90,7 @@ class WFTransitionDescriptor(object):
                 self._owner = self.get_last_owner()
             else:
                 self._owner = None
-        if self._owner and not self._owner.id in [ow.id for ow in self.obj.get_candidate_users(for_state=self._destination, privileges='ea', active=True)]:
+        if self._owner and not self._owner.id in [ow.id for ow in self.obj.get_candidate_users(for_phase=self._destination, privileges='ea', active=True)]:
             self._owner = None
 
 
@@ -185,16 +185,16 @@ class WFTransitionDescriptor(object):
     def phase_str(self):
         return State.phase_str(self.state)
 
-    def state_property(self, prop, defa=None):
-        return self.state.wfm_state_config().get('properties', {}).get(prop, defa)
+    def phase_property(self, prop, defa=None):
+        return self.state.wfm_phase_config().get('properties', {}).get(prop, defa)
 
     @property
-    def state_help_topic(self):
-        return self.state_property('help_topic')
+    def phase_help_topic(self):
+        return self.phase_property('help_topic')
 
     @property
-    def state_description(self):
-        return self.state_property('description')
+    def phase_description(self):
+        return self.phase_property('description')
 
 
     # Transition properties
@@ -294,21 +294,21 @@ class WFTransitionDescriptor(object):
         return self.get_config('allowed_groups', [])
 
 
-    def get_destination_state_property(self, prop, defa=None):
-        return self.wfconfig.get_state_config(self.destination).get('properties', {}).get(prop, defa)
+    def get_destination_phase_property(self, prop, defa=None):
+        return self.wfconfig.get_phase_config(self.destination).get('properties', {}).get(prop, defa)
 
     def destination_description(self):
-        return self.get_destination_state_property('description')
+        return self.get_destination_phase_property('description')
 
     def destination_help_topic(self):
-        return self.get_destination_state_property('help_topic')
+        return self.get_destination_phase_property('help_topic')
 
 
-    def get_previous_different_state(self, state_str=None):
+    def get_previous_different_phase(self, phase=None):
         state = self.obj.current_state
         if not state:
             return None
-        return state.get_previous_different_state(state_str)
+        return state.get_previous_different_phase(phase)
 
 
     def get_last_owner_for_phase(self, phase):
@@ -404,8 +404,8 @@ class WFTransitionDescriptor(object):
             return WorkflowTransitions(phase_transitions, reject_transition, command_transitions)
 
         prev_state = cur_state.get_previous_state()
-        cfg = cur_state.wfm_state_config()
-        reachable_states = cfg['reachable_states'].keys()
+        cfg = cur_state.wfm_phase_config()
+        reachable_phases = cfg['reachable_phases'].keys()
 
         owner = cur_state.owner
         is_admin = obj.wfm.can_admin(user)
@@ -427,14 +427,14 @@ class WFTransitionDescriptor(object):
             return WorkflowTransitions(phase_transitions, reject_transition, command_transitions)
 
         # Build phase_transitions + reject_transition — only for owner.
-        # Admins are not allowed to perform state changes (see transition_allowed);
+        # Admins are not allowed to perform phase changes (see transition_allowed);
         # they use command_transitions (take-ownership, delegate) instead.
         if is_owner:
             if cur_state.can_reject and prev_state and prev_state.phase == cur_state.phase:
                 reject_transition = cls(obj, cur_state.phase, user, cur_state.user, impersonated_by=impersonated_by)
 
-            for dest_state in reachable_states:
-                transition = cls(obj, dest_state, user, impersonated_by=impersonated_by)
+            for dest_phase in reachable_phases:
+                transition = cls(obj, dest_phase, user, impersonated_by=impersonated_by)
                 if transition.is_reject and prev_state and transition.destination == prev_state.phase:
                     if cur_state.can_reject:
                         reject_transition = transition

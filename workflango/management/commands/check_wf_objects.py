@@ -73,10 +73,10 @@ class Command(BaseCommand):
 
     def fix_unmanaged_objects(self, obj):
 
-        dest_state = obj.__class__.wfm_config.get_states_list()[0]
+        dest_phase = obj.__class__.wfm_config.get_phases_list()[0]
         admin = obj.__class__.wfm_config.admin()
         try:
-            obj.wfm.transition(admin, dest_state, admin, message="Autofix unmanaged object")
+            obj.wfm.transition(admin, dest_phase, admin, message="Autofix unmanaged object")
             return ''
         except Exception as e:
             return str(e)

@@ -16,7 +16,7 @@ urlpatterns = [
     path('suppliers/<int:pk>/edit/', views.SupplierUpdateView.as_view(), name='supplier_edit'),
     path('suppliers/<int:pk>/history/', views.SupplierHistoryView.as_view(), name='supplier_history'),
     path(
-        'suppliers/<int:pk>/change-state/<str:nuovo_stato>/',
+        'suppliers/<int:pk>/change-state/<str:destination_phase>/',
         views.SupplierChangeStateView.as_view(), name='supplier_change_state',
     ),
 
@@ -27,7 +27,7 @@ urlpatterns = [
     path('requests/<int:pk>/edit/', views.RequestUpdateView.as_view(), name='request_edit'),
     path('requests/<int:pk>/history/', views.RequestHistoryView.as_view(), name='request_history'),
     path(
-        'requests/<int:pk>/change-state/<str:nuovo_stato>/',
+        'requests/<int:pk>/change-state/<str:destination_phase>/',
         views.RequestChangeStateView.as_view(), name='request_change_state',
     ),
 

@@ -415,7 +415,7 @@ class WorkflowFilter(BaseFilter):
     @classmethod
     def post_process_search_fields(cls, sfdict):
         if hasattr(cls, 'model') and hasattr(cls.model, 'wfm_config') and 'search_wf_phase' in sfdict:
-            sfdict['search_wf_phase']['choices'] = cls.model.wfm_config.get_states_list()
+            sfdict['search_wf_phase']['choices'] = cls.model.wfm_config.get_phases_list()
 
 
 # ---------------------------------------------------------------------------

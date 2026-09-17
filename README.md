@@ -4,11 +4,13 @@ A reusable Django BPM workflow engine.
 
 Manages state transitions for any Django model: permissions by group, full transition history, atomic locking, signals, and pluggable validation hooks.
 
+**Terminology**: a `Phase` is the category — a static string name (`'draft'`, `'published'`, ...) defined once per model in `WorkflowConfig`. A `State` is the actual Django model instance recording one point in an object's transition history. A `WorkflowModel` instance **is in** a particular `State`, which **belongs to** a `Phase`.
+
 ## Features
 
 - `WorkflowModel` abstract base — attach workflow to any model with a single inheritance
 - State machine defined declaratively per model (`configure_workflow`)
-- Group-based permissions per state (read / edit / admin)
+- Group-based permissions per phase (read / edit / admin)
 - Full transition history as a linked-list of `State` records
 - Atomic transitions with `SELECT FOR UPDATE [NOWAIT]` where supported by DB backend
 - `transition_done` signal for downstream reactions
@@ -58,13 +60,13 @@ class MyDocument(WorkflowModel):
 
 MyDocument.configure_workflow(
     config=(
-        (None, {'reachable_states': {'draft': {}}}),
+        (None, {'reachable_phases': {'draft': {}}}),
         ('draft', {
-            'reachable_states': {'published': {'caption': 'Publish', 'owner_mode': 'none'}},
+            'reachable_phases': {'published': {'caption': 'Publish', 'owner_mode': 'none'}},
             'read': ['EDITORS'], 'edit': ['EDITORS'], 'admin': ['ADMINS'],
             'is_closed': False,
         }),
-        ('published', {'is_closed': True, 'reachable_states': {}}),
+        ('published', {'is_closed': True, 'reachable_phases': {}}),
     ),
     defaults={'read': ['EDITORS'], 'edit': ['EDITORS'], 'admin': ['ADMINS']},
 )
@@ -95,7 +97,7 @@ path('documents/', MyDocumentListView.as_view(), name='mydocument_list')
 path('documents/<int:pk>/', MyDocumentDetailView.as_view(), name='mydocument_detail')
 path('documents/<int:pk>/edit/', MyDocumentUpdateView.as_view(), name='mydocument_edit')
 path('documents/<int:pk>/history/', ObjectHistoryView.as_view(model=MyDocument), name='mydocument_history')
-path('documents/<int:pk>/change-state/<str:nuovo_stato>/', ChangeStateView.as_view(model=MyDocument), name='mydocument_change_state')
+path('documents/<int:pk>/change-state/<str:destination_phase>/', ChangeStateView.as_view(model=MyDocument), name='mydocument_change_state')
 ```
 
 Every `WorkflowModel` instance then exposes `get_absolute_url()`, `get_edit_url()`, `get_history_url()`, and `get_change_state_url(destination)` built from that same `view_base_name` — the shipped templates (and `GUITestMixin`'s `get_detail_view()`/`get_history_view()`/`get_change_state_view()` helpers) rely on nothing else.
@@ -132,10 +134,10 @@ Allows one user to perform transitions on behalf of another. The real actor is r
 Enable globally in settings:
 
 ```python
-WORKFLANGO_ALLOW_IMPERSONATE = True
+WF_ALLOW_IMPERSONATE = True
 ```
 
-`WorkflowConfig.get_impersonable_users(user)` is the policy hook consulted by the DRF layer's `resolve_acting_user()`. Its **default** — superusers and `WORKFLOW_ADMIN_GROUP` members may impersonate any active user — is only a default, not a rule the engine enforces elsewhere; override it per workflow with any policy that fits your app:
+`WorkflowConfig.get_impersonable_users(user)` is the policy hook consulted by the DRF layer's `resolve_acting_user()`. Its **default** — superusers and `WF_ADMIN_GROUP` members may impersonate any active user — is only a default, not a rule the engine enforces elsewhere; override it per workflow with any policy that fits your app:
 
 ```python
 MyDocument.configure_workflow(
@@ -181,7 +183,7 @@ Saves a JSON copy of the object at each transition for audit or rollback inspect
 Enable globally:
 
 ```python
-WORKFLANGO_SNAPSHOT_ENABLED = True
+WF_SNAPSHOT_ENABLED = True
 ```
 
 Enable per state (snapshot is taken when leaving that state):
@@ -191,7 +193,7 @@ MyDocument.configure_workflow(
     config=(
         ('draft', {
             'snapshot': True,           # snapshot on every exit from 'draft'
-            'reachable_states': {'published': {}},
+            'reachable_phases': {'published': {}},
             ...
         }),
         ...

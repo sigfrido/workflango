@@ -95,7 +95,7 @@ class SupplierCreateView(WorkflowModelCreate, CreateView):
     form_class = SupplierForm
     template_name = 'demo/supplier_form.html'
 
-    def get_destination_state(self):
+    def get_destination_phase(self):
         return 'proposed'
 
     def get_destination_owner(self):
@@ -166,7 +166,7 @@ class RequestCreateView(_RequestObjectNameMixin, WorkflowModelCreate, CreateView
     form_class = RequestForm
     template_name = 'demo/request_form.html'
 
-    def get_destination_state(self):
+    def get_destination_phase(self):
         return 'draft'
 
     def get_destination_owner(self):

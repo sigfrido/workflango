@@ -45,7 +45,7 @@ class DemoWorkflowTests(GUITestMixin, WorkflowTestMixin, TestCase):
         supplier.wfm.transition(self.user1, 'proposed', self.user1)
 
         self.login('user1')
-        url = reverse('supplier_change_state', kwargs={'pk': supplier.pk, 'nuovo_stato': 'active'})
+        url = reverse('supplier_change_state', kwargs={'pk': supplier.pk, 'destination_phase': 'active'})
         self.post_view(url, {})
         supplier = self.reload_inst(supplier)
         self.assertEqual(supplier.current_state.phase, 'proposed')  # unchanged: user1 is not a manager
@@ -55,14 +55,14 @@ class DemoWorkflowTests(GUITestMixin, WorkflowTestMixin, TestCase):
         supplier.wfm.transition(self.user1, 'proposed', self.user1)
 
         self.login('manager1')
-        take_url = reverse('supplier_change_state', kwargs={'pk': supplier.pk, 'nuovo_stato': 'take-ownership'})
+        take_url = reverse('supplier_change_state', kwargs={'pk': supplier.pk, 'destination_phase': 'take-ownership'})
         self.post_view(take_url, {'message': 'Manager taking over to activate.'})
         supplier = self.reload_inst(supplier)
         self.assertEqual(supplier.current_state.owner, self.manager1)
 
         # manager1 is an 'admin' at 'proposed', so the form makes them pick an explicit
         # destination owner rather than guessing -- assign it to themselves.
-        activate_url = reverse('supplier_change_state', kwargs={'pk': supplier.pk, 'nuovo_stato': 'active'})
+        activate_url = reverse('supplier_change_state', kwargs={'pk': supplier.pk, 'destination_phase': 'active'})
         self.post_view(activate_url, {'owner': self.manager1.pk})
         supplier = self.reload_inst(supplier)
         self.assertEqual(supplier.current_state.phase, 'active')
@@ -104,14 +104,14 @@ class DemoWorkflowTests(GUITestMixin, WorkflowTestMixin, TestCase):
         self.assertNotContains(detail_response, '>None<')
 
         # draft -> submitted
-        submit_url = reverse('request_change_state', kwargs={'pk': req.pk, 'nuovo_stato': 'submitted'})
+        submit_url = reverse('request_change_state', kwargs={'pk': req.pk, 'destination_phase': 'submitted'})
         self.post_view(submit_url, {})
         req = self.reload_inst(req)
         self.assertEqual(req.current_state.phase, 'submitted')
 
         # manager takes ownership, then approves
         self.login('manager1')
-        take_url = reverse('request_change_state', kwargs={'pk': req.pk, 'nuovo_stato': 'take-ownership'})
+        take_url = reverse('request_change_state', kwargs={'pk': req.pk, 'destination_phase': 'take-ownership'})
         self.post_view(take_url, {'message': 'Manager taking over to review.'})
         req = self.reload_inst(req)
         self.assertEqual(req.current_state.owner, self.manager1)
@@ -125,7 +125,7 @@ class DemoWorkflowTests(GUITestMixin, WorkflowTestMixin, TestCase):
         # 'approved' is a closed phase with no configured edit/admin groups, so the only
         # valid choice in the (still-shown, since manager1 is an admin at 'submitted')
         # owner dropdown is "---" (unassigned) -- '0' is that sentinel value.
-        approve_url = reverse('request_change_state', kwargs={'pk': req.pk, 'nuovo_stato': 'approved'})
+        approve_url = reverse('request_change_state', kwargs={'pk': req.pk, 'destination_phase': 'approved'})
         self.post_view(approve_url, {'owner': '0'})
         req = self.reload_inst(req)
         self.assertEqual(req.current_state.phase, 'approved')
@@ -315,7 +315,7 @@ class ImpersonationTests(GUITestMixin, WorkflowTestMixin, TestCase):
         self.assertEqual(edit_response.status_code, 302)  # access denied -> redirected, not the form
 
         # --- Admin explicitly takes ownership while impersonating: a real, audited transition. ---
-        take_url = reverse('request_change_state', kwargs={'pk': request.pk, 'nuovo_stato': 'take-ownership'})
+        take_url = reverse('request_change_state', kwargs={'pk': request.pk, 'destination_phase': 'take-ownership'})
         self.post_view(take_url, {})
         request = self.reload_inst(request)
         self.assertEqual(request.current_state.owner, self.user1)
@@ -373,7 +373,7 @@ class ImpersonationTests(GUITestMixin, WorkflowTestMixin, TestCase):
         self.assertNotContains(detail, 'change-state/delegate/')
         self.assertContains(detail, 'change-state/take-ownership/')
 
-        take_url = reverse('request_change_state', kwargs={'pk': request.pk, 'nuovo_stato': 'take-ownership'})
+        take_url = reverse('request_change_state', kwargs={'pk': request.pk, 'destination_phase': 'take-ownership'})
         self.post_view(take_url, {})
 
         detail2 = self.get_view(request.get_absolute_url())

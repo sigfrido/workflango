@@ -172,13 +172,13 @@ class WorkflowFilterForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super(WorkflowFilterForm, self).__init__(*args, **kwargs)
-        self.fields['search_wf_phase'].widget.choices = self.get_state_choices()
+        self.fields['search_wf_phase'].widget.choices = self.get_phase_choices()
         self.fields['search_wf_owner'].widget.choices = self.get_owner_choices()
 
 
-    def get_state_choices(self):
-        state_choices = [(x, x) for x in self.model.wfm_config.get_states_list()]
-        return state_choices
+    def get_phase_choices(self):
+        phase_choices = [(x, x) for x in self.model.wfm_config.get_phases_list()]
+        return phase_choices
 
 
     def get_owner_choices(self):

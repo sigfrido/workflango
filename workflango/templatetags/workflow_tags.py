@@ -42,9 +42,9 @@ def in_groups(user, groups):
 
 
 @register.filter
-def state_property(state_instance, property_name):  
+def state_property(state_instance, property_name):
     try:
-        return state_instance.get_state_property(property_name)
+        return state_instance.get_phase_property(property_name)
     except:
         return None
         

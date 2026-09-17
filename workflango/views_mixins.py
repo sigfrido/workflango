@@ -108,7 +108,7 @@ class _BaseWorkflowTransitionMixin:
     formsets; it is a no-op if django-extra-views is not used.
     """
 
-    destination_state = None
+    destination_phase = None
     destination_owner = None
     destination_suspended = False
     transition_message = ""
@@ -117,8 +117,8 @@ class _BaseWorkflowTransitionMixin:
     def get_destination_owner(self):
         return self.destination_owner
 
-    def get_destination_state(self):
-        return self.destination_state
+    def get_destination_phase(self):
+        return self.destination_phase
 
     def get_transition_message(self):
         return self.transition_message
@@ -133,7 +133,7 @@ class _BaseWorkflowTransitionMixin:
         if getattr(self, 'transitioned', 0):
             # Guard against double-call: form_valid and forms_valid may both fire.
             return
-        destination_state = self.get_destination_state()
+        destination_phase = self.get_destination_phase()
         destination_owner = self.get_destination_owner()
         transition_message = self.get_transition_message()
         suspended = self.get_destination_suspended()
@@ -143,7 +143,7 @@ class _BaseWorkflowTransitionMixin:
         try:
             self.before_transition(obj)
             new_state = obj.wfm.transition(
-                self.request.user, destination_state, destination_owner,
+                self.request.user, destination_phase, destination_owner,
                 message=transition_message, suspended=suspended,
                 force_transition_type=force_transition_type,
                 impersonated_by=impersonated_by,
@@ -155,7 +155,7 @@ class _BaseWorkflowTransitionMixin:
             messages.add_message(
                 self.request, messages.ERROR,
                 wgettext("The transition to %(destination)s failed: %(error)s.") % {
-                    'destination': destination_state, 'error': get_exception_error_msg(e),
+                    'destination': destination_phase, 'error': get_exception_error_msg(e),
                 },
             )
             transaction.set_rollback(True)
@@ -166,7 +166,7 @@ class _BaseWorkflowTransitionMixin:
     def after_transition(self, new_state):
         messages.add_message(
             self.request, messages.INFO,
-            wgettext("Transition to state completed: %(phase)s") % {'phase': new_state.phase},
+            wgettext("Transition to phase completed: %(phase)s") % {'phase': new_state.phase},
         )
 
     def check_transition_is_valid(self):
@@ -175,13 +175,13 @@ class _BaseWorkflowTransitionMixin:
         the transition form to catch validation errors early.
         """
         instance = self.get_object()
-        destination_state = self.get_destination_state()
+        destination_phase = self.get_destination_phase()
         new_owner = self.get_destination_owner()
         suspended = self.get_destination_suspended()
         try:
             instance.full_clean()
             instance.wfm.run_transition_validations(
-                self.request.user, instance.current_state, destination_state, new_owner, suspended,
+                self.request.user, instance.current_state, destination_phase, new_owner, suspended,
             )
             return True
         except ValidationError as e:
@@ -268,9 +268,9 @@ class WorkflowModelList(LoginRequiredMixin):
 
     def get_context_data(self, *args, **kwargs):
         context = super().get_context_data(*args, **kwargs)
-        context['active_states'] = self.model.wfm_config.get_states_list(closed=False)
-        context['active_states_filter'] = '&'.join(
-            [f"search_fase={state}" for state in context['active_states']]
+        context['active_phases'] = self.model.wfm_config.get_phases_list(closed=False)
+        context['active_phases_filter'] = '&'.join(
+            [f"search_wf_phase={phase}" for phase in context['active_phases']]
         )
         return context
 
@@ -332,13 +332,13 @@ class WorkflowDetailMixin(CachedGetObjectMixin, AccessDeniedMixin, _WorkflowCont
                     else wgettext("The object was marked as read."),
                 )
 
-        wf_editable = instance.wfm.is_owner(user, impersonated_by) and not st.suspended and not st.get_state_property('disable_editing')
+        wf_editable = instance.wfm.is_owner(user, impersonated_by) and not st.suspended and not st.get_phase_property('disable_editing')
         wf_admin_owned = instance.wfm.is_owner(user, impersonated_by) and instance.wfm.can_admin(user)
         context['wf_can_take_ownership'] = instance.wfm.can_take_ownership(user, impersonated_by)
         context['wf_editable'] = wf_editable
         context['wf_admin_owned'] = wf_admin_owned
         context['wf_can_delete'] = self.wf_can_delete(user, instance)
-        context['wf_edit_button_label'] = st.get_state_property('edit_button_label') if wf_editable else ''
+        context['wf_edit_button_label'] = st.get_phase_property('edit_button_label') if wf_editable else ''
 
         return self.get_workflow_context(context)
 

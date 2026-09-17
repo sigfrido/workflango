@@ -9,7 +9,7 @@ from rest_framework.exceptions import PermissionDenied as DRFPermissionDenied
 from django.test import RequestFactory, TransactionTestCase, TestCase, override_settings
 from django.contrib.auth.models import User
 from workflango.drf import WorkflowViewSetMixin
-from workflango.exceptions import (InvalidWorkflowConfiguration, InvalidState,
+from workflango.exceptions import (InvalidWorkflowConfiguration, InvalidPhase,
     TransitionNotAllowed, UnmanagedObject, StaleObject)
 from workflango.filters import WorkflowFilter, build_Q
 from workflango.forms import WorkflowFilterForm
@@ -46,21 +46,21 @@ class WorkflowConfigTest(TestCase):
         )
 
     def test_config(self):
-        states_list = self.wc.get_states_list()
-        self.assertEqual(states_list, ('1', '2', '3', '4', '0'))
-        self.assertEqual(self.wc.get_state_order(None), 0)
-        self.assertEqual(self.wc.get_state_order('1'), 1)
-        self.assertEqual(self.wc.get_state_order('0'), 5)
-        with self.assertRaises(InvalidState):
-            self.assertEqual(self.wc.get_state_order('babic'), -1)
+        phases_list = self.wc.get_phases_list()
+        self.assertEqual(phases_list, ('1', '2', '3', '4', '0'))
+        self.assertEqual(self.wc.get_phase_order(None), 0)
+        self.assertEqual(self.wc.get_phase_order('1'), 1)
+        self.assertEqual(self.wc.get_phase_order('0'), 5)
+        with self.assertRaises(InvalidPhase):
+            self.assertEqual(self.wc.get_phase_order('babic'), -1)
 
 
-    def test_editors_for_state(self):
+    def test_editors_for_phase(self):
         # 'admin' : ['group1', 'group4'],  'edit' : ['group2'],
-        groups = self.wc.editors_for_state('1', False)
+        groups = self.wc.editors_for_phase('1', False)
         self.assertEqual(['group2'], groups)
 
-        groups = self.wc.editors_for_state('1', True)
+        groups = self.wc.editors_for_phase('1', True)
         self.assertIn('group1', groups)
         self.assertIn('group4', groups)
         self.assertIn('group2', groups)
@@ -228,34 +228,34 @@ class WorkflowTest(TransactionTestCase):
         self.assertFalse(cfg.is_admin(self.user_2))
 
 
-    def test_get_states_list_all(self):
-        states_list = self.OkModel.wfm_config.get_states_list()
+    def test_get_phases_list_all(self):
+        states_list = self.OkModel.wfm_config.get_phases_list()
         self.assertEqual(states_list, ('1', '2', '3', '4', '0'))
 
 
-    def test_get_state_order(self):
-        self.assertEqual(self.OkModel.wfm_config.get_state_order(None), 0)
-        self.assertEqual(self.OkModel.wfm_config.get_state_order('1'), 1)
-        self.assertEqual(self.OkModel.wfm_config.get_state_order('0'), 5)
-        with self.assertRaises(InvalidState):
-            self.assertEqual(self.OkModel.wfm_config.get_state_order('babic'), -1)
+    def test_get_phase_order(self):
+        self.assertEqual(self.OkModel.wfm_config.get_phase_order(None), 0)
+        self.assertEqual(self.OkModel.wfm_config.get_phase_order('1'), 1)
+        self.assertEqual(self.OkModel.wfm_config.get_phase_order('0'), 5)
+        with self.assertRaises(InvalidPhase):
+            self.assertEqual(self.OkModel.wfm_config.get_phase_order('babic'), -1)
 
 
     def test_state_helpers(self):
         instance = self.create(self.user_1)
         state = instance.reload_current_state()
 
-        conf = state.wfm_state_config()
+        conf = state.wfm_phase_config()
         self.assertEqual(conf['edit'], ['group2'])
 
         #testing properties
-        self.assertEqual(state.get_state_property('edit_button_label'), 'Edit')
-        self.assertEqual(state.get_state_property('your_uncle_name'), None)
+        self.assertEqual(state.get_phase_property('edit_button_label'), 'Edit')
+        self.assertEqual(state.get_phase_property('your_uncle_name'), None)
 
-        self.assertEqual(state.get_state_order(), 1)
-        self.assertEqual(state.get_state_order(3), -2)
-        self.assertEqual(state.get_state_order('2'), -1)
-        self.assertEqual(state.get_state_order(1), 0)
+        self.assertEqual(state.get_phase_order(), 1)
+        self.assertEqual(state.get_phase_order(3), -2)
+        self.assertEqual(state.get_phase_order('2'), -1)
+        self.assertEqual(state.get_phase_order(1), 0)
 
 
     def test_get_states_helper(self):
@@ -427,8 +427,8 @@ class WorkflowTest(TransactionTestCase):
         st3 = instance.wfm.transition(self.user_1, 2, self.user_3)
         st4 = instance.wfm.transition(self.user_3, 2, self.user_4)
         st5 = instance.wfm.transition(self.user_4, 3, None)
-        self.assertEqual(st4.get_previous_different_state(), '1')
-        self.assertEqual(st5.get_previous_different_state(), '2')
+        self.assertEqual(st4.get_previous_different_phase(), '1')
+        self.assertEqual(st5.get_previous_different_phase(), '2')
 
         self.assertEqual(st5.find_last_state('2'), st4)
         self.assertEqual(st4.find_last_state('2'), st3)
@@ -463,16 +463,16 @@ class WorkflowTest(TransactionTestCase):
 
 
 
-    def test_current_state_str(self):
-        # model.current_state_str(defa) in injected by WFM
+    def test_current_phase_str(self):
+        # model.current_phase_str(defa) in injected by WFM
         instance = self.OkModel.objects.create()
-        self.assertEqual(instance.current_state_str(), '')
-        self.assertEqual(instance.current_state_str('none'), 'none')
-        self.assertEqual(instance.current_state_str(None), None)
+        self.assertEqual(instance.current_phase_str(), '')
+        self.assertEqual(instance.current_phase_str('none'), 'none')
+        self.assertEqual(instance.current_phase_str(None), None)
 
         instance.wfm.transition(self.user_1, 1, self.user_1)
-        self.assertEqual(instance.current_state_str(), '1')
-        self.assertEqual(instance.current_state_str('anything'), '1')
+        self.assertEqual(instance.current_phase_str(), '1')
+        self.assertEqual(instance.current_phase_str('anything'), '1')
 
 
     def test_states(self):
@@ -549,7 +549,7 @@ class WorkflowTest(TransactionTestCase):
                 instance.wfm.transition(self.user_3, 3, None)
 
         # Warning!!!! Object cached attributes remain dirty after rollback
-        self.assertEqual(instance.current_state_str(), '2')
+        self.assertEqual(instance.current_phase_str(), '2')
         self.assertEqual(instance.transition_committed, 2)
         # Re-read from DB
         self.assertEqual(instance.reload_current_state(), None)
@@ -591,7 +591,7 @@ class WorkflowTest(TransactionTestCase):
         instance = self.OkModel.objects.create()
         instance.wfm.transition(self.user_1, 1, self.user_1)
         instance.wfm.transition(self.user_1, 2, self.user_3)
-        self.assertEqual(instance.current_state_str(), '2')
+        self.assertEqual(instance.current_phase_str(), '2')
 
 
     def test_user_can_read(self):
@@ -647,12 +647,12 @@ class WorkflowTest(TransactionTestCase):
         self.assertEqual(state.transition_type, 'resubmit')
 
 
-    def test_reject_to_state(self):
+    def test_reject_to_phase(self):
         instance = self.OkModel.objects.create()
         state = instance.wfm.transition(self.user_1, 1, self.user_1)
         instance.wfm.transition(self.user_1, 2, self.user_3)
         instance.wfm.transition(self.user_3, 4, self.user_4)
-        rej_state = instance.wfm.reject_to_state(self.user_4, '1')
+        rej_state = instance.wfm.reject_to_phase(self.user_4, '1')
         self.assertEqual(state.phase, rej_state.phase)
         self.assertEqual(state.owner, rej_state.owner)
         self.assertEqual(rej_state.transition_type, 'change_assign') # TODO mark as reject?
@@ -743,17 +743,17 @@ class WorkflowTest(TransactionTestCase):
     def test_get_candidates(self):
         instance = self.OkModel.objects.create()
         instance.wfm.transition(self.user_1, 1, self.user_1)
-        admin_candidates = self.OkModel.wfm_config.get_candidate_users_for_state('1', 'a')
+        admin_candidates = self.OkModel.wfm_config.get_candidate_users_for_phase('1', 'a')
         self.assertEqual(len(admin_candidates), 3)
         self.assertTrue(self.user_1 in admin_candidates and self.user_4 in admin_candidates)
         self.user_4.is_active = False
         self.user_4.save()
-        admin_candidates =  self.OkModel.wfm_config.get_candidate_users_for_state('1', 'a', True)
+        admin_candidates =  self.OkModel.wfm_config.get_candidate_users_for_phase('1', 'a', True)
         self.assertEqual(len(admin_candidates), 2)
         self.assertTrue(self.user_1 in admin_candidates)
 
         # 'e': edit only; 'ea' : edit or admin
-        edit_candidates =  self.OkModel.wfm_config.get_candidate_users_for_state('1', 'e')
+        edit_candidates =  self.OkModel.wfm_config.get_candidate_users_for_phase('1', 'e')
         self.assertEqual(len(edit_candidates), 1)
         self.assertTrue(self.user_2 in edit_candidates)
 
@@ -767,28 +767,28 @@ class WorkflowTest(TransactionTestCase):
         self.assertFalse(self.user_4 in admin_candidates)
 
 
-    def test_get_administrable_states_for_model(self):
-        adm_states = self.OkModel.wfm_config.get_states_for_permissions(self.user_1, 'a')
-        self.assertEqual(adm_states, ['1'])
+    def test_get_administrable_phases_for_model(self):
+        adm_phases = self.OkModel.wfm_config.get_phases_for_permissions(self.user_1, 'a')
+        self.assertEqual(adm_phases, ['1'])
 
-        adm_states = self.OkModel.wfm_config.get_states_for_permissions(self.user_4, 'a')
-        self.assertCountEqual(adm_states, ['1', '2', '4'])
-
-
-    def test_get_editable_states_for_model(self):
-        ed_states = self.OkModel.wfm_config.get_states_for_permissions(self.user_1, 'ea')
-        self.assertEqual(ed_states, ['1'])
-
-        ed_states = self.OkModel.wfm_config.get_states_for_permissions(self.user_3, 'ea')
-        self.assertCountEqual(ed_states, ['2', '4'])
+        adm_phases = self.OkModel.wfm_config.get_phases_for_permissions(self.user_4, 'a')
+        self.assertCountEqual(adm_phases, ['1', '2', '4'])
 
 
-    def test_get_viewable_states_for_model(self):
-        view_states = self.OkModel.wfm_config.get_states_for_permissions(self.user_1, 'rea')
-        self.assertEqual(view_states, ['1'])
+    def test_get_editable_phases_for_model(self):
+        ed_phases = self.OkModel.wfm_config.get_phases_for_permissions(self.user_1, 'ea')
+        self.assertEqual(ed_phases, ['1'])
 
-        view_states = self.OkModel.wfm_config.get_states_for_permissions(self.user_3, 'rea')
-        self.assertCountEqual(view_states, ['1', '2', '4'])
+        ed_phases = self.OkModel.wfm_config.get_phases_for_permissions(self.user_3, 'ea')
+        self.assertCountEqual(ed_phases, ['2', '4'])
+
+
+    def test_get_viewable_phases_for_model(self):
+        view_phases = self.OkModel.wfm_config.get_phases_for_permissions(self.user_1, 'rea')
+        self.assertEqual(view_phases, ['1'])
+
+        view_phases = self.OkModel.wfm_config.get_phases_for_permissions(self.user_3, 'rea')
+        self.assertCountEqual(view_phases, ['1', '2', '4'])
 
 
     def test_transition_type(self):
@@ -978,7 +978,7 @@ class WorkflowTest(TransactionTestCase):
         state = instance_1.wfm.transition(self.user_1, 1, None)
         self.assertEqual(state.owner, None)
         self.assertEqual(state.phase, '1')
-        self.assertEqual(instance_1.current_state_str(), '1')
+        self.assertEqual(instance_1.current_phase_str(), '1')
         self.assertEqual(instance_1.current_state.phase, '1')
 
         state = instance_1.wfm.take_ownership(self.user_4)

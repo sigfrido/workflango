@@ -36,9 +36,9 @@ class WorkflowModelValid(WorkflowModel):
         self.transition_committed += 1
 
 
-    def validate_state_transition(self, user, current_state, new_state, new_owner, suspended):
+    def validate_phase_transition(self, user, current_phase, new_phase, new_owner, suspended):
         if hasattr(self, 'invalid_transition'):
-            raise ValidationError('Invalidated generic transition: %s to %s' % (current_state, new_state))
+            raise ValidationError('Invalidated generic transition: %s to %s' % (current_phase, new_phase))
 
 
     def validate_1_to_2(self, user):
@@ -56,12 +56,12 @@ class WorkflowModelValid(WorkflowModel):
             raise ValidationError('Invalidated transition: 2 to 3')
 
 
-    def get_candidate_users(self, for_state=None, privileges='ea', active=None):
+    def get_candidate_users(self, for_phase=None, privileges='ea', active=None):
         """
         Custom candidate users filter
         """
-        user_queryset = super(WorkflowModelValid, self).get_candidate_users(for_state, privileges, active)
-        if for_state == '1' and hasattr(self, 'exclude_group4'):
+        user_queryset = super(WorkflowModelValid, self).get_candidate_users(for_phase, privileges, active)
+        if for_phase == '1' and hasattr(self, 'exclude_group4'):
             return user_queryset.exclude(username='user4')
         return user_queryset
 
@@ -79,7 +79,7 @@ class WorkflowModelValid(WorkflowModel):
     workflow_phases = (
 
         (None, {
-            'reachable_states' : {
+            'reachable_phases' : {
                 1 : {}
             },
 
@@ -90,7 +90,7 @@ class WorkflowModelValid(WorkflowModel):
 
         (1, {
             'snapshot': True,
-            'reachable_states' : {
+            'reachable_phases' : {
                 2 : { 'caption' : 'exec 12' },
                 3 : {},
             },
@@ -102,7 +102,7 @@ class WorkflowModelValid(WorkflowModel):
 
         (2, {
 
-            'reachable_states' : {
+            'reachable_phases' : {
                 3 : {},
                 4 : { 'allow-reject' : False },
             },
@@ -116,7 +116,7 @@ class WorkflowModelValid(WorkflowModel):
         }),
 
         (3, {
-            'reachable_states' : {},
+            'reachable_phases' : {},
             'admin' : [],
             'edit' : [],
             'read' : [],
@@ -124,8 +124,8 @@ class WorkflowModelValid(WorkflowModel):
         }),
 
         (4, {
-            'reachable_states' : {
-                1 : {}, # required for testing reject_to_state
+            'reachable_phases' : {
+                1 : {}, # required for testing reject_to_phase
                 0 : {
                     'allowed_groups': ['group4']
                 }, # required for validating '0' config
@@ -136,8 +136,8 @@ class WorkflowModelValid(WorkflowModel):
             'is_closed' : True,
         }),
 
-        (0, { # put here to test that state keys are not being sorted
-            'reachable_states' : {},
+        (0, { # put here to test that phase keys are not being sorted
+            'reachable_phases' : {},
             'edit' : [],
         }),
 

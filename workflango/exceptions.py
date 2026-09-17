@@ -46,8 +46,8 @@ class WorkflowModelNotConfigured(ConfigurationException):
     """A workflow operation was attempted on a model that has not been configured."""
 
 
-class InvalidState(ConfigurationException):
-    """A state name referenced in config or a transition does not exist."""
+class InvalidPhase(ConfigurationException):
+    """A phase name referenced in config or a transition does not exist."""
 
 
 # Business-logic exceptions — raised during transition() or permission checks.

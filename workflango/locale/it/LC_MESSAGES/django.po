@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: workflango 1.0.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-17 16:45+0200\n"
+"POT-Creation-Date: 2026-09-17 18:58+0200\n"
 "PO-Revision-Date: 2026-08-27 12:00+0200\n"
 "Last-Translator: workflango maintainers\n"
 "Language-Team: Italian\n"
@@ -153,8 +153,8 @@ msgstr "Il passaggio a %(destination)s non è stato effettuato: %(error)s."
 
 #, python-format
 msgctxt "workflango"
-msgid "Transition to state completed: %(phase)s"
-msgstr "Passaggio di stato effettuato: %(phase)s"
+msgid "Transition to phase completed: %(phase)s"
+msgstr "Passaggio alla fase completato: %(phase)s"
 
 #, python-format
 msgctxt "workflango"
@@ -218,8 +218,8 @@ msgstr ""
 "L'oggetto verrà rilasciato e tornerà disponibile per la presa in carico."
 
 msgctxt "workflango"
-msgid "Reject to previous state"
-msgstr "Respingi a stato precedente"
+msgid "Reject to previous phase"
+msgstr "Respingi alla fase precedente"
 
 msgctxt "workflango"
 msgid ""
