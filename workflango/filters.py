@@ -212,7 +212,6 @@ USER_CHOICES = (
     ('-4', wgettext_lazy('Someone')),       # is not null
     ('-5', wgettext_lazy('Not me')),        # not in [user.id]
     ('-6', wgettext_lazy('Not active')),    # owner__is_active=False
-    ('-7', wgettext_lazy('Away')),          # owner__user_config__away=True
 )
 
 STATE_CHOICES = (
@@ -238,8 +237,6 @@ def filter_by_owner(field, owners, request):
             req = ~build_Q(lookup, 'owner', request.user) & build_Q(lookup, 'owner__isnull', False)
         elif owner_id == '-6':
             req = build_Q(lookup, 'owner__is_active', False)
-        elif owner_id == '-7':
-            req = build_Q(lookup, 'owner__user_config__away', True)
         else:
             req = build_Q(lookup, 'owner__id', owner_id)
         q = q | req if q else req
@@ -397,8 +394,8 @@ try:
         """
         DRF filter backend wrapping WorkflowFilter.
 
-        Reads the same query parameters as WorkflowFilter (search_fase,
-        search_proprietario, search_sospeso, etc.) from request.query_params.
+        Reads the same query parameters as WorkflowFilter (search_wf_fase,
+        search_wf_proprietario, search_wf_sospeso, etc.) from request.query_params.
 
         Usage::
 

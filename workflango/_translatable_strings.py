@@ -158,7 +158,6 @@ def _strings():  # pragma: no cover - never called, see module docstring
         pgettext('workflango', 'Not me'),
         pgettext('workflango', 'Someone'),
         pgettext('workflango', 'Not active'),
-        pgettext('workflango', 'Away'),
         pgettext('workflango', 'Current'),
         pgettext('workflango', 'Invalid boolean value (%(value)s): allowed 1/0, t(rue)/f(alse), y(es)/n(o)'),
         pgettext('workflango', 'Error in the filter for field %(field)s: %(error)s'),

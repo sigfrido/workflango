@@ -70,9 +70,9 @@
 </span><span id="L-11"><a href="#L-11"><span class="linenos">11</span></a><span class="k">def</span><span class="w"> </span><span class="nf">send_email_to_admins</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
 </span><span id="L-12"><a href="#L-12"><span class="linenos">12</span></a><span class="w">    </span><span class="sd">"""</span>
 </span><span id="L-13"><a href="#L-13"><span class="linenos">13</span></a><span class="sd">    Send an email to Django ADMINS.</span>
-</span><span id="L-14"><a href="#L-14"><span class="linenos">14</span></a><span class="sd">    Override by setting WORKFLANGO_NOTIFY_FUNC in settings to a callable(subject, message).</span>
+</span><span id="L-14"><a href="#L-14"><span class="linenos">14</span></a><span class="sd">    Override by setting WF_NOTIFY_FUNC in settings to a callable(subject, message).</span>
 </span><span id="L-15"><a href="#L-15"><span class="linenos">15</span></a><span class="sd">    """</span>
-</span><span id="L-16"><a href="#L-16"><span class="linenos">16</span></a>    <span class="n">notify_func</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="s1">'WORKFLANGO_NOTIFY_FUNC'</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+</span><span id="L-16"><a href="#L-16"><span class="linenos">16</span></a>    <span class="n">notify_func</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="s1">'WF_NOTIFY_FUNC'</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 </span><span id="L-17"><a href="#L-17"><span class="linenos">17</span></a>    <span class="k">if</span> <span class="n">notify_func</span><span class="p">:</span>
 </span><span id="L-18"><a href="#L-18"><span class="linenos">18</span></a>        <span class="n">notify_func</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
 </span><span id="L-19"><a href="#L-19"><span class="linenos">19</span></a>    <span class="k">else</span><span class="p">:</span>
@@ -114,9 +114,9 @@
             <div class="pdoc-code codehilite"><pre><span></span><span id="send_email_to_admins-12"><a href="#send_email_to_admins-12"><span class="linenos">12</span></a><span class="k">def</span><span class="w"> </span><span class="nf">send_email_to_admins</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
 </span><span id="send_email_to_admins-13"><a href="#send_email_to_admins-13"><span class="linenos">13</span></a><span class="w">    </span><span class="sd">"""</span>
 </span><span id="send_email_to_admins-14"><a href="#send_email_to_admins-14"><span class="linenos">14</span></a><span class="sd">    Send an email to Django ADMINS.</span>
-</span><span id="send_email_to_admins-15"><a href="#send_email_to_admins-15"><span class="linenos">15</span></a><span class="sd">    Override by setting WORKFLANGO_NOTIFY_FUNC in settings to a callable(subject, message).</span>
+</span><span id="send_email_to_admins-15"><a href="#send_email_to_admins-15"><span class="linenos">15</span></a><span class="sd">    Override by setting WF_NOTIFY_FUNC in settings to a callable(subject, message).</span>
 </span><span id="send_email_to_admins-16"><a href="#send_email_to_admins-16"><span class="linenos">16</span></a><span class="sd">    """</span>
-</span><span id="send_email_to_admins-17"><a href="#send_email_to_admins-17"><span class="linenos">17</span></a>    <span class="n">notify_func</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="s1">'WORKFLANGO_NOTIFY_FUNC'</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+</span><span id="send_email_to_admins-17"><a href="#send_email_to_admins-17"><span class="linenos">17</span></a>    <span class="n">notify_func</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="s1">'WF_NOTIFY_FUNC'</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 </span><span id="send_email_to_admins-18"><a href="#send_email_to_admins-18"><span class="linenos">18</span></a>    <span class="k">if</span> <span class="n">notify_func</span><span class="p">:</span>
 </span><span id="send_email_to_admins-19"><a href="#send_email_to_admins-19"><span class="linenos">19</span></a>        <span class="n">notify_func</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
 </span><span id="send_email_to_admins-20"><a href="#send_email_to_admins-20"><span class="linenos">20</span></a>    <span class="k">else</span><span class="p">:</span>
@@ -125,7 +125,7 @@
 
 
             <div class="docstring"><p>Send an email to Django ADMINS.
-Override by setting WORKFLANGO_NOTIFY_FUNC in settings to a callable(subject, message).</p>
+Override by setting WF_NOTIFY_FUNC in settings to a callable(subject, message).</p>
 </div>
 
 

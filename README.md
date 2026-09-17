@@ -315,6 +315,17 @@ python manage.py runserver
 | `manager1` | MANAGERS | `demo12345` |
 | `user1` | USERS | `demo12345` |
 
+`create_demo_data` only seeds sample suppliers/requests once (it skips silently if any already exist, regardless of how they got there), so it won't clean up ad hoc data created afterwards through the GUI, admin, or a shell. To reset to a clean slate:
+
+```
+cd testproject
+rm db.sqlite3
+python manage.py migrate
+python manage.py create_demo_data
+```
+
+`db.sqlite3` is the demo's own local, gitignored dev database — `python manage.py test demo` never touches it (Django defaults to an in-memory SQLite database for tests unless `DATABASES['default']['TEST']['NAME']` is set, which `testproject/settings.py` doesn't do).
+
 Its base template vendors Bootstrap (`testproject/static/vendor/bootstrap/`, copied from drf-sebastian's own vendored copy) for basic styling only — no Tom Select, no htmx, no icon font; FK fields are plain `<select>` dropdowns and the login page is `django.contrib.auth.views.LoginView` with a bare-bones template.
 
 ## Running tests

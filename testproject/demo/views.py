@@ -10,7 +10,11 @@ from workflango.views_mixins import (
     WorkflowDetailMixin, WorkflowModelCreate, WorkflowModelList, WorkflowModelUpdate,
 )
 
-from .forms import AttachmentForm, ImpersonateForm, RequestForm, SettingsForm, SupplierForm
+from .filters import RequestFilter, SupplierFilter
+from .forms import (
+    AttachmentForm, ImpersonateForm, RequestFilterForm, RequestForm, SettingsForm,
+    SupplierFilterForm, SupplierForm,
+)
 from .middleware import IMPERSONATE_SESSION_KEY
 from .models import Attachment, Request, Settings, Supplier
 
@@ -67,6 +71,18 @@ class ImpersonateStopView(LoginRequiredMixin, _RealAdminRequiredMixin, View):
 class SupplierListView(WorkflowModelList, ListView):
     model = Supplier
     template_name = 'demo/supplier_list.html'
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        result = SupplierFilter.filter_queryset(self.request, qs)
+        self.search_errors = result['search_errors']
+        return result['object_list']
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['filter_form'] = SupplierFilterForm(self.request.GET or None)
+        context['search_errors'] = self.search_errors
+        return context
 
 
 class SupplierDetailView(WorkflowDetailMixin, DetailView):
@@ -126,6 +142,18 @@ class _RequestObjectNameMixin:
 class RequestListView(WorkflowModelList, ListView):
     model = Request
     template_name = 'demo/request_list.html'
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        result = RequestFilter.filter_queryset(self.request, qs)
+        self.search_errors = result['search_errors']
+        return result['object_list']
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['filter_form'] = RequestFilterForm(self.request.GET or None)
+        context['search_errors'] = self.search_errors
+        return context
 
 
 class RequestDetailView(_RequestObjectNameMixin, WorkflowDetailMixin, DetailView):

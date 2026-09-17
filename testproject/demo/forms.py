@@ -2,6 +2,9 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import AuthenticationForm
 
+from workflango.filters import TRUEFALSE_CHOICES
+from workflango.forms import WorkflowFilterForm
+
 from .models import Attachment, Request, Settings, Supplier
 
 
@@ -80,6 +83,46 @@ class SettingsForm(forms.ModelForm):
     class Meta:
         model = Settings
         fields = ['auto_approval_threshold', 'notification_email']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _bootstrapify(self)
+
+
+class SupplierFilterForm(WorkflowFilterForm):
+    model = Supplier
+
+    search_name = forms.CharField(
+        label='Name', required=False,
+        widget=forms.TextInput(attrs={'placeholder': 'Company name'}),
+    )
+    search_tax_code = forms.CharField(
+        label='Tax code', required=False,
+        widget=forms.TextInput(attrs={'placeholder': 'Tax code'}),
+    )
+    search_has_requests = forms.NullBooleanField(
+        label='Has requests', required=False,
+        widget=forms.Select(choices=TRUEFALSE_CHOICES),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _bootstrapify(self)
+
+
+class RequestFilterForm(WorkflowFilterForm):
+    model = Request
+
+    search_budget_min = forms.DecimalField(
+        label='Minimum budget', required=False,
+        widget=forms.NumberInput(attrs={'step': '0.01'}),
+    )
+    search_supplier = forms.ModelChoiceField(
+        # Unlike RequestForm's create/edit dropdown, not scoped to active suppliers --
+        # a historical request may target a supplier that's since been archived, and
+        # filtering is a read-only, broader-scope operation.
+        queryset=Supplier.objects.all(), label='Supplier', required=False, empty_label='---',
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

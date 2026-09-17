@@ -8,7 +8,29 @@
     <a href="{% url 'request_create' %}" class="btn btn-primary">New request</a>
 </div>
 
-<table class="table table-bordered">
+{% if search_errors %}
+<div class="alert alert-danger">
+    <ul class="mb-0">
+        {% for error in search_errors %}<li>{{ error }}</li>{% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<form method="get" class="row align-items-end">
+    {% include "workflango/django/workflow_filters.html" with form=filter_form %}
+    <div class='col-md-2 mt-3'>
+        {{ filter_form.search_budget_min.label_tag }}{{ filter_form.search_budget_min }}
+    </div>
+    <div class='col-md-2 mt-3'>
+        {{ filter_form.search_supplier.label_tag }}{{ filter_form.search_supplier }}
+    </div>
+    <div class='col-md-2 mt-3 d-flex align-items-end gap-2'>
+        <button type="submit" class="btn btn-secondary">Filter</button>
+        <a href="{% url 'request_list' %}" class="btn btn-link">Clear</a>
+    </div>
+</form>
+
+<table class="table table-bordered mt-3">
     <tr>
         <th>Title</th>
         <th>Supplier</th>

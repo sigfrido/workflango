@@ -155,6 +155,80 @@ class DemoWorkflowTests(GUITestMixin, WorkflowTestMixin, TestCase):
             response = self.get_view(supplier.get_absolute_url())
             self.assertEqual(response.status_code, 200, f'{username} should be able to view an archived supplier')
 
+    def _activate_supplier(self, company_name, tax_code):
+        """Like make_active_supplier(), but with a caller-chosen name/tax_code."""
+        supplier = Supplier.objects.create(company_name=company_name, tax_code=tax_code)
+        supplier.wfm.transition(self.user1, 'proposed', self.user1)
+        supplier.wfm.transition(self.manager1, 'proposed', self.manager1, message='taking over')
+        supplier.wfm.transition(self.manager1, 'active', self.manager1)
+        return supplier
+
+    def test_supplier_list_owner_filter_blank_vs_explicit_none(self):
+        # Regression: search_wf_proprietario left blank must mean "no owner filter",
+        # distinct from explicitly selecting owner "None" (-3 in USER_CHOICES, meaning
+        # "owner is null") -- making WorkflowFilterForm's fields required=False (so the
+        # browser stops blocking submission of an unfilled filter) must not blur this.
+        owned = self.make_active_supplier()  # owned by manager1
+        unowned = self._activate_supplier('Empty Co', 'EMPTY6789')
+        unowned.current_state.owner = None
+        unowned.current_state.save(update_fields=['owner'])
+
+        self.login('user1')
+        response = self.get_list_view(Supplier, data={})
+        self.assertCountEqual([s.pk for s in response.context['object_list']], [owned.pk, unowned.pk])
+
+        response = self.get_list_view(Supplier, data={'search_wf_proprietario': '-3'})
+        self.assertEqual([s.pk for s in response.context['object_list']], [unowned.pk])
+
+    def test_supplier_list_filters_by_name_and_tax_code(self):
+        acme = self.make_active_supplier()  # 'Acme Corp' / 'ACME12345'
+        other = self._activate_supplier('Other Co', 'OTHER6789')
+
+        self.login('user1')
+        response = self.get_list_view(Supplier, data={'search_name': 'Acme'})
+        self.assertEqual([s.pk for s in response.context['object_list']], [acme.pk])
+
+        response = self.get_list_view(Supplier, data={'search_tax_code': 'OTHER'})
+        self.assertEqual([s.pk for s in response.context['object_list']], [other.pk])
+
+    def test_supplier_list_filters_by_has_requests(self):
+        with_request = self.make_active_supplier()
+        without_request = self._activate_supplier('Empty Co', 'EMPTY6789')
+        req = Request.objects.create(title='Buy widgets', budget='100.00', supplier=with_request)
+        req.wfm.transition(self.user1, 'draft', self.user1)
+
+        self.login('user1')
+        response = self.get_list_view(Supplier, data={'search_has_requests': 'True'})
+        self.assertEqual([s.pk for s in response.context['object_list']], [with_request.pk])
+
+        response = self.get_list_view(Supplier, data={'search_has_requests': 'False'})
+        self.assertEqual([s.pk for s in response.context['object_list']], [without_request.pk])
+
+    def test_request_list_filters_by_budget_min_and_supplier(self):
+        supplier = self.make_active_supplier()
+        other_supplier = self._activate_supplier('Other Co', 'OTHER6789')
+        small = Request.objects.create(title='Small', budget='50.00', supplier=supplier)
+        small.wfm.transition(self.user1, 'draft', self.user1)
+        big = Request.objects.create(title='Big', budget='5000.00', supplier=other_supplier)
+        big.wfm.transition(self.user1, 'draft', self.user1)
+
+        self.login('user1')
+        response = self.get_list_view(Request, data={'search_budget_min': '1000'})
+        self.assertEqual([r.pk for r in response.context['object_list']], [big.pk])
+
+        response = self.get_list_view(Request, data={'search_supplier': str(supplier.pk)})
+        self.assertEqual([r.pk for r in response.context['object_list']], [small.pk])
+
+    def test_request_list_combines_generic_and_custom_filters(self):
+        supplier = self.make_active_supplier()
+        req = Request.objects.create(title='Big', budget='5000.00', supplier=supplier)
+        req.wfm.transition(self.user1, 'draft', self.user1)
+
+        self.login('user1')
+        response = self.get_list_view(Request, data={'search_budget_min': '1000', 'search_wf_fase': 'draft'})
+        self.assertEqual([r.pk for r in response.context['object_list']], [req.pk])
+        self.assertEqual(response.context['search_errors'], [])
+
 
 class ImpersonationTests(GUITestMixin, WorkflowTestMixin, TestCase):
 

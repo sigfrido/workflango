@@ -9,7 +9,32 @@
     <a href="{% url 'supplier_create' %}" class="btn btn-primary">New supplier</a>
 </div>
 
-<table class="table table-bordered">
+{% if search_errors %}
+<div class="alert alert-danger">
+    <ul class="mb-0">
+        {% for error in search_errors %}<li>{{ error }}</li>{% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<form method="get" class="row align-items-end">
+    {% include "workflango/django/workflow_filters.html" with form=filter_form %}
+    <div class='col-md-2 mt-3'>
+        {{ filter_form.search_name.label_tag }}{{ filter_form.search_name }}
+    </div>
+    <div class='col-md-2 mt-3'>
+        {{ filter_form.search_tax_code.label_tag }}{{ filter_form.search_tax_code }}
+    </div>
+    <div class='col-md-1 mt-3'>
+        {{ filter_form.search_has_requests.label_tag }}{{ filter_form.search_has_requests }}
+    </div>
+    <div class='col-md-2 mt-3 d-flex align-items-end gap-2'>
+        <button type="submit" class="btn btn-secondary">Filter</button>
+        <a href="{% url 'supplier_list' %}" class="btn btn-link">Clear</a>
+    </div>
+</form>
+
+<table class="table table-bordered mt-3">
     <tr>
         <th>Company name</th>
         <th>Tax code</th>
