@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here, starting from this release. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [1.0.0rc1] - 2026-09-18
 
 This cycle accumulated several breaking renames (settings prefix, filter field names,
 owner-filter shortcuts, and the full phase/state terminology pass below) — see
