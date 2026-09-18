@@ -167,6 +167,19 @@ In the DRF API, pass `"user": <id>` in the `change_state` POST body to act as th
 
 For a GUI (non-DRF) consumer, the contract is: middleware swaps `request.user` to the impersonated target for the rest of the request and stashes the real actor on `request.impersonated_by` — `_BaseWorkflowTransitionMixin.check_and_transition()` and every other ownership check in the library already read both attributes this way. `testproject/demo/middleware.py`'s `ImpersonateMiddleware` is a complete, runnable example (superuser-only, session-based) — one way to wire the contract up, not the only one.
 
+### API authorization and anti-chaining
+
+Every API call is made as some registered, authenticated user — call them `user1`. `user1`'s ability to act in the workflow at all is governed by the ordinary workflow permissions attached to their groups (`can_edit`, `can_admin`, etc. per phase); impersonation only ever *widens* who they can act as, on top of that, and only for users `get_impersonable_users(user1)` actually returns.
+
+**Anti-chaining invariant**: impersonation authorization always anchors to the real, originally-authenticated caller of the request — never to an already-impersonated identity. Concretely, `resolve_acting_user()` (and `get_effective_user()`) check `get_impersonable_users()` against `request.impersonated_by` when it's already set (i.e. something upstream, such as a GUI's session-swap middleware, already reassigned `request.user`) and fall back to `request.user` otherwise. So if `user1` is currently being impersonated as `user2` (e.g. via the GUI contract above, layered in front of a DRF endpoint), a further `"user": <user3.id>` in the same request is authorized against `user1`'s own impersonation rights, not `user2`'s. There is no way for `user1` to act as `user2` acting as `user3` — impersonation never chains, regardless of how many layers reassign `request.user` upstream.
+
+This means a single API client (e.g. a service-account user `hr_app` used by an HR application) needs a deliberate design choice for how it acts on behalf of individual staff members. Two common patterns, both left entirely up to the consuming application:
+
+- **`hr_app` impersonates directly.** Grant it `impersonable_users` rights over its whole office via a custom policy, e.g. `impersonable_users=lambda user: User.objects.filter(groups__name='hr_app_delegates') if user.username == 'hr_app' else User.objects.none()`. Every `change_state` call passes `"user": <staff_member.id>`; the real actor recorded in `State.impersonated_by` is always `hr_app`, auditable per the "Ownership and impersonation" section below.
+- **`hr_app` as an entry point, no impersonation at all.** `hr_app` creates and owns objects as itself, then hands them off through normal workflow delegation (an `assign`/`delegate`-style transition that changes `State.owner`, not `State.user`/`impersonated_by`). The real staff member then continues the workflow authenticated as themselves, with their own permissions — no impersonation rights need to be granted to `hr_app` at all.
+
+Which pattern fits — or a hybrid — is an application concern; workflango only guarantees the anti-chaining invariant above, not which of these designs to use.
+
 ### Ownership and impersonation
 
 `state.owner == user` alone does not mean `user` is really acting: an admin impersonating userx would satisfy that comparison exactly as if they *were* userx, with no distinction and no forced audit trail. `State.owned_by(user, impersonated_by=None)` is the real check — it requires **both** the owner match **and** an impersonation-context match against what's already recorded on the state:

@@ -262,7 +262,12 @@ class SebastianWorkflowViewSetMixin(WorkflowViewSetMixin):
         input_ser.is_valid(raise_exception=True)
         data = input_ser.validated_data
 
-        self.check_wf_permission(instance, request.user)
+        # This GUI action only supports the middleware-based impersonation contract
+        # (see class docstring) -- the DRF change_state action's user= body param
+        # kind isn't exposed here, so there's no further resolution to do beyond
+        # reading whatever a consumer's own middleware already recorded.
+        impersonated_by = getattr(request, 'impersonated_by', None)
+        self.check_wf_permission(instance, request.user, impersonated_by)
 
         # Resolve command strings ('suspend', 'resume', 'release', 'take-ownership', ...)
         # to the real destination phase and suspended flag via WFTransitionDescriptor.
@@ -283,7 +288,6 @@ class SebastianWorkflowViewSetMixin(WorkflowViewSetMixin):
             owner = transition.owner
 
         if not form_errors:
-            impersonated_by = getattr(request, 'impersonated_by', None)
             try:
                 instance.wfm.transition(
                     request.user,

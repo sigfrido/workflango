@@ -1588,27 +1588,99 @@ class CheckWfPermissionImpersonationRegressionTest(TransactionTestCase):
         instance.wfm.transition(self.owner_user, 1, self.owner_user, impersonated_by=self.admin_user)
         self.instance = instance
 
-    def _viewset(self, impersonated_by=None):
-        vs = WorkflowViewSetMixin()
-        request = MagicMock()
-        request.impersonated_by = impersonated_by
-        vs.request = request
-        return vs
-
     def test_owner_while_impersonating_passes_check(self):
         """Admin impersonating owner passes check_wf_permission — was blocked before fix."""
-        vs = self._viewset(impersonated_by=self.admin_user)
-        vs.check_wf_permission(self.instance, self.owner_user)  # must not raise
+        vs = WorkflowViewSetMixin()
+        vs.check_wf_permission(self.instance, self.owner_user, self.admin_user)  # must not raise
 
     def test_owner_reclaiming_without_impersonation_passes_check(self):
         """Owner acting as themselves passes check_wf_permission for their impersonated state — was blocked before fix."""
-        vs = self._viewset(impersonated_by=None)
-        vs.check_wf_permission(self.instance, self.owner_user)  # must not raise
+        vs = WorkflowViewSetMixin()
+        vs.check_wf_permission(self.instance, self.owner_user, None)  # must not raise
 
     def test_unrelated_user_is_denied(self):
         """User with no ownership or admin rights is denied."""
-        vs = self._viewset(impersonated_by=None)
+        vs = WorkflowViewSetMixin()
         with self.assertRaises(DRFPermissionDenied):
-            vs.check_wf_permission(self.instance, self.unrelated)
+            vs.check_wf_permission(self.instance, self.unrelated, None)
 
+
+class ResolveActingUserAntiChainingTest(TestCase):
+    """
+    Regression: resolve_acting_user() used to trust request.user unconditionally.
+    If something upstream (e.g. a session-swapping middleware) already reassigned
+    request.user to an impersonated identity, the impersonation-authorization check
+    would run against THAT identity instead of the real, originally-authenticated
+    caller for the request -- letting a user who is themselves being impersonated
+    further impersonate a third identity ("chained impersonation": user1 acting as
+    user2 impersonating user3). resolve_acting_user() now anchors every check to
+    request.impersonated_by (the real caller, if already set by something upstream)
+    instead of request.user.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Model = WorkflowModelValid
+        cls.Model.configure_workflow(snapshot_serializer=WorkflowModelValidSerializer)
+
+    def setUp(self):
+        User.objects.all().delete()
+        # admin_caller: is_superuser -- would be authorized to impersonate anyone,
+        # *if* the check ran against them.
+        self.admin_caller = User.objects.create(username='admin_caller', password='x', is_superuser=True)
+        # plain_caller: an ordinary user, not authorized to impersonate anyone
+        # (default get_impersonable_users() policy: non-admins get an empty queryset).
+        self.plain_caller = User.objects.create(username='plain_caller', password='x')
+        self.target = User.objects.create(username='target', password='x')
+
+    def _viewset_and_request(self, user, impersonated_by):
+        vs = WorkflowViewSetMixin()
+        vs.queryset = self.Model.objects.all()
+        request = MagicMock()
+        request.user = user
+        request.impersonated_by = impersonated_by
+        return vs, request
+
+    @override_settings(WF_ALLOW_IMPERSONATE=True)
+    def test_chaining_blocked_when_real_caller_is_not_authorized(self):
+        # request.user is the privileged admin_caller (would succeed if checked
+        # directly), but request.impersonated_by -- the real original caller,
+        # because something upstream already swapped request.user -- is the
+        # unprivileged plain_caller. The chain attempt must be rejected.
+        vs, request = self._viewset_and_request(user=self.admin_caller, impersonated_by=self.plain_caller)
+        with self.assertRaises(DRFPermissionDenied):
+            vs.resolve_acting_user(request, self.target.pk)
+
+    @override_settings(WF_ALLOW_IMPERSONATE=True)
+    def test_impersonation_allowed_when_real_caller_is_authorized(self):
+        # Same shape, but now the real original caller (request.impersonated_by)
+        # IS the privileged admin_caller -- must succeed, and the resulting
+        # impersonated_by must attribute to the real caller, not the swapped-to
+        # identity currently sitting in request.user.
+        vs, request = self._viewset_and_request(user=self.plain_caller, impersonated_by=self.admin_caller)
+        acting_user, impersonated_by = vs.resolve_acting_user(request, self.target.pk)
+        self.assertEqual(acting_user, self.target)
+        self.assertEqual(impersonated_by, self.admin_caller)
+
+    @override_settings(WF_ALLOW_IMPERSONATE=True)
+    def test_context_preserved_on_plain_call(self):
+        # No further impersonation requested (user_id omitted) -- the existing
+        # impersonation context must be preserved, not silently dropped to None.
+        vs, request = self._viewset_and_request(user=self.plain_caller, impersonated_by=self.admin_caller)
+        acting_user, impersonated_by = vs.resolve_acting_user(request, None)
+        self.assertEqual(acting_user, self.plain_caller)
+        self.assertEqual(impersonated_by, self.admin_caller)
+
+    def test_plain_call_with_no_upstream_swap_is_unaffected(self):
+        # No middleware involved at all (request.impersonated_by absent, matching
+        # a real DRF Request that was never touched by any swap): behavior is
+        # exactly the pre-existing, already-tested-elsewhere single-hop contract.
+        vs = WorkflowViewSetMixin()
+        vs.queryset = self.Model.objects.all()
+        request = MagicMock(spec=['user'])
+        request.user = self.plain_caller
+        acting_user, impersonated_by = vs.resolve_acting_user(request, None)
+        self.assertEqual(acting_user, self.plain_caller)
+        self.assertIsNone(impersonated_by)
 

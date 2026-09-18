@@ -26,6 +26,15 @@ if omitted — `configure_workflow()` is a no-op if the model is already configu
 | `impersonable_users` | `callable(user) -> queryset` | `None` | Overrides the default impersonation policy (superusers / `WF_ADMIN_GROUP` members may impersonate any active user). See README.md "Impersonation". |
 | `snapshot_serializer` | a DRF `Serializer` class | `None` | Used by `get_workflow_snapshot()` to serialize the instance when a snapshot is taken (see the phase-level `snapshot` key below). |
 
+`impersonable_users(user)` is always evaluated against the real, originally-authenticated
+caller of the request, never against an already-impersonated identity — the DRF layer's
+`resolve_acting_user()` enforces this anti-chaining invariant regardless of how many
+layers reassign `request.user` upstream (e.g. a GUI's session-swap middleware sitting in
+front of a DRF endpoint). See README.md "API authorization and anti-chaining" for the
+full explanation and a worked example (a single API service-account user, e.g. `hr_app`,
+either granted `impersonable_users` rights over an entire office, or used purely as an
+entry point that delegates via normal workflow ownership hand-off instead of impersonation).
+
 Related Django settings that gate config-driven behavior, but aren't `configure_workflow()`
 kwargs themselves:
 

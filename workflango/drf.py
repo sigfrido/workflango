@@ -200,10 +200,25 @@ class WorkflowViewSetMixin:
 
         Raises ``PermissionDenied`` if ``user_id`` is specified but the caller
         is not allowed to impersonate that user, or if impersonation is disabled
-        globally (``WORKFLANGO_ALLOW_IMPERSONATE`` not True in settings).
+        globally (``WF_ALLOW_IMPERSONATE`` not True in settings).
+
+        Anti-chaining invariant: every authorization check below runs against
+        ``real_user`` -- ``request.impersonated_by`` if something upstream (e.g. a
+        session-swapping middleware) already reassigned ``request.user``, else
+        ``request.user`` itself. This means a caller who is themselves currently
+        being impersonated can never use this method to impersonate a *third*
+        identity: the check always anchors to the true, originally-authenticated
+        caller for this request, never to an already-impersonated one. A plain
+        DRF caller (no such middleware involved) is unaffected -- ``real_user`` and
+        ``request.user`` are simply the same object.
         """
+        real_user = getattr(request, 'impersonated_by', None) or request.user
+
         if not user_id or user_id == request.user.pk:
-            return request.user, None
+            # No further impersonation requested -- attribute the action to
+            # request.user as-is, preserving any impersonation context that
+            # already existed upstream instead of silently dropping it.
+            return request.user, getattr(request, 'impersonated_by', None)
 
         if not getattr(settings, 'WF_ALLOW_IMPERSONATE', False):
             raise PermissionDenied(wgettext("Impersonation is not enabled (WF_ALLOW_IMPERSONATE)."))
@@ -215,18 +230,19 @@ class WorkflowViewSetMixin:
                 'user': wgettext("User %(user_id)s not found or not active.") % {'user_id': user_id},
             }) from exc
 
-        if not self.get_impersonable_users(request.user).filter(pk=user_id).exists():
+        if not self.get_impersonable_users(real_user).filter(pk=user_id).exists():
             raise PermissionDenied(wgettext("Not authorized to act as %(user)s.") % {'user': target_user})
 
-        return target_user, request.user
+        return target_user, real_user
 
     def get_effective_user(self, request):
         """
         Resolves the effective user from the ``?as_user=<id>`` query parameter.
 
         Returns ``(acting_user, impersonated_by)`` — same contract as
-        ``resolve_acting_user``. Intended for use in ``get_queryset()`` to scope
-        list results to what the acting user would see::
+        ``resolve_acting_user`` (including the same anti-chaining invariant).
+        Intended for use in ``get_queryset()`` to scope list results to what the
+        acting user would see::
 
             def get_queryset(self):
                 acting_user, _ = self.get_effective_user(self.request)
@@ -234,7 +250,7 @@ class WorkflowViewSetMixin:
         """
         as_user_id = request.query_params.get('as_user')
         if not as_user_id:
-            return request.user, None
+            return request.user, getattr(request, 'impersonated_by', None)
         try:
             as_user_id = int(as_user_id)
         except (ValueError, TypeError) as exc:
@@ -245,10 +261,17 @@ class WorkflowViewSetMixin:
     # Permission check
     # ------------------------------------------------------------------
 
-    def check_wf_permission(self, instance, acting_user):
+    def check_wf_permission(self, instance, acting_user, impersonated_by=None):
         """
         Raises ``PermissionDenied`` if ``acting_user`` is not allowed to perform
         a workflow transition. Skipped for unmanaged objects (first transition).
+
+        ``impersonated_by`` must be the same value already resolved by
+        ``resolve_acting_user()``/``get_effective_user()`` for this request (or,
+        for callers outside the DRF impersonation flow, whatever real actor the
+        transition will be recorded against) — pass it explicitly rather than
+        relying on ``request.impersonated_by``, which isn't set for a pure DRF
+        caller impersonating via the ``user=<id>`` body param.
 
         Allowed if any of:
         - acting_user is the current owner (with matching impersonation context)
@@ -260,7 +283,6 @@ class WorkflowViewSetMixin:
         """
         if not instance.wfm_state:
             return
-        impersonated_by = getattr(self.request, 'impersonated_by', None)
         if instance.wfm.is_owner(acting_user, impersonated_by):
             return
         if instance.wfm_state.owner == acting_user:
@@ -316,7 +338,7 @@ class WorkflowViewSetMixin:
         data = input_ser.validated_data
 
         acting_user, impersonated_by = self.resolve_acting_user(request, data['user'])
-        self.check_wf_permission(instance, acting_user)
+        self.check_wf_permission(instance, acting_user, impersonated_by)
 
         owner = None
         if data['owner']:
