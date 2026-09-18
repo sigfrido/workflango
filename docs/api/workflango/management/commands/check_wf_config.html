@@ -34,10 +34,10 @@
                     <a class="class" href="#Command">Command</a>
                             <ul class="memberlist">
                         <li>
-                                <a class="variable" href="#Command.args">args</a>
+                                <a class="variable" href="#Command.help">help</a>
                         </li>
                         <li>
-                                <a class="variable" href="#Command.help">help</a>
+                                <a class="function" href="#Command.add_arguments">add_arguments</a>
                         </li>
                         <li>
                                 <a class="function" href="#Command.handle">handle</a>
@@ -72,18 +72,20 @@
 </span><span id="L-4"><a href="#L-4"><span class="linenos"> 4</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">workflango.management.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_model_list</span>
 </span><span id="L-5"><a href="#L-5"><span class="linenos"> 5</span></a>
 </span><span id="L-6"><a href="#L-6"><span class="linenos"> 6</span></a><span class="k">class</span><span class="w"> </span><span class="nc">Command</span><span class="p">(</span><span class="n">BaseCommand</span><span class="p">):</span>
-</span><span id="L-7"><a href="#L-7"><span class="linenos"> 7</span></a>    
-</span><span id="L-8"><a href="#L-8"><span class="linenos"> 8</span></a>
-</span><span id="L-9"><a href="#L-9"><span class="linenos"> 9</span></a>    <span class="n">args</span> <span class="o">=</span> <span class="s1">'[&lt;appname.model&gt;, &lt;appname.model&gt;...]'</span>
-</span><span id="L-10"><a href="#L-10"><span class="linenos">10</span></a>    <span class="n">help</span> <span class="o">=</span> <span class="s1">'Checks the workflow configuration for the specified models'</span>
-</span><span id="L-11"><a href="#L-11"><span class="linenos">11</span></a>
-</span><span id="L-12"><a href="#L-12"><span class="linenos">12</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">handle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
-</span><span id="L-13"><a href="#L-13"><span class="linenos">13</span></a>        <span class="k">for</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">get_model_list</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
-</span><span id="L-14"><a href="#L-14"><span class="linenos">14</span></a>            <span class="k">try</span><span class="p">:</span>
-</span><span id="L-15"><a href="#L-15"><span class="linenos">15</span></a>                <span class="n">model</span><span class="o">.</span><span class="n">wfm_config</span><span class="o">.</span><span class="n">check</span><span class="p">()</span>
-</span><span id="L-16"><a href="#L-16"><span class="linenos">16</span></a>                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"OK: </span><span class="si">{</span><span class="n">model</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="L-17"><a href="#L-17"><span class="linenos">17</span></a>            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-</span><span id="L-18"><a href="#L-18"><span class="linenos">18</span></a>                <span class="k">raise</span> <span class="n">CommandError</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+</span><span id="L-7"><a href="#L-7"><span class="linenos"> 7</span></a>
+</span><span id="L-8"><a href="#L-8"><span class="linenos"> 8</span></a>    <span class="n">help</span> <span class="o">=</span> <span class="s1">'Checks the workflow configuration for the specified models'</span>
+</span><span id="L-9"><a href="#L-9"><span class="linenos"> 9</span></a>
+</span><span id="L-10"><a href="#L-10"><span class="linenos">10</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">add_arguments</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parser</span><span class="p">):</span>
+</span><span id="L-11"><a href="#L-11"><span class="linenos">11</span></a>        <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">'models'</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s1">'*'</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s1">'appname.model'</span><span class="p">,</span>
+</span><span id="L-12"><a href="#L-12"><span class="linenos">12</span></a>            <span class="n">help</span><span class="o">=</span><span class="s1">'Models to check (default: every WorkflowModel subclass).'</span><span class="p">)</span>
+</span><span id="L-13"><a href="#L-13"><span class="linenos">13</span></a>
+</span><span id="L-14"><a href="#L-14"><span class="linenos">14</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">handle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+</span><span id="L-15"><a href="#L-15"><span class="linenos">15</span></a>        <span class="k">for</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">get_model_list</span><span class="p">(</span><span class="o">*</span><span class="n">options</span><span class="p">[</span><span class="s1">'models'</span><span class="p">]):</span>
+</span><span id="L-16"><a href="#L-16"><span class="linenos">16</span></a>            <span class="k">try</span><span class="p">:</span>
+</span><span id="L-17"><a href="#L-17"><span class="linenos">17</span></a>                <span class="n">model</span><span class="o">.</span><span class="n">wfm_config</span><span class="o">.</span><span class="n">check</span><span class="p">()</span>
+</span><span id="L-18"><a href="#L-18"><span class="linenos">18</span></a>                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"OK: </span><span class="si">{</span><span class="n">model</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="L-19"><a href="#L-19"><span class="linenos">19</span></a>            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+</span><span id="L-20"><a href="#L-20"><span class="linenos">20</span></a>                <span class="k">raise</span> <span class="n">CommandError</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
 </span></pre></div>
 
 
@@ -100,18 +102,20 @@
     </div>
     <a class="headerlink" href="#Command"></a>
             <div class="pdoc-code codehilite"><pre><span></span><span id="Command-7"><a href="#Command-7"><span class="linenos"> 7</span></a><span class="k">class</span><span class="w"> </span><span class="nc">Command</span><span class="p">(</span><span class="n">BaseCommand</span><span class="p">):</span>
-</span><span id="Command-8"><a href="#Command-8"><span class="linenos"> 8</span></a>    
-</span><span id="Command-9"><a href="#Command-9"><span class="linenos"> 9</span></a>
-</span><span id="Command-10"><a href="#Command-10"><span class="linenos">10</span></a>    <span class="n">args</span> <span class="o">=</span> <span class="s1">'[&lt;appname.model&gt;, &lt;appname.model&gt;...]'</span>
-</span><span id="Command-11"><a href="#Command-11"><span class="linenos">11</span></a>    <span class="n">help</span> <span class="o">=</span> <span class="s1">'Checks the workflow configuration for the specified models'</span>
-</span><span id="Command-12"><a href="#Command-12"><span class="linenos">12</span></a>
-</span><span id="Command-13"><a href="#Command-13"><span class="linenos">13</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">handle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
-</span><span id="Command-14"><a href="#Command-14"><span class="linenos">14</span></a>        <span class="k">for</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">get_model_list</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
-</span><span id="Command-15"><a href="#Command-15"><span class="linenos">15</span></a>            <span class="k">try</span><span class="p">:</span>
-</span><span id="Command-16"><a href="#Command-16"><span class="linenos">16</span></a>                <span class="n">model</span><span class="o">.</span><span class="n">wfm_config</span><span class="o">.</span><span class="n">check</span><span class="p">()</span>
-</span><span id="Command-17"><a href="#Command-17"><span class="linenos">17</span></a>                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"OK: </span><span class="si">{</span><span class="n">model</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="Command-18"><a href="#Command-18"><span class="linenos">18</span></a>            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-</span><span id="Command-19"><a href="#Command-19"><span class="linenos">19</span></a>                <span class="k">raise</span> <span class="n">CommandError</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+</span><span id="Command-8"><a href="#Command-8"><span class="linenos"> 8</span></a>
+</span><span id="Command-9"><a href="#Command-9"><span class="linenos"> 9</span></a>    <span class="n">help</span> <span class="o">=</span> <span class="s1">'Checks the workflow configuration for the specified models'</span>
+</span><span id="Command-10"><a href="#Command-10"><span class="linenos">10</span></a>
+</span><span id="Command-11"><a href="#Command-11"><span class="linenos">11</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">add_arguments</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parser</span><span class="p">):</span>
+</span><span id="Command-12"><a href="#Command-12"><span class="linenos">12</span></a>        <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">'models'</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s1">'*'</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s1">'appname.model'</span><span class="p">,</span>
+</span><span id="Command-13"><a href="#Command-13"><span class="linenos">13</span></a>            <span class="n">help</span><span class="o">=</span><span class="s1">'Models to check (default: every WorkflowModel subclass).'</span><span class="p">)</span>
+</span><span id="Command-14"><a href="#Command-14"><span class="linenos">14</span></a>
+</span><span id="Command-15"><a href="#Command-15"><span class="linenos">15</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">handle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+</span><span id="Command-16"><a href="#Command-16"><span class="linenos">16</span></a>        <span class="k">for</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">get_model_list</span><span class="p">(</span><span class="o">*</span><span class="n">options</span><span class="p">[</span><span class="s1">'models'</span><span class="p">]):</span>
+</span><span id="Command-17"><a href="#Command-17"><span class="linenos">17</span></a>            <span class="k">try</span><span class="p">:</span>
+</span><span id="Command-18"><a href="#Command-18"><span class="linenos">18</span></a>                <span class="n">model</span><span class="o">.</span><span class="n">wfm_config</span><span class="o">.</span><span class="n">check</span><span class="p">()</span>
+</span><span id="Command-19"><a href="#Command-19"><span class="linenos">19</span></a>                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"OK: </span><span class="si">{</span><span class="n">model</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="Command-20"><a href="#Command-20"><span class="linenos">20</span></a>            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+</span><span id="Command-21"><a href="#Command-21"><span class="linenos">21</span></a>                <span class="k">raise</span> <span class="n">CommandError</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
 </span></pre></div>
 
 
@@ -186,18 +190,6 @@ app registry.
 </div>
 
 
-                            <div id="Command.args" class="classattr">
-                                <div class="attr variable">
-            <span class="name">args</span>        =
-<span class="default_value">&#39;[&lt;appname.model&gt;, &lt;appname.model&gt;...]&#39;</span>
-
-        
-    </div>
-    <a class="headerlink" href="#Command.args"></a>
-    
-    
-
-                            </div>
                             <div id="Command.help" class="classattr">
                                 <div class="attr variable">
             <span class="name">help</span>        =
@@ -208,6 +200,28 @@ app registry.
     <a class="headerlink" href="#Command.help"></a>
     
     
+
+                            </div>
+                            <div id="Command.add_arguments" class="classattr">
+                                        <input id="Command.add_arguments-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">add_arguments</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">parser</span></span><span class="return-annotation">):</span></span>
+
+                <label class="view-source-button" for="Command.add_arguments-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#Command.add_arguments"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="Command.add_arguments-11"><a href="#Command.add_arguments-11"><span class="linenos">11</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">add_arguments</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parser</span><span class="p">):</span>
+</span><span id="Command.add_arguments-12"><a href="#Command.add_arguments-12"><span class="linenos">12</span></a>        <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">'models'</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s1">'*'</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s1">'appname.model'</span><span class="p">,</span>
+</span><span id="Command.add_arguments-13"><a href="#Command.add_arguments-13"><span class="linenos">13</span></a>            <span class="n">help</span><span class="o">=</span><span class="s1">'Models to check (default: every WorkflowModel subclass).'</span><span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Entry point for subclassed commands to add custom arguments.</p>
+</div>
+
 
                             </div>
                             <div id="Command.handle" class="classattr">
@@ -221,13 +235,13 @@ app registry.
 
     </div>
     <a class="headerlink" href="#Command.handle"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="Command.handle-13"><a href="#Command.handle-13"><span class="linenos">13</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">handle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
-</span><span id="Command.handle-14"><a href="#Command.handle-14"><span class="linenos">14</span></a>        <span class="k">for</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">get_model_list</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
-</span><span id="Command.handle-15"><a href="#Command.handle-15"><span class="linenos">15</span></a>            <span class="k">try</span><span class="p">:</span>
-</span><span id="Command.handle-16"><a href="#Command.handle-16"><span class="linenos">16</span></a>                <span class="n">model</span><span class="o">.</span><span class="n">wfm_config</span><span class="o">.</span><span class="n">check</span><span class="p">()</span>
-</span><span id="Command.handle-17"><a href="#Command.handle-17"><span class="linenos">17</span></a>                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"OK: </span><span class="si">{</span><span class="n">model</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="Command.handle-18"><a href="#Command.handle-18"><span class="linenos">18</span></a>            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-</span><span id="Command.handle-19"><a href="#Command.handle-19"><span class="linenos">19</span></a>                <span class="k">raise</span> <span class="n">CommandError</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="Command.handle-15"><a href="#Command.handle-15"><span class="linenos">15</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">handle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+</span><span id="Command.handle-16"><a href="#Command.handle-16"><span class="linenos">16</span></a>        <span class="k">for</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">get_model_list</span><span class="p">(</span><span class="o">*</span><span class="n">options</span><span class="p">[</span><span class="s1">'models'</span><span class="p">]):</span>
+</span><span id="Command.handle-17"><a href="#Command.handle-17"><span class="linenos">17</span></a>            <span class="k">try</span><span class="p">:</span>
+</span><span id="Command.handle-18"><a href="#Command.handle-18"><span class="linenos">18</span></a>                <span class="n">model</span><span class="o">.</span><span class="n">wfm_config</span><span class="o">.</span><span class="n">check</span><span class="p">()</span>
+</span><span id="Command.handle-19"><a href="#Command.handle-19"><span class="linenos">19</span></a>                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"OK: </span><span class="si">{</span><span class="n">model</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="Command.handle-20"><a href="#Command.handle-20"><span class="linenos">20</span></a>            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+</span><span id="Command.handle-21"><a href="#Command.handle-21"><span class="linenos">21</span></a>                <span class="k">raise</span> <span class="n">CommandError</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
 </span></pre></div>
 
 

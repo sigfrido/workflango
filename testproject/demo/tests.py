@@ -1,4 +1,7 @@
+import io
+
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
@@ -386,3 +389,23 @@ class ImpersonationTests(GUITestMixin, WorkflowTestMixin, TestCase):
         supplier.wfm.transition(self.manager1, 'proposed', self.manager1)
         supplier.wfm.transition(self.manager1, 'active', self.manager1)
         return supplier
+
+
+class ManagementCommandTests(TestCase):
+    """
+    Regression: check_wf_config/check_wf_objects declared a stale Django-1.x-style
+    `args = '[<appname.model>, ...]'` class attribute, which modern argparse-based
+    commands don't consult at all -- add_arguments() never declared a matching
+    positional, so passing explicit model names on the command line failed with
+    "unrecognized arguments" instead of scoping the check to just those models.
+    """
+
+    def test_check_wf_config_accepts_explicit_model_args(self):
+        # Before the fix, argparse itself rejected the positional args ("unrecognized
+        # arguments") before handle() ever ran -- both commands print via bare print()
+        # rather than self.stdout.write(), so call_command's stdout= capture doesn't
+        # see their output; not raising is the actual regression check.
+        call_command('check_wf_config', 'demo.Supplier', 'demo.Request', stdout=io.StringIO())
+
+    def test_check_wf_objects_accepts_explicit_model_args(self):
+        call_command('check_wf_objects', 'demo.Supplier', stdout=io.StringIO())

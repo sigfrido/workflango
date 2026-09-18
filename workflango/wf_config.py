@@ -326,6 +326,7 @@ class WorkflowConfig(dict):
         self.check_unreachable_phases()
         self.check_defined_groups()
         self.check_config_values()
+        self.check_has_terminal_phase()
 
 
     def check_unreachable_phases(self):
@@ -371,6 +372,15 @@ class WorkflowConfig(dict):
                 value = self[phase].get(key, default)
                 if not value in values:
                     raise InvalidWorkflowConfiguration(f'Undefined value for {key} in phase {self._model.__name__}.{phase}: {value}.')
+
+
+    def check_has_terminal_phase(self):
+        """
+        At least one non-None phase must be terminal (is_closed=True), or an
+        instance could never reach a final state.
+        """
+        if not any(self[phase].get('is_closed', False) for phase in self._model_phases):
+            raise InvalidWorkflowConfiguration(f'No terminal phase (is_closed=True) declared for {self._model}.')
 
         # TODO destination_owner_mode: none, user, last_owner, assign, assign-optional
 #

@@ -6,7 +6,7 @@
 <h1>{% if object %}Edit supplier{% else %}New supplier{% endif %}</h1>
 
 {# Which fields are rendered as inputs vs. read-only text depends on the supplier's #}
-{# current workflow phase -- see Supplier.EDITABLE_FIELDS_BY_PHASE / SupplierForm. #}
+{# current workflow phase -- see Supplier.workflow_phases[...]['properties']['editable_fields'] / SupplierForm. #}
 <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {{ form.non_field_errors }}

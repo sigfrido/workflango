@@ -68,18 +68,9 @@ class ChangeStateForm(forms.Form):
 
 class WorkflowFilterForm(forms.Form):
     """
-    Every field is `required=False`: this is a search/filter form, not a data-entry
-    form -- an unfilled field must mean "don't filter on this", not "please pick
-    something before submitting". Concretely: search_wf_history's first choice is
-    `('', 'Current')` (an empty *value*, not an empty *selection*); with the field
-    left at Django's default `required=True`, the browser's HTML5 validation refuses
-    to submit an empty-valued selection at all, blocking the form even though a
-    perfectly meaningful choice ("Current") is already selected. Same issue on every
-    other field here (blank Select/date/text left untouched by the user). Leaving
-    search_wf_owner/search_wf_phase blank means "no filter", which is a
-    distinct, still-selectable choice from explicitly picking e.g. owner "None"
-    (`none` in USER_CHOICES, meaning "owner is null") -- required=False doesn't change
-    that distinction, it only stops the browser from forcing a choice.
+    Every field is `required=False`: an unfilled field must mean "don't filter on this".
+    search_wf_owner blank means "no filter", which is a distinct, still-selectable 
+    choice from explicitly picking e.g. `none` in USER_CHOICES, meaning "owner is null".
     """
 
     search_wf_owner = forms.ChoiceField(
@@ -134,17 +125,6 @@ class WorkflowFilterForm(forms.Form):
                             attrs={'class':'form-select'}
                         ),
                       )
-
-    # TODO spostare in dashborad.forms_mixins
-    search_following = forms.NullBooleanField(
-                        label=wgettext_lazy('Following'),
-                        required=False,
-                        widget=Select(
-                            attrs={'class':'form-select'},
-                            choices=TRUEFALSE_CHOICES,
-                        ),
-    )
-
 
     search_wf_date_min = forms.DateField(
                     label=wgettext_lazy('Min date'),

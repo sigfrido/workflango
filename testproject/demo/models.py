@@ -40,13 +40,6 @@ class Supplier(WorkflowModel):
         if self.tax_code and not _is_valid_tax_code(self.tax_code):
             raise ValidationError({'tax_code': _TAX_CODE_ERROR})
 
-    EDITABLE_FIELDS_BY_PHASE = {
-        None: {'company_name', 'tax_code', 'certification'},
-        'proposed': {'company_name', 'tax_code', 'certification'},
-        'active': {'certification'},
-        'archived': set(),
-    }
-
     workflow_defaults = {
         # Everyone can see any supplier regardless of phase; edit/admin (who can
         # transition it) is narrowed per phase below.
@@ -54,10 +47,14 @@ class Supplier(WorkflowModel):
         'properties': {'edit_button_label': 'Edit'},
     }
 
+    # 'editable_fields' below is a custom properties key, read only by SupplierForm
+    # (see forms.py) -- workflango itself doesn't know about it, same as any other
+    # app-specific key under 'properties' (see docs/wf-configuration.md, section 3).
     workflow_phases = (
         (None, {
             'reachable_phases': {'proposed': {}},
             'edit': ['USERS', 'MANAGERS'],
+            'properties': {'editable_fields': {'company_name', 'tax_code', 'certification'}},
         }),
         ('proposed', {
             'reachable_phases': {
@@ -65,6 +62,7 @@ class Supplier(WorkflowModel):
             },
             'edit': ['USERS', 'MANAGERS'],
             'admin': ['MANAGERS'],
+            'properties': {'editable_fields': {'company_name', 'tax_code', 'certification'}},
         }),
         ('active', {
             'reachable_phases': {
@@ -72,11 +70,13 @@ class Supplier(WorkflowModel):
             },
             'edit': ['MANAGERS'],
             'admin': ['MANAGERS'],
+            'properties': {'editable_fields': {'certification'}},
         }),
         ('archived', {
             'is_closed': True,
             'reachable_phases': {},
             'edit': [],
+            'properties': {'editable_fields': set()},
         }),
     )
 
@@ -115,14 +115,6 @@ class Request(WorkflowModel):
         if self.supplier_id and self.supplier.current_state and self.supplier.current_state.phase != 'active':
             raise ValidationError({'supplier': 'Requests can only target an active supplier.'})
 
-    EDITABLE_FIELDS_BY_PHASE = {
-        None: {'title', 'description', 'budget', 'supplier'},
-        'draft': {'title', 'description', 'budget', 'supplier'},
-        'submitted': {'manager_notes', 'reference_code'},
-        'approved': set(),
-        'rejected': set(),
-    }
-
     workflow_defaults = {
         # Everyone can see any request regardless of phase; edit/admin (who can
         # transition it) is narrowed per phase below.
@@ -130,10 +122,14 @@ class Request(WorkflowModel):
         'properties': {'edit_button_label': 'Edit'},
     }
 
+    # 'editable_fields' below is a custom properties key, read only by RequestForm
+    # (see forms.py) -- workflango itself doesn't know about it, same as any other
+    # app-specific key under 'properties' (see docs/wf-configuration.md, section 3).
     workflow_phases = (
         (None, {
             'reachable_phases': {'draft': {}},
             'edit': ['USERS', 'MANAGERS'],
+            'properties': {'editable_fields': {'title', 'description', 'budget', 'supplier'}},
         }),
         ('draft', {
             'reachable_phases': {
@@ -141,6 +137,7 @@ class Request(WorkflowModel):
             },
             'edit': ['USERS', 'MANAGERS'],
             'admin': ['MANAGERS'],
+            'properties': {'editable_fields': {'title', 'description', 'budget', 'supplier'}},
         }),
         ('submitted', {
             'reachable_phases': {
@@ -149,16 +146,19 @@ class Request(WorkflowModel):
             },
             'edit': [],
             'admin': ['MANAGERS'],
+            'properties': {'editable_fields': {'manager_notes', 'reference_code'}},
         }),
         ('approved', {
             'is_closed': True,
             'reachable_phases': {},
             'edit': [],
+            'properties': {'editable_fields': set()},
         }),
         ('rejected', {
             'is_closed': True,
             'reachable_phases': {},
             'edit': [],
+            'properties': {'editable_fields': set()},
         }),
     )
 

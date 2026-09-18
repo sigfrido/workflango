@@ -81,6 +81,9 @@ doc.wfm.transition(request.user, 'draft', request.user)
 doc.wfm.transition(request.user, 'published', None)
 ```
 
+See [docs/wf-configuration.md](docs/wf-configuration.md) for the full reference of
+every `config`/`defaults` key (`allow_release`, `owner_mode`, `properties`, ...).
+
 ## Django GUI (traditional views)
 
 Unlike sibling project [drf-sebastian](https://github.com/sigfrido/drf-sebastian) (a DRF-driven auto-GUI with field-level permissions), workflango has no opinion on your page layout or CRUD forms — it ships the workflow-specific pieces only: the change-state confirmation screen, the history table, and a handful of template fragments (buttons, edit-button, unread indicator) meant to be `{% include %}`d into your own list/detail templates.
@@ -337,7 +340,7 @@ any other filter mistake.
 `testproject/` (repository only, not part of the installed package) is a small, traditional Django project — plain class-based views, no REST framework — demonstrating workflango driving two related models with group-based permissions instead of sebastian's field-level ones:
 
 - **Supplier**: `proposed` → `active` → `archived`. Any authenticated user proposes a supplier; only a manager can activate or archive it.
-- **Request**: `draft` → `submitted` → `approved` / `rejected`, and can only target an *active* supplier (enforced both in the form's queryset and as a `Request.clean()` integrity check). Which fields render as editable inputs vs. read-only text in the edit form depends on the request's current phase (`Request.EDITABLE_FIELDS_BY_PHASE`) — workflango has no field-level permission system of its own, so this is a template-level pattern specific to the demo, not a library feature.
+- **Request**: `draft` → `submitted` → `approved` / `rejected`, and can only target an *active* supplier (enforced both in the form's queryset and as a `Request.clean()` integrity check). Which fields render as editable inputs vs. read-only text in the edit form depends on the request's current phase (`workflow_phases[...]['properties']['editable_fields']`, see [docs/wf-configuration.md](docs/wf-configuration.md)) — workflango has no field-level permission system of its own, so this is a template-level pattern specific to the demo, not a library feature.
 
 It also demonstrates a GUI on top of the library's [impersonation](#impersonation) feature (superuser-only): `demo/middleware.py`'s `ImpersonateMiddleware` swaps `request.user` for a session-selected target and stashes the real admin on `request.impersonated_by`, which is exactly the contract `_BaseWorkflowTransitionMixin.check_and_transition()` already expects — no changes needed anywhere else for `impersonated_by` to show up correctly on transitions performed while impersonating. `demo/views.py`'s `ImpersonateStartView`/`ImpersonateStopView` are demo-only, ad hoc views (not part of the library, by design — workflango only ships the request-level contract, not a GUI for driving it).
 

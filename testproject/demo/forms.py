@@ -41,7 +41,7 @@ class SupplierForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         _bootstrapify(self)
         phase = self.instance.current_state.phase if self.instance.pk and self.instance.current_state else None
-        self.editable_fields = Supplier.EDITABLE_FIELDS_BY_PHASE.get(phase, set())
+        self.editable_fields = Supplier.wfm_config.get_phase_config(phase)['properties'].get('editable_fields', set())
         for name in self.fields:
             if name not in self.editable_fields:
                 self.fields[name].required = False
@@ -62,7 +62,7 @@ class RequestForm(forms.ModelForm):
         # got archived before submit).
         self.fields['supplier'].queryset = Supplier.objects.filter(wfm_state__phase='active')
         phase = self.instance.current_state.phase if self.instance.pk and self.instance.current_state else None
-        self.editable_fields = Request.EDITABLE_FIELDS_BY_PHASE.get(phase, set())
+        self.editable_fields = Request.wfm_config.get_phase_config(phase)['properties'].get('editable_fields', set())
         for name in self.fields:
             if name not in self.editable_fields:
                 self.fields[name].required = False

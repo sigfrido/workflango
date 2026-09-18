@@ -366,7 +366,7 @@ class MyModelViewSet(WorkflowViewSetMixin, ModelViewSet):
 </span><span id="L-183"><a href="#L-183"><span class="linenos">183</span></a><span class="sd">        Returns a queryset of users that ``user`` is allowed to impersonate.</span>
 </span><span id="L-184"><a href="#L-184"><span class="linenos">184</span></a>
 </span><span id="L-185"><a href="#L-185"><span class="linenos">185</span></a><span class="sd">        Delegates to ``WorkflowConfig.get_impersonable_users(user)``, which</span>
-</span><span id="L-186"><a href="#L-186"><span class="linenos">186</span></a><span class="sd">        applies the default policy (superuser / WORKFLOW_ADMIN_GROUP) unless</span>
+</span><span id="L-186"><a href="#L-186"><span class="linenos">186</span></a><span class="sd">        applies the default policy (superuser / WF_ADMIN_GROUP) unless</span>
 </span><span id="L-187"><a href="#L-187"><span class="linenos">187</span></a><span class="sd">        the workflow was configured with a custom ``impersonable_users`` callable.</span>
 </span><span id="L-188"><a href="#L-188"><span class="linenos">188</span></a>
 </span><span id="L-189"><a href="#L-189"><span class="linenos">189</span></a><span class="sd">        Override this method on the ViewSet to bypass the WorkflowConfig lookup.</span>
@@ -938,7 +938,7 @@ consuming serializer.</p>
 </span><span id="WorkflowViewSetMixin-184"><a href="#WorkflowViewSetMixin-184"><span class="linenos">184</span></a><span class="sd">        Returns a queryset of users that ``user`` is allowed to impersonate.</span>
 </span><span id="WorkflowViewSetMixin-185"><a href="#WorkflowViewSetMixin-185"><span class="linenos">185</span></a>
 </span><span id="WorkflowViewSetMixin-186"><a href="#WorkflowViewSetMixin-186"><span class="linenos">186</span></a><span class="sd">        Delegates to ``WorkflowConfig.get_impersonable_users(user)``, which</span>
-</span><span id="WorkflowViewSetMixin-187"><a href="#WorkflowViewSetMixin-187"><span class="linenos">187</span></a><span class="sd">        applies the default policy (superuser / WORKFLOW_ADMIN_GROUP) unless</span>
+</span><span id="WorkflowViewSetMixin-187"><a href="#WorkflowViewSetMixin-187"><span class="linenos">187</span></a><span class="sd">        applies the default policy (superuser / WF_ADMIN_GROUP) unless</span>
 </span><span id="WorkflowViewSetMixin-188"><a href="#WorkflowViewSetMixin-188"><span class="linenos">188</span></a><span class="sd">        the workflow was configured with a custom ``impersonable_users`` callable.</span>
 </span><span id="WorkflowViewSetMixin-189"><a href="#WorkflowViewSetMixin-189"><span class="linenos">189</span></a>
 </span><span id="WorkflowViewSetMixin-190"><a href="#WorkflowViewSetMixin-190"><span class="linenos">190</span></a><span class="sd">        Override this method on the ViewSet to bypass the WorkflowConfig lookup.</span>
@@ -1241,7 +1241,7 @@ to scope results accordingly.</li>
 </span><span id="WorkflowViewSetMixin.get_impersonable_users-184"><a href="#WorkflowViewSetMixin.get_impersonable_users-184"><span class="linenos">184</span></a><span class="sd">        Returns a queryset of users that ``user`` is allowed to impersonate.</span>
 </span><span id="WorkflowViewSetMixin.get_impersonable_users-185"><a href="#WorkflowViewSetMixin.get_impersonable_users-185"><span class="linenos">185</span></a>
 </span><span id="WorkflowViewSetMixin.get_impersonable_users-186"><a href="#WorkflowViewSetMixin.get_impersonable_users-186"><span class="linenos">186</span></a><span class="sd">        Delegates to ``WorkflowConfig.get_impersonable_users(user)``, which</span>
-</span><span id="WorkflowViewSetMixin.get_impersonable_users-187"><a href="#WorkflowViewSetMixin.get_impersonable_users-187"><span class="linenos">187</span></a><span class="sd">        applies the default policy (superuser / WORKFLOW_ADMIN_GROUP) unless</span>
+</span><span id="WorkflowViewSetMixin.get_impersonable_users-187"><a href="#WorkflowViewSetMixin.get_impersonable_users-187"><span class="linenos">187</span></a><span class="sd">        applies the default policy (superuser / WF_ADMIN_GROUP) unless</span>
 </span><span id="WorkflowViewSetMixin.get_impersonable_users-188"><a href="#WorkflowViewSetMixin.get_impersonable_users-188"><span class="linenos">188</span></a><span class="sd">        the workflow was configured with a custom ``impersonable_users`` callable.</span>
 </span><span id="WorkflowViewSetMixin.get_impersonable_users-189"><a href="#WorkflowViewSetMixin.get_impersonable_users-189"><span class="linenos">189</span></a>
 </span><span id="WorkflowViewSetMixin.get_impersonable_users-190"><a href="#WorkflowViewSetMixin.get_impersonable_users-190"><span class="linenos">190</span></a><span class="sd">        Override this method on the ViewSet to bypass the WorkflowConfig lookup.</span>
@@ -1253,7 +1253,7 @@ to scope results accordingly.</li>
             <div class="docstring"><p>Returns a queryset of users that <code>user</code> is allowed to impersonate.</p>
 
 <p>Delegates to <code>WorkflowConfig.get_impersonable_users(user)</code>, which
-applies the default policy (superuser / WORKFLOW_ADMIN_GROUP) unless
+applies the default policy (superuser / WF_ADMIN_GROUP) unless
 the workflow was configured with a custom <code>impersonable_users</code> callable.</p>
 
 <p>Override this method on the ViewSet to bypass the WorkflowConfig lookup.</p>

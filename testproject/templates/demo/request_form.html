@@ -6,7 +6,7 @@
 <h1>{% if object %}Edit request{% else %}New request{% endif %}</h1>
 
 {# Which fields are rendered as inputs vs. read-only text depends on the request's #}
-{# current workflow phase -- see Request.EDITABLE_FIELDS_BY_PHASE / RequestForm. #}
+{# current workflow phase -- see Request.workflow_phases[...]['properties']['editable_fields'] / RequestForm. #}
 <form method="post">
     {% csrf_token %}
     {{ form.non_field_errors }}

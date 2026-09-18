@@ -226,7 +226,6 @@ class State(models.Model):
             return False
         elif allow_release == 'always' or self.get_instance().wfm.can_admin(self.owner):
             return True
-        # default = 'strict'
         # TODO gestire le fasi terminali (attuata, revocata...): in teoria dovrebbe sempre essere consentito il release???
         if self.transition_type in ['delegate', 'assign', 'change_assign', 'reassign']:
             return False

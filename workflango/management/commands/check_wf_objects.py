@@ -8,10 +8,11 @@ from workflango.management.utils import send_email_to_admins
 
 class Command(BaseCommand):
 
-    args = '[<appname.model>, <appname.model>...]'
     help = 'Checks the workflow state for the objects of the specified models'
 
     def add_arguments(self, parser):
+        parser.add_argument('models', nargs='*', metavar='appname.model',
+            help='Models to check (default: every WorkflowModel subclass).')
         parser.add_argument('--fix-stale-states', '-s', dest='fix_stale_states',
             action = 'store_true', default=False,
             help='Automatically fixes stale states.')
@@ -28,7 +29,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.options = options
         self.errors = []
-        for model in get_model_list(*args):
+        for model in get_model_list(*options['models']):
             self.check_model(model)
         if self.errors:
             subject = '[workflango] - check_wf_objects report'

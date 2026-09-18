@@ -66,6 +66,25 @@ class WorkflowConfigTest(TestCase):
         self.assertIn('group2', groups)
 
 
+    def test_check_passes_for_valid_config(self):
+        # WorkflowModelValid.workflow_phases has terminal phases (3 and 4, both
+        # is_closed=True), every phase is reachable from None, and its groups/
+        # allow_release/allow_delegate values are all valid -- .check() should
+        # raise nothing.
+        self.wc.check()
+
+
+    def test_check_raises_without_terminal_phase(self):
+        wc = WorkflowConfig(WorkflowModelValid, (
+            (None, {'reachable_phases': {'a': {}}, 'admin': [], 'edit': [], 'read': []}),
+            ('a', {'reachable_phases': {}, 'admin': [], 'edit': [], 'read': []}),
+        ))
+        with self.assertRaises(InvalidWorkflowConfiguration):
+            wc.check_has_terminal_phase()
+        with self.assertRaises(InvalidWorkflowConfiguration):
+            wc.check()
+
+
 
 class WorkflowTest(TransactionTestCase):
 
