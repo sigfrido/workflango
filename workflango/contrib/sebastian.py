@@ -218,13 +218,14 @@ class SebastianWorkflowViewSetMixin(WorkflowViewSetMixin):
         """
         instance = self.get_object()
         self._sebastian_obj = instance
+        impersonated_by = getattr(request, 'impersonated_by', None)
 
         if request.method == 'GET':
             phase = request.query_params.get('phase')
             if not phase:
                 raise DRFValidationError({'phase': 'Required.'})
 
-            transition = WFTransitionDescriptor(instance, phase, request.user)
+            transition = WFTransitionDescriptor(instance, phase, request.user, impersonated_by=impersonated_by)
             owner_choices = transition.get_potential_owners() if transition.show_owner else []
             default_owner = transition.get_default_owner() if transition.show_owner else None
             severity_to_style = {'info': 'primary', 'warn': 'warning', 'error': 'danger'}
@@ -265,15 +266,13 @@ class SebastianWorkflowViewSetMixin(WorkflowViewSetMixin):
 
         # This GUI action only supports the middleware-based impersonation contract
         # (see class docstring) -- the DRF change_state action's user= body param
-        # kind isn't exposed here, so there's no further resolution to do beyond
-        # reading whatever a consumer's own middleware already recorded.
-        impersonated_by = getattr(request, 'impersonated_by', None)
+        # kind isn't exposed here, so impersonated_by is already resolved above.
         self.check_wf_permission(instance, request.user, impersonated_by)
 
         # Resolve command strings ('suspend', 'resume', 'release', 'take-ownership', ...)
         # to the real destination phase and suspended flag via WFTransitionDescriptor.
         phase      = data['phase']
-        transition = WFTransitionDescriptor(instance, phase, request.user)
+        transition = WFTransitionDescriptor(instance, phase, request.user, impersonated_by=impersonated_by)
         destination = transition.destination
         suspended   = transition.is_suspend
 
