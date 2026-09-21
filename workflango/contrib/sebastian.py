@@ -179,7 +179,8 @@ class SebastianWorkflowViewSetMixin(WorkflowViewSetMixin):
         result into the template context as ``workflow_transitions`` so the
         ``workflango/sebastian/htmx/detail.html`` template can render the action buttons.
         """
-        return WFTransitionDescriptor.get_workflow_transitions(instance, self.request.user)
+        impersonated_by = getattr(self.request, 'impersonated_by', None)
+        return WFTransitionDescriptor.get_workflow_transitions(instance, self.request.user, impersonated_by)
 
     # ------------------------------------------------------------------
     # Actions
