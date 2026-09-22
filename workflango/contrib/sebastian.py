@@ -202,7 +202,8 @@ class SebastianWorkflowViewSetMixin(WorkflowViewSetMixin):
     history.gui_config = {
         'label': wgettext_lazy('History'),
         'icon': 'clock-history',
-        'position': 'both',
+        'group': 'workflow',
+        'position': 'detail',
     }
 
     @action(detail=True, methods=['get', 'post'])
