@@ -39,9 +39,19 @@ Database support for atomic locking (`SELECT FOR UPDATE`):
 
 ## Installation
 
+workflango is not published on PyPI. Install directly from a GitHub release:
+
 ```
-pip install workflango
+pip install https://github.com/sigfrido/workflango/releases/download/v<VERSION>/workflango-<VERSION>.tar.gz
 ```
+
+Or pin it in `requirements.txt` / `pyproject.toml`:
+
+```
+workflango @ https://github.com/sigfrido/workflango/releases/download/v<VERSION>/workflango-<VERSION>.tar.gz
+```
+
+Replace `<VERSION>` with the desired release tag (e.g. `0.4.0`). Available releases: https://github.com/sigfrido/workflango/releases
 
 For local development alongside a consumer project:
 
