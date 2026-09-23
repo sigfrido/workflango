@@ -33,6 +33,7 @@ walkthrough, including the four template fragments this module's
 
 try:
     from sebastian.serializers import gui_field
+    from sebastian.mixins import NestedGUIMixin
 except ImportError as e:
     raise ImportError(
         "drf-sebastian must be installed to use workflango.contrib.sebastian. "
@@ -55,6 +56,7 @@ __all__ = [
     'WorkflowActionSerializer',
     'SebastianWorkflowSerializerMixin',
     'SebastianWorkflowViewSetMixin',
+    'WFNestedGUIMixin',
 ]
 
 
@@ -170,15 +172,17 @@ class SebastianWorkflowViewSetMixin(WorkflowViewSetMixin):
         """Workflow-managed objects cannot be deleted via the GUI."""
         return False
 
-    def get_workflow_transitions(self, instance):
-        """
-        Returns WorkflowTransitions(phase_transitions, reject_transition, command_transitions)
-        for the given instance and the current request user.
+    def extra_context(self) -> dict:
+        obj = getattr(self, '_sebastian_obj', None)
+        if obj is None:
+            return {}
+        try:
+            return {'workflow_transitions': self.get_workflow_transitions(obj)}
+        except Exception:
+            return {}
 
-        sebastian's renderer duck-types on this method and, if present, injects the
-        result into the template context as ``workflow_transitions`` so the
-        ``workflango/sebastian/htmx/detail.html`` template can render the action buttons.
-        """
+    def get_workflow_transitions(self, instance):
+        """Return WorkflowTransitions for the given instance and the current request user."""
         impersonated_by = getattr(self.request, 'impersonated_by', None)
         return WFTransitionDescriptor.get_workflow_transitions(instance, self.request.user, impersonated_by)
 
@@ -328,3 +332,32 @@ class SebastianWorkflowViewSetMixin(WorkflowViewSetMixin):
         return Response(serializer.data)
 
     change_state_form.gui_url = True  # register in GUIRouter without adding to action buttons
+
+
+class WFNestedGUIMixin(NestedGUIMixin):
+    """NestedGUIMixin companion for workflow-managed parent objects.
+
+    Blocks nested CRUD when the parent's workflow state is suspended or when
+    the request user is neither the owner nor an admin of the parent.
+
+    Usage::
+
+        class RequisitoViewSet(WFNestedGUIMixin, viewsets.ModelViewSet):
+            class Sebastian:
+                edit_permission = perm_fase('richiesta')
+    """
+
+    def parent_is_editable(self, parent) -> bool:
+        if not hasattr(parent, 'wfm_state') or not hasattr(parent, 'wfm'):
+            return True
+        state = parent.wfm_state
+        if not state:
+            return True
+        if state.suspended:
+            return False
+        user = self.request.user
+        impersonated_by = getattr(self.request, 'impersonated_by', None)
+        is_owner = state.owned_by(user, impersonated_by)
+        if not is_owner and not parent.wfm.can_admin(user):
+            return False
+        return True
