@@ -338,7 +338,8 @@ class WFNestedGUIMixin(NestedGUIMixin):
     """NestedGUIMixin companion for workflow-managed parent objects.
 
     Blocks nested CRUD when the parent's workflow state is suspended or when
-    the request user is neither the owner nor an admin of the parent.
+    the request user is not the owner of the parent. Being a workflow admin
+    does not grant edit rights on the parent's nested resources.
 
     Usage::
 
@@ -357,7 +358,4 @@ class WFNestedGUIMixin(NestedGUIMixin):
             return False
         user = self.request.user
         impersonated_by = getattr(self.request, 'impersonated_by', None)
-        is_owner = state.owned_by(user, impersonated_by)
-        if not is_owner and not parent.wfm.can_admin(user):
-            return False
-        return True
+        return state.owned_by(user, impersonated_by)
