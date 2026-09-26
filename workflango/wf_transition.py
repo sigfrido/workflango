@@ -412,7 +412,7 @@ class WFTransitionDescriptor(object):
         is_admin = obj.wfm.can_admin(user)
         # Effective ownership: owner alone isn't enough once impersonation exists -- see
         # State.owned_by() and GitHub issue #1. An admin impersonating owner without
-        # having explicitly reclaimed ownership (State.impersonated_by) is not the same
+        # having explicitly reclaimed ownership (State.owner_impersonated_by) is not the same
         # actor as owner acting for themselves.
         is_owner = cur_state.owned_by(user, impersonated_by)
         # Reclaiming: the acting identity is already the raw recorded owner, regardless

@@ -1544,6 +1544,47 @@ class WorkflowImpersonationOwnershipTest(TransactionTestCase):
         self.assertEqual(state.transition_type, 'resume')
 
 
+    # -- opus#45: assignment performed while impersonating ------------------------
+
+    def make_instance_assigned_while_impersonating(self):
+        """setup_creator, impersonated by the superuser, assigns the record to user_1."""
+        instance = self.OkModel.objects.create()
+        instance.wfm.transition(self.setup_creator, 1, self.setup_creator)
+        instance.wfm.take_ownership(self.setup_creator, impersonated_by=self.superuser)
+        instance.wfm.transition(self.setup_creator, 1, self.user_1, impersonated_by=self.superuser)
+        return instance
+
+    def test_assigned_while_impersonating_is_held_by_the_new_owner_in_person(self):
+        instance = self.make_instance_assigned_while_impersonating()
+        state = instance.current_state
+        self.assertEqual(state.impersonated_by, self.superuser)  # audit of who acted
+        self.assertIsNone(state.owner_impersonated_by)
+        self.assertTrue(instance.wfm.is_owner(self.user_1))
+        self.assertFalse(instance.wfm.is_owner(self.user_1, impersonated_by=self.superuser))
+
+    def test_owner_impersonated_by_set_when_actor_keeps_the_record(self):
+        instance = self.make_owned_instance()
+        state = instance.wfm.take_ownership(self.user_1, impersonated_by=self.superuser)
+        self.assertEqual(state.owner_impersonated_by, self.superuser)
+
+    def test_impersonator_of_assignee_must_take_ownership(self):
+        instance = self.make_instance_assigned_while_impersonating()
+        self.assertTrue(instance.wfm.can_take_ownership(self.user_1, impersonated_by=self.superuser))
+        state_count = instance.states.count()
+        state = instance.wfm.take_ownership(self.user_1, impersonated_by=self.superuser)
+        self.assertEqual(instance.states.count(), state_count + 1)  # not a no-op
+        self.assertEqual(state.transition_type, 'impersonate')
+        self.assertTrue(instance.wfm.is_owner(self.user_1, impersonated_by=self.superuser))
+        self.assertFalse(instance.wfm.is_owner(self.user_1))
+
+    def test_assignee_can_reclaim_after_impersonator_took_ownership(self):
+        instance = self.make_instance_assigned_while_impersonating()
+        instance.wfm.take_ownership(self.user_1, impersonated_by=self.superuser)
+        state = instance.wfm.take_ownership(self.user_1)
+        self.assertEqual(state.transition_type, 'reclaim')
+        self.assertTrue(instance.wfm.is_owner(self.user_1))
+
+
 class CheckWfPermissionImpersonationRegressionTest(TransactionTestCase):
     """
     Regression: WorkflowViewSetMixin.check_wf_permission did not pass impersonated_by
