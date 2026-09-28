@@ -94,8 +94,12 @@ class WorkflowConfig(dict):
     - allow_release / allow_delegate: 'strict' | 'always' | 'no' | 'yes'
     - properties: arbitrary dict consumed by the view layer (help_topic, description, …)
 
-    Reject transitions between adjacent phases are auto-configured unless
-    'allow-reject': False is set on a transition config.
+    Reject transitions between adjacent phases are auto-configured from each forward
+    transition config's 'allow-reject':
+    - True (default): anyone who may act on the record can send it back;
+    - 'admin': only members of the admin groups of the phase the record is sent back
+      from (the generated reject gets those groups as 'allowed_groups');
+    - False: no reject transition is generated.
 
     Class-level caches (_workflow_admin, _workflow_admins) are shared across all
     WorkflowConfig instances. Call clear_cached_admins() in tests that modify users.
@@ -174,10 +178,19 @@ class WorkflowConfig(dict):
         for (from_phase, from_phase_conf) in self.items():
             if from_phase:
                 for (to_phase, from_reach_conf) in from_phase_conf['reachable_phases'].items():
-                    if from_reach_conf.get('allow-reject', True):
+                    allow_reject = from_reach_conf.get('allow-reject', True)
+                    if allow_reject not in (True, False, 'admin'):
+                        raise InvalidWorkflowConfiguration(
+                            f"Invalid 'allow-reject' for {self._model}.{from_phase} -> {to_phase}: "
+                            f"{allow_reject!r} (expected True, False or 'admin')"
+                        )
+                    if allow_reject:
                         to_reach_conf = self[to_phase]['reachable_phases']
                         if not from_phase in to_reach_conf:
-                            to_reach_conf[from_phase] = { 'reject' : True }
+                            reject_conf = {'reject': True}
+                            if allow_reject == 'admin':
+                                reject_conf['allowed_groups'] = list(self[to_phase]['admin'])
+                            to_reach_conf[from_phase] = reject_conf
 
 
     def get_phase_config(self, phase):

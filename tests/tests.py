@@ -66,6 +66,28 @@ class WorkflowConfigTest(TestCase):
         self.assertIn('group2', groups)
 
 
+    def _config_with_reject(self, allow_reject):
+        phases = (
+            (None, {'reachable_phases': {'a': {}}, 'edit': ['editors']}),
+            ('a', {'reachable_phases': {'b': {'allow-reject': allow_reject}}, 'edit': ['editors']}),
+            ('b', {'reachable_phases': {}, 'edit': ['editors'], 'admin': ['b_admins']}),
+        )
+        return WorkflowConfig(None, phases, {'read': [], 'edit': [], 'admin': ['wf_admins']})
+
+    def test_allow_reject_default_generates_reject(self):
+        self.assertEqual(self._config_with_reject(True)['b']['reachable_phases']['a'], {'reject': True})
+
+    def test_allow_reject_false_generates_nothing(self):
+        self.assertNotIn('a', self._config_with_reject(False)['b']['reachable_phases'])
+
+    def test_allow_reject_admin_limits_to_phase_admins(self):
+        conf = self._config_with_reject('admin')['b']['reachable_phases']['a']
+        self.assertEqual(conf, {'reject': True, 'allowed_groups': ['b_admins']})
+
+    def test_allow_reject_invalid_value(self):
+        with self.assertRaises(InvalidWorkflowConfiguration):
+            self._config_with_reject('everyone')
+
     def test_check_passes_for_valid_config(self):
         # WorkflowModelValid.workflow_phases has terminal phases (3 and 4, both
         # is_closed=True), every phase is reachable from None, and its groups/
