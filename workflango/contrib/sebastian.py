@@ -76,6 +76,21 @@ class WorkflowActionSerializer(serializers.Serializer):  # pylint: disable=too-f
     suspended = serializers.BooleanField(required=False, default=False)
 
 
+def publish_transition_messages(request, wfm):
+    """
+    Turn the infos/warnings collected during a successful transition (validators'
+    TransitionInfo/TransitionWarning, plus wfm.add_info()/add_warning() calls from
+    after_state_transition) into Django messages, shown by the next messages fragment.
+    No-op when django.contrib.messages is not installed.
+    """
+    from django.contrib import messages
+    django_request = getattr(request, '_request', request)
+    for text in wfm.infos:
+        messages.info(django_request, text, fail_silently=True)
+    for text in wfm.warnings:
+        messages.warning(django_request, text, fail_silently=True)
+
+
 class SebastianWorkflowSerializerMixin(WorkflowSerializerMixin):  # pylint: disable=too-few-public-methods
     """
     Drop-in replacement for ``workflango.drf.WorkflowSerializerMixin`` that adds a
@@ -327,6 +342,7 @@ class SebastianWorkflowViewSetMixin(WorkflowViewSetMixin):
             response['HX-Reswap'] = 'innerHTML'
             return response
 
+        publish_transition_messages(request, instance.wfm)
         instance.refresh_from_db()
         serializer = self.get_serializer(instance)
         return Response(serializer.data)

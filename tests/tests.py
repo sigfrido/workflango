@@ -1725,3 +1725,38 @@ class ResolveActingUserAntiChainingTest(TestCase):
         self.assertEqual(acting_user, self.plain_caller)
         self.assertIsNone(impersonated_by)
 
+
+
+class TransitionMessagesTest(TestCase):
+    """wfm.add_info()/add_warning() and their publication as Django messages (opus#42)."""
+
+    def test_add_info_and_warning_are_collected(self):
+        instance = WorkflowModelValid()
+        instance.wfm.add_info('Published')
+        instance.wfm.add_warning('Preview not removed')
+        self.assertEqual(instance.wfm.infos, ['Published'])
+        self.assertEqual(instance.wfm.warnings, ['Preview not removed'])
+
+    def test_publish_transition_messages(self):
+        from django.contrib import messages
+        from django.contrib.messages.storage.base import BaseStorage
+        from workflango.contrib.sebastian import publish_transition_messages
+
+        class MemoryStorage(BaseStorage):  # the root test settings have no SECRET_KEY/session
+            def _get(self, *args, **kwargs):
+                return [], True
+
+            def _store(self, messages, response, *args, **kwargs):
+                return []
+
+        request = RequestFactory().post('/')
+        request._messages = MemoryStorage(request)
+        wfm = MagicMock(infos=['Published'], warnings=['Test mode'])
+        publish_transition_messages(request, wfm)
+        stored = [(m.level, m.message) for m in request._messages]
+        self.assertEqual(stored, [(messages.INFO, 'Published'), (messages.WARNING, 'Test mode')])
+
+    def test_publish_transition_messages_without_messages_framework(self):
+        from workflango.contrib.sebastian import publish_transition_messages
+        request = RequestFactory().post('/')  # no message storage: silently ignored
+        publish_transition_messages(request, MagicMock(infos=['x'], warnings=[]))

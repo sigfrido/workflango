@@ -593,6 +593,20 @@ class InstanceWorkflowManager(object):
         self.infos: list = []
 
 
+    def add_info(self, message):
+        """
+        Report an informational message about the transition in progress (e.g. from
+        after_state_transition). Collected with the validators' TransitionInfo in
+        ``infos``; GUIs may show them to the user once the transition succeeds.
+        """
+        self.infos.append(str(message))
+
+
+    def add_warning(self, message):
+        """Like add_info(), for warnings (collected in ``warnings``)."""
+        self.warnings.append(str(message))
+
+
     def state_or_error(self):
         """
         Returns instance's current state if defined, otherwise throws error
