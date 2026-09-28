@@ -78,17 +78,16 @@ class WorkflowActionSerializer(serializers.Serializer):  # pylint: disable=too-f
 
 def publish_transition_messages(request, wfm):
     """
-    Turn the infos/warnings collected during a successful transition (validators'
-    TransitionInfo/TransitionWarning, plus wfm.add_info()/add_warning() calls from
-    after_state_transition) into Django messages, shown by the next messages fragment.
-    No-op when django.contrib.messages is not installed.
+    Turn the outcome messages of a successful transition (wfm.add_info()/add_warning(),
+    e.g. from after_state_transition) into Django messages, shown by the next messages
+    fragment. The validators' pre-check warnings/infos are not repeated: the transition
+    form already showed them. No-op when django.contrib.messages is not installed.
     """
     from django.contrib import messages
     django_request = getattr(request, '_request', request)
-    for text in wfm.infos:
-        messages.info(django_request, text, fail_silently=True)
-    for text in wfm.warnings:
-        messages.warning(django_request, text, fail_silently=True)
+    for level, text in wfm.transition_messages:
+        add = messages.warning if level == 'warning' else messages.info
+        add(django_request, text, fail_silently=True)
 
 
 class SebastianWorkflowSerializerMixin(WorkflowSerializerMixin):  # pylint: disable=too-few-public-methods

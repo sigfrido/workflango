@@ -589,22 +589,25 @@ class InstanceWorkflowManager(object):
 
     def __init__(self, instance):
         self.instance = instance
+        # Validators' TransitionWarning/TransitionInfo: pre-check, shown before confirming.
         self.warnings: list = []
         self.infos: list = []
+        # Outcome of the transition just performed ((level, text), level 'info' | 'warning'),
+        # reported via add_info()/add_warning(); GUIs show them once the transition succeeds.
+        self.transition_messages: list = []
 
 
     def add_info(self, message):
         """
-        Report an informational message about the transition in progress (e.g. from
-        after_state_transition). Collected with the validators' TransitionInfo in
-        ``infos``; GUIs may show them to the user once the transition succeeds.
+        Report an informational outcome of the transition in progress (e.g. from
+        after_state_transition). Kept apart from the validators' pre-check ``infos``.
         """
-        self.infos.append(str(message))
+        self.transition_messages.append(('info', str(message)))
 
 
     def add_warning(self, message):
-        """Like add_info(), for warnings (collected in ``warnings``)."""
-        self.warnings.append(str(message))
+        """Like add_info(), for a warning about the transition's outcome."""
+        self.transition_messages.append(('warning', str(message)))
 
 
     def state_or_error(self):
@@ -866,6 +869,7 @@ class InstanceWorkflowManager(object):
         # LOCK current state row, should raise instantly if the object is already locked.
         # TODO record changes other than transitions should also lock the record (on POST)
         self.instance.lock_instance()
+        self.transition_messages = []
 
         new_phase = State.phase_str(new_phase)
 

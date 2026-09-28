@@ -1756,8 +1756,11 @@ class TransitionMessagesTest(TestCase):
         instance = WorkflowModelValid()
         instance.wfm.add_info('Published')
         instance.wfm.add_warning('Preview not removed')
-        self.assertEqual(instance.wfm.infos, ['Published'])
-        self.assertEqual(instance.wfm.warnings, ['Preview not removed'])
+        self.assertEqual(instance.wfm.transition_messages,
+                         [('info', 'Published'), ('warning', 'Preview not removed')])
+        # kept apart from the validators' pre-check lists
+        self.assertEqual(instance.wfm.infos, [])
+        self.assertEqual(instance.wfm.warnings, [])
 
     def test_publish_transition_messages(self):
         from django.contrib import messages
@@ -1773,12 +1776,13 @@ class TransitionMessagesTest(TestCase):
 
         request = RequestFactory().post('/')
         request._messages = MemoryStorage(request)
-        wfm = MagicMock(infos=['Published'], warnings=['Test mode'])
+        wfm = MagicMock(transition_messages=[('info', 'Published'), ('warning', 'Not removed')],
+                        infos=['Pre-check info'], warnings=['Pre-check warning'])
         publish_transition_messages(request, wfm)
         stored = [(m.level, m.message) for m in request._messages]
-        self.assertEqual(stored, [(messages.INFO, 'Published'), (messages.WARNING, 'Test mode')])
+        self.assertEqual(stored, [(messages.INFO, 'Published'), (messages.WARNING, 'Not removed')])
 
     def test_publish_transition_messages_without_messages_framework(self):
         from workflango.contrib.sebastian import publish_transition_messages
         request = RequestFactory().post('/')  # no message storage: silently ignored
-        publish_transition_messages(request, MagicMock(infos=['x'], warnings=[]))
+        publish_transition_messages(request, MagicMock(transition_messages=[('info', 'x')]))
