@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here, starting from this release. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.0-rc4] - 2026-09-29
+
+### Fixed
+
+- **Hard-coded Italian in the sebastian templates**: `workflango/sebastian/htmx/confirm.html` (Confirm, Cancel, Close, Assign to, Message) and `history.html` (title and table headers, "as", "records", "No states recorded.") had Italian text written directly in the markup, so they showed in Italian regardless of the active language; they now use `{% wtrans %}` with English source strings and Italian translations in the catalog
+
 ## [1.0.0-rc3] - 2026-09-29
 
 ### Fixed

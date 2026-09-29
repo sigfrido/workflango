@@ -1,4 +1,4 @@
-{% load sebastian_tags %}
+{% load sebastian_tags workflow_tags %}
 {# Inline workflow confirmation form — rendered into #wf-confirm-panel (innerHTML swap). #}
 {# On success, hx-target reloads the full detail page (#sebastian-content).             #}
 <div class="card border-{{ data.confirm_style|default:'primary' }} mt-3">
@@ -6,7 +6,7 @@
     <span class="fw-semibold">{{ data.confirm_prompt }}</span>
     <button type="button"
             class="btn-close"
-            aria-label="Annulla"
+            aria-label="{% wtrans 'Cancel' %}"
             onclick="document.getElementById('wf-confirm-panel').innerHTML=''"></button>
   </div>
   <div class="card-body">
@@ -39,7 +39,7 @@
       {% if data.show_owner %}
       <div class="mb-3">
         <label class="form-label" for="id_owner">
-          Assegna a{% with errs=form_errors|get_item:"owner" %}{% if errs %} <span class="text-danger">*</span>{% endif %}{% endwith %}
+          {% wtrans "Assign to" %}{% with errs=form_errors|get_item:"owner" %}{% if errs %} <span class="text-danger">*</span>{% endif %}{% endwith %}
         </label>
         <select name="owner"
                 id="id_owner"
@@ -63,7 +63,7 @@
 
       <div class="mb-3">
         <label class="form-label" for="id_message">
-          Messaggio{% if data.require_message %} <span class="text-danger">*</span>{% endif %}
+          {% wtrans "Message" %}{% if data.require_message %} <span class="text-danger">*</span>{% endif %}
         </label>
         <textarea name="message"
                   id="id_message"
@@ -82,12 +82,12 @@
       <div class="d-flex gap-2">
         <button type="submit"
                 class="btn btn-{{ data.confirm_style|default:'primary' }}">
-          {% icon "check-lg" %} Conferma
+          {% icon "check-lg" %} {% wtrans "Confirm" %}
         </button>
         <button type="button"
                 class="btn btn-outline-secondary"
                 onclick="document.getElementById('wf-confirm-panel').innerHTML=''">
-          Annulla
+          {% wtrans "Cancel" %}
         </button>
         <span id="wf-confirm-spinner" class="htmx-indicator ms-2 spinner-border spinner-border-sm text-secondary" role="status"></span>
       </div>
@@ -96,7 +96,7 @@
     <button type="button"
             class="btn btn-outline-secondary"
             onclick="document.getElementById('wf-confirm-panel').innerHTML=''">
-      Chiudi
+      {% wtrans "Close" %}
     </button>
     {% endif %}
 

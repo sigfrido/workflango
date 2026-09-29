@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: workflango 1.0.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-29 18:36+0200\n"
+"POT-Creation-Date: 2026-09-29 19:10+0200\n"
 "PO-Revision-Date: 2026-08-27 12:00+0200\n"
 "Last-Translator: workflango maintainers\n"
 "Language-Team: Italian\n"
@@ -546,6 +546,35 @@ msgstr "Sospeso"
 msgctxt "workflango"
 msgid "Impersonation is not enabled (WF_ALLOW_IMPERSONATE)."
 msgstr "Impersonazione non abilitata (WF_ALLOW_IMPERSONATE)."
+
+msgctxt "workflango"
+msgid "Confirm"
+msgstr "Conferma"
+
+msgctxt "workflango"
+msgid "Close"
+msgstr "Chiudi"
+
+msgctxt "workflango"
+msgid "Assign to"
+msgstr "Assegna a"
+
+msgctxt "workflango"
+msgid "Workflow history"
+msgstr "Storico workflow"
+
+msgctxt "workflango"
+msgid "No states recorded."
+msgstr "Nessuno stato registrato."
+
+msgctxt "workflango"
+msgid "records"
+msgstr "record"
+
+#. Translators: "(as <real admin>)" next to the operator who acted while impersonated
+msgctxt "workflango"
+msgid "as"
+msgstr "come"
 
 #~ msgctxt "workflango"
 #~ msgid "Away"

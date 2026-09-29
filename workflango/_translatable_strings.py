@@ -201,4 +201,12 @@ def _strings():  # pragma: no cover - never called, see module docstring
         pgettext('workflango', 'The transition will be performed as ADMIN; the following errors were detected: %(error)s.'),
         pgettext('workflango', 'Impersonation is not enabled (WF_ALLOW_IMPERSONATE).'),
         pgettext('workflango', 'Invalid boolean value (%(value)s): allowed 1/0, t(rue)/f(alse), y(es)/n(o)'),
+        pgettext('workflango', 'Confirm'),
+        pgettext('workflango', 'Close'),
+        pgettext('workflango', 'Assign to'),
+        pgettext('workflango', 'Workflow history'),
+        pgettext('workflango', 'No states recorded.'),
+        pgettext('workflango', 'records'),
+        # Translators: "(as <real admin>)" next to the operator who acted while impersonated
+        pgettext('workflango', 'as'),
     )
