@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "workflango"
-version = "1.0.0-rc3"
+version = "1.0.0-rc4"
 description = "A reusable Django BPM workflow engine"
 readme = "README.md"
 license = {file = "LICENSE"}
