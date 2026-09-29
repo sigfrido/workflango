@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db.models import Q
@@ -65,6 +65,28 @@ class WorkflowConfigTest(TestCase):
         self.assertIn('group4', groups)
         self.assertIn('group2', groups)
 
+
+    def _config_with_reject(self, allow_reject):
+        phases = (
+            (None, {'reachable_phases': {'a': {}}, 'edit': ['editors']}),
+            ('a', {'reachable_phases': {'b': {'allow-reject': allow_reject}}, 'edit': ['editors']}),
+            ('b', {'reachable_phases': {}, 'edit': ['editors'], 'admin': ['b_admins']}),
+        )
+        return WorkflowConfig(None, phases, {'read': [], 'edit': [], 'admin': ['wf_admins']})
+
+    def test_allow_reject_default_generates_reject(self):
+        self.assertEqual(self._config_with_reject(True)['b']['reachable_phases']['a'], {'reject': True})
+
+    def test_allow_reject_false_generates_nothing(self):
+        self.assertNotIn('a', self._config_with_reject(False)['b']['reachable_phases'])
+
+    def test_allow_reject_admin_limits_to_phase_admins(self):
+        conf = self._config_with_reject('admin')['b']['reachable_phases']['a']
+        self.assertEqual(conf, {'reject': True, 'allowed_groups': ['b_admins']})
+
+    def test_allow_reject_invalid_value(self):
+        with self.assertRaises(InvalidWorkflowConfiguration):
+            self._config_with_reject('everyone')
 
     def test_check_passes_for_valid_config(self):
         # WorkflowModelValid.workflow_phases has terminal phases (3 and 4, both
@@ -1544,6 +1566,47 @@ class WorkflowImpersonationOwnershipTest(TransactionTestCase):
         self.assertEqual(state.transition_type, 'resume')
 
 
+    # -- opus#45: assignment performed while impersonating ------------------------
+
+    def make_instance_assigned_while_impersonating(self):
+        """setup_creator, impersonated by the superuser, assigns the record to user_1."""
+        instance = self.OkModel.objects.create()
+        instance.wfm.transition(self.setup_creator, 1, self.setup_creator)
+        instance.wfm.take_ownership(self.setup_creator, impersonated_by=self.superuser)
+        instance.wfm.transition(self.setup_creator, 1, self.user_1, impersonated_by=self.superuser)
+        return instance
+
+    def test_assigned_while_impersonating_is_held_by_the_new_owner_in_person(self):
+        instance = self.make_instance_assigned_while_impersonating()
+        state = instance.current_state
+        self.assertEqual(state.impersonated_by, self.superuser)  # audit of who acted
+        self.assertIsNone(state.owner_impersonated_by)
+        self.assertTrue(instance.wfm.is_owner(self.user_1))
+        self.assertFalse(instance.wfm.is_owner(self.user_1, impersonated_by=self.superuser))
+
+    def test_owner_impersonated_by_set_when_actor_keeps_the_record(self):
+        instance = self.make_owned_instance()
+        state = instance.wfm.take_ownership(self.user_1, impersonated_by=self.superuser)
+        self.assertEqual(state.owner_impersonated_by, self.superuser)
+
+    def test_impersonator_of_assignee_must_take_ownership(self):
+        instance = self.make_instance_assigned_while_impersonating()
+        self.assertTrue(instance.wfm.can_take_ownership(self.user_1, impersonated_by=self.superuser))
+        state_count = instance.states.count()
+        state = instance.wfm.take_ownership(self.user_1, impersonated_by=self.superuser)
+        self.assertEqual(instance.states.count(), state_count + 1)  # not a no-op
+        self.assertEqual(state.transition_type, 'impersonate')
+        self.assertTrue(instance.wfm.is_owner(self.user_1, impersonated_by=self.superuser))
+        self.assertFalse(instance.wfm.is_owner(self.user_1))
+
+    def test_assignee_can_reclaim_after_impersonator_took_ownership(self):
+        instance = self.make_instance_assigned_while_impersonating()
+        instance.wfm.take_ownership(self.user_1, impersonated_by=self.superuser)
+        state = instance.wfm.take_ownership(self.user_1)
+        self.assertEqual(state.transition_type, 'reclaim')
+        self.assertTrue(instance.wfm.is_owner(self.user_1))
+
+
 class CheckWfPermissionImpersonationRegressionTest(TransactionTestCase):
     """
     Regression: WorkflowViewSetMixin.check_wf_permission did not pass impersonated_by
@@ -1684,3 +1747,61 @@ class ResolveActingUserAntiChainingTest(TestCase):
         self.assertEqual(acting_user, self.plain_caller)
         self.assertIsNone(impersonated_by)
 
+
+
+class TransitionMessagesTest(TestCase):
+    """wfm.add_info()/add_warning() and their publication as Django messages (opus#42)."""
+
+    def test_add_info_and_warning_are_collected(self):
+        instance = WorkflowModelValid()
+        instance.wfm.add_info('Published')
+        instance.wfm.add_warning('Preview not removed')
+        self.assertEqual(instance.wfm.transition_messages,
+                         [('info', 'Published'), ('warning', 'Preview not removed')])
+        # kept apart from the validators' pre-check lists
+        self.assertEqual(instance.wfm.infos, [])
+        self.assertEqual(instance.wfm.warnings, [])
+
+    def test_nested_transition_keeps_outer_messages(self):
+        """Only the outermost transition resets transition_messages."""
+        wfm = WorkflowModelValid().wfm
+        wfm.transition_messages = [('info', 'stale')]
+        seen = []
+
+        def fake_transition(*args, **kwargs):
+            wfm.add_info('outer before')
+            if len(seen) == 0:
+                seen.append(1)
+                wfm.transition(None, 1, None)  # nested on the same instance
+            wfm.add_info('outer after')
+
+        with patch.object(wfm, '_transition', side_effect=fake_transition):
+            wfm.transition(None, 1, None)
+        self.assertEqual([t for _, t in wfm.transition_messages],
+                         ['outer before', 'outer before', 'outer after', 'outer after'])
+        self.assertEqual(wfm._transition_depth, 0)
+
+    def test_publish_transition_messages(self):
+        from django.contrib import messages
+        from django.contrib.messages.storage.base import BaseStorage
+        from workflango.contrib.sebastian import publish_transition_messages
+
+        class MemoryStorage(BaseStorage):  # the root test settings have no SECRET_KEY/session
+            def _get(self, *args, **kwargs):
+                return [], True
+
+            def _store(self, messages, response, *args, **kwargs):
+                return []
+
+        request = RequestFactory().post('/')
+        request._messages = MemoryStorage(request)
+        wfm = MagicMock(transition_messages=[('info', 'Published'), ('warning', 'Not removed')],
+                        infos=['Pre-check info'], warnings=['Pre-check warning'])
+        publish_transition_messages(request, wfm)
+        stored = [(m.level, m.message) for m in request._messages]
+        self.assertEqual(stored, [(messages.INFO, 'Published'), (messages.WARNING, 'Not removed')])
+
+    def test_publish_transition_messages_without_messages_framework(self):
+        from workflango.contrib.sebastian import publish_transition_messages
+        request = RequestFactory().post('/')  # no message storage: silently ignored
+        publish_transition_messages(request, MagicMock(transition_messages=[('info', 'x')]))

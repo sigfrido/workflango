@@ -53,7 +53,7 @@ class WFTransitionDescriptor(object):
         self._suspended = suspended
         self._impersonated_by = impersonated_by
         dest_phase = State.phase_str(dest_phase)
-        if dest_phase in ['release', 'delegate', 'assign', 'reject', 'take-ownership', 'suspend', 'resume']:
+        if dest_phase in ['release', 'delegate', 'reassign', 'assign', 'reject', 'take-ownership', 'suspend', 'resume']:
             self.command = dest_phase
             if self.command == 'reject':
                 prev_state = self.state.get_previous_state()
@@ -213,6 +213,8 @@ class WFTransitionDescriptor(object):
                 caption = wgettext('Resume')
             elif self.command == 'delegate':
                 caption = wgettext('Delegate')
+            elif self.command == 'reassign':
+                caption = wgettext('Reassign (ADMIN)')
             elif self.command == 'assign':
                 caption = wgettext('Assign')
             elif self.is_reject:
@@ -265,7 +267,7 @@ class WFTransitionDescriptor(object):
     def require_message(self):
         require_message = self.get_config('require_message', None)
         if require_message == None:
-            require_message = self.is_reject or self.command in ['delegate', 'reject', 'release', 'suspend'] or (self.command in ['take-ownership', 'assign'] and self.obj.current_state.owner and self.obj.current_state.owner != self.user)
+            require_message = self.is_reject or self.command in ['delegate', 'reassign', 'reject', 'release', 'suspend'] or (self.command in ['take-ownership', 'assign'] and self.obj.current_state.owner and self.obj.current_state.owner != self.user)
         return require_message
 
 
@@ -275,7 +277,7 @@ class WFTransitionDescriptor(object):
             return False
         return (
             (self.obj.wfm.can_admin(self.user)) # see #595 - User who can administer record in its present state can always assign destination owner
-            or (self.command in ['delegate', 'assign'])
+            or (self.command in ['delegate', 'reassign', 'assign'])
             or (self.destination_owner_mode in ['assign', 'assign-optional'])
         )
 
@@ -375,10 +377,9 @@ class WFTransitionDescriptor(object):
             return 'info'
         if self.command == 'resume':
             return 'info'
+        if self.command == 'reassign':
+            return 'error'
         if self.command == 'delegate':
-            # reassign: admin delegating on someone else's record
-            if self.state and self.state.owner and self.state.owner != self.user:
-                return 'error'
             return 'warn'
         if self.command in ('suspend', 'release'):
             return 'warn'
@@ -411,7 +412,7 @@ class WFTransitionDescriptor(object):
         is_admin = obj.wfm.can_admin(user)
         # Effective ownership: owner alone isn't enough once impersonation exists -- see
         # State.owned_by() and GitHub issue #1. An admin impersonating owner without
-        # having explicitly reclaimed ownership (State.impersonated_by) is not the same
+        # having explicitly reclaimed ownership (State.owner_impersonated_by) is not the same
         # actor as owner acting for themselves.
         is_owner = cur_state.owned_by(user, impersonated_by)
         # Reclaiming: the acting identity is already the raw recorded owner, regardless
@@ -456,7 +457,8 @@ class WFTransitionDescriptor(object):
 
         if owner is not None and not is_owner and (is_admin or can_reclaim):
             command_transitions.append(cls(obj, 'take-ownership', user, impersonated_by=impersonated_by))  # snatch/reclaim → severity=error
-            command_transitions.append(cls(obj, 'delegate', user, impersonated_by=impersonated_by))         # reassign → severity=error
+        if owner is not None and not is_owner and is_admin:
+            command_transitions.append(cls(obj, 'reassign', user, impersonated_by=impersonated_by))
 
         return WorkflowTransitions(phase_transitions, reject_transition, command_transitions)
 

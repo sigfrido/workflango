@@ -33,6 +33,7 @@ walkthrough, including the four template fragments this module's
 
 try:
     from sebastian.serializers import gui_field
+    from sebastian.mixins import NestedGUIMixin
 except ImportError as e:
     raise ImportError(
         "drf-sebastian must be installed to use workflango.contrib.sebastian. "
@@ -55,6 +56,7 @@ __all__ = [
     'WorkflowActionSerializer',
     'SebastianWorkflowSerializerMixin',
     'SebastianWorkflowViewSetMixin',
+    'WFNestedGUIMixin',
 ]
 
 
@@ -72,6 +74,20 @@ class WorkflowActionSerializer(serializers.Serializer):  # pylint: disable=too-f
     owner     = serializers.IntegerField(allow_null=True, required=False, default=None)
     message   = serializers.CharField(allow_blank=True, required=False, default='')
     suspended = serializers.BooleanField(required=False, default=False)
+
+
+def publish_transition_messages(request, wfm):
+    """
+    Turn the outcome messages of a successful transition (wfm.add_info()/add_warning(),
+    e.g. from after_state_transition) into Django messages, shown by the next messages
+    fragment. The validators' pre-check warnings/infos are not repeated: the transition
+    form already showed them. No-op when django.contrib.messages is not installed.
+    """
+    from django.contrib import messages
+    django_request = getattr(request, '_request', request)
+    for level, text in wfm.transition_messages:
+        add = messages.warning if level == 'warning' else messages.info
+        add(django_request, text, fail_silently=True)
 
 
 class SebastianWorkflowSerializerMixin(WorkflowSerializerMixin):  # pylint: disable=too-few-public-methods
@@ -170,16 +186,19 @@ class SebastianWorkflowViewSetMixin(WorkflowViewSetMixin):
         """Workflow-managed objects cannot be deleted via the GUI."""
         return False
 
-    def get_workflow_transitions(self, instance):
-        """
-        Returns WorkflowTransitions(phase_transitions, reject_transition, command_transitions)
-        for the given instance and the current request user.
+    def extra_context(self) -> dict:
+        obj = getattr(self, '_sebastian_obj', None)
+        if obj is None:
+            return {}
+        try:
+            return {'workflow_transitions': self.get_workflow_transitions(obj)}
+        except Exception:
+            return {}
 
-        sebastian's renderer duck-types on this method and, if present, injects the
-        result into the template context as ``workflow_transitions`` so the
-        ``workflango/sebastian/htmx/detail.html`` template can render the action buttons.
-        """
-        return WFTransitionDescriptor.get_workflow_transitions(instance, self.request.user)
+    def get_workflow_transitions(self, instance):
+        """Return WorkflowTransitions for the given instance and the current request user."""
+        impersonated_by = getattr(self.request, 'impersonated_by', None)
+        return WFTransitionDescriptor.get_workflow_transitions(instance, self.request.user, impersonated_by)
 
     # ------------------------------------------------------------------
     # Actions
@@ -201,7 +220,8 @@ class SebastianWorkflowViewSetMixin(WorkflowViewSetMixin):
     history.gui_config = {
         'label': wgettext_lazy('History'),
         'icon': 'clock-history',
-        'position': 'both',
+        'group': 'workflow',
+        'position': 'detail',
     }
 
     @action(detail=True, methods=['get', 'post'])
@@ -217,13 +237,14 @@ class SebastianWorkflowViewSetMixin(WorkflowViewSetMixin):
         """
         instance = self.get_object()
         self._sebastian_obj = instance
+        impersonated_by = getattr(request, 'impersonated_by', None)
 
         if request.method == 'GET':
             phase = request.query_params.get('phase')
             if not phase:
                 raise DRFValidationError({'phase': 'Required.'})
 
-            transition = WFTransitionDescriptor(instance, phase, request.user)
+            transition = WFTransitionDescriptor(instance, phase, request.user, impersonated_by=impersonated_by)
             owner_choices = transition.get_potential_owners() if transition.show_owner else []
             default_owner = transition.get_default_owner() if transition.show_owner else None
             severity_to_style = {'info': 'primary', 'warn': 'warning', 'error': 'danger'}
@@ -264,15 +285,13 @@ class SebastianWorkflowViewSetMixin(WorkflowViewSetMixin):
 
         # This GUI action only supports the middleware-based impersonation contract
         # (see class docstring) -- the DRF change_state action's user= body param
-        # kind isn't exposed here, so there's no further resolution to do beyond
-        # reading whatever a consumer's own middleware already recorded.
-        impersonated_by = getattr(request, 'impersonated_by', None)
+        # kind isn't exposed here, so impersonated_by is already resolved above.
         self.check_wf_permission(instance, request.user, impersonated_by)
 
         # Resolve command strings ('suspend', 'resume', 'release', 'take-ownership', ...)
         # to the real destination phase and suspended flag via WFTransitionDescriptor.
         phase      = data['phase']
-        transition = WFTransitionDescriptor(instance, phase, request.user)
+        transition = WFTransitionDescriptor(instance, phase, request.user, impersonated_by=impersonated_by)
         destination = transition.destination
         suspended   = transition.is_suspend
 
@@ -322,8 +341,36 @@ class SebastianWorkflowViewSetMixin(WorkflowViewSetMixin):
             response['HX-Reswap'] = 'innerHTML'
             return response
 
+        publish_transition_messages(request, instance.wfm)
         instance.refresh_from_db()
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
     change_state_form.gui_url = True  # register in GUIRouter without adding to action buttons
+
+
+class WFNestedGUIMixin(NestedGUIMixin):
+    """NestedGUIMixin companion for workflow-managed parent objects.
+
+    Blocks nested CRUD when the parent's workflow state is suspended or when
+    the request user is not the owner of the parent. Being a workflow admin
+    does not grant edit rights on the parent's nested resources.
+
+    Usage::
+
+        class RequisitoViewSet(WFNestedGUIMixin, viewsets.ModelViewSet):
+            class Sebastian:
+                edit_permission = perm_fase('richiesta')
+    """
+
+    def parent_is_editable(self, parent) -> bool:
+        if not hasattr(parent, 'wfm_state') or not hasattr(parent, 'wfm'):
+            return True
+        state = parent.wfm_state
+        if not state:
+            return True
+        if state.suspended:
+            return False
+        user = self.request.user
+        impersonated_by = getattr(self.request, 'impersonated_by', None)
+        return state.owned_by(user, impersonated_by)

@@ -267,7 +267,24 @@ class State(models.Model):
         while impersonating (see InstanceWorkflowManager.take_ownership()) is required
         before an impersonator can act -- see GitHub issue #1.
         """
-        return self.owner == user and self.impersonated_by == impersonated_by
+        return self.owner == user and self.owner_impersonated_by == impersonated_by
+
+
+    @property
+    def owner_impersonated_by(self):
+        """
+        The admin through whom the owner holds this state, or None if the owner holds it
+        in person.
+
+        impersonated_by records who performed the transition; it is also the ownership
+        context only when the actor kept the record for themselves (owner == user). An
+        owner assigned by someone else -- even by an admin impersonating a third user --
+        holds the record in person: they can act without taking ownership, while an
+        admin impersonating them must take ownership explicitly (GitHub opus#45).
+        """
+        if self.owner_id is not None and self.owner_id == self.user_id:
+            return self.impersonated_by
+        return None
 
 
     def get_transition_type(self, previous_state):
@@ -301,9 +318,10 @@ class State(models.Model):
                     # what let this through instead of being rejected as a no-op; see
                     # GitHub issue #1). Distinguish explicitly rather than mislabeling
                     # either direction as a plain 'resume'.
-                    if self.impersonated_by and self.impersonated_by != previous_state.impersonated_by:
+                    prev_ctx = previous_state.owner_impersonated_by
+                    if self.impersonated_by and self.impersonated_by != prev_ctx:
                         return 'impersonate'
-                    if not self.impersonated_by and previous_state.impersonated_by:
+                    if not self.impersonated_by and prev_ctx:
                         return 'reclaim'
                     return 'resume'
                 return 'snatch'
@@ -571,8 +589,25 @@ class InstanceWorkflowManager(object):
 
     def __init__(self, instance):
         self.instance = instance
+        # Validators' TransitionWarning/TransitionInfo: pre-check, shown before confirming.
         self.warnings: list = []
         self.infos: list = []
+        # Outcome of the transition just performed ((level, text), level 'info' | 'warning'),
+        # reported via add_info()/add_warning(); GUIs show them once the transition succeeds.
+        self.transition_messages: list = []
+
+
+    def add_info(self, message):
+        """
+        Report an informational outcome of the transition in progress (e.g. from
+        after_state_transition). Kept apart from the validators' pre-check ``infos``.
+        """
+        self.transition_messages.append(('info', str(message)))
+
+
+    def add_warning(self, message):
+        """Like add_info(), for a warning about the transition's outcome."""
+        self.transition_messages.append(('warning', str(message)))
 
 
     def state_or_error(self):
@@ -701,7 +736,7 @@ class InstanceWorkflowManager(object):
             if source_phase == new_phase:
                 if new_owner == current_owner:
                     if suspended == current_state.suspended:
-                        if impersonated_by == current_state.impersonated_by:
+                        if impersonated_by == current_state.owner_impersonated_by:
                             self.raise_transition_error("Not a transition: same owner(%s) and same phase (%s)" %(current_owner,source_phase))
             is_owner = current_state.owned_by(user, impersonated_by)
 
@@ -818,6 +853,28 @@ class InstanceWorkflowManager(object):
     @transaction.atomic
     def transition(self, user, new_phase, new_owner, message='', suspended=False,
                    force_transition_type=None, impersonated_by=None):
+        """
+        Performs a transition between two phases (see _transition()).
+
+        transition_messages is reset only by the outermost call: a transition nested on the
+        same instance (e.g. started from after_state_transition) keeps the messages reported
+        by the enclosing one.
+        """
+        depth = getattr(self, '_transition_depth', 0)
+        if depth == 0:
+            self.transition_messages = []
+        self._transition_depth = depth + 1
+        try:
+            return self._transition(user, new_phase, new_owner, message=message,
+                                    suspended=suspended,
+                                    force_transition_type=force_transition_type,
+                                    impersonated_by=impersonated_by)
+        finally:
+            self._transition_depth = depth
+
+
+    def _transition(self, user, new_phase, new_owner, message='', suspended=False,
+                    force_transition_type=None, impersonated_by=None):
         """
         Performs a transition between two phases.
         First, instance is validated (but not saved) through a call to full_clean().

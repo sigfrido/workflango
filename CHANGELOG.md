@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here, starting from this release. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.0rc2] - unreleased
+
+### Fixed
+
+- **`get_workflow_transitions` in `SebastianWorkflowViewSetMixin` ignored `impersonated_by`**: the call to `WFTransitionDescriptor.get_workflow_transitions(instance, self.request.user)` did not pass `impersonated_by`, so workflow action buttons (including "take ownership") were computed as if the user were acting on their own — causing "Prendi in carico" to appear even when the object was already owned in the current impersonation context
+
 ## [1.0.0rc1] - 2026-09-18
 
 This cycle accumulated several breaking renames (settings prefix, filter field names,

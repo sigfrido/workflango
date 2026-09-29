@@ -16,6 +16,7 @@
       {% if data.current_state.message %}
       <i class="bi bi-sticky text-muted" title="{{ data.current_state.message }}"></i>
       {% endif %}
+      <span class="ms-auto">{% actions "workflow" %}</span>
     </div>
   </div>
 </div>
@@ -29,14 +30,14 @@
 <div class="mt-3 pt-3 border-top">
   <div class="d-flex flex-wrap gap-2 align-items-center">
 
-    {# Phase transition buttons — forward moves #}
+    {# Phase transition buttons — forward moves; rejects styled as warning like reject/delegate/release #}
     {% for t in wt.phase_transitions %}
-    <button class="btn btn-outline-primary btn-sm"
+    <button class="btn {% if t.is_reject %}btn-warning{% else %}btn-outline-primary{% endif %} btn-sm"
             hx-get="{{ object_url }}change_state_form/?phase={{ t.destination }}"
             hx-target="#wf-confirm-panel"
             hx-swap="innerHTML"
             title="{{ t.caption }}">
-      {% icon "arrow-right-circle" %} {{ t.caption }}
+      {% if t.is_reject %}{% icon "arrow-left-circle" %}{% else %}{% icon "arrow-right-circle" %}{% endif %} {{ t.caption }}
     </button>
     {% endfor %}
 
