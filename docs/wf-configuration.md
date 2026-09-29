@@ -98,7 +98,8 @@ For every forward transition `A → B` you declare, workflango automatically add
 reciprocal reject transition `B → A` (with `{'reject': True}`) to `B`'s own
 `reachable_phases`, **unless**:
 - the transition config for `A → B` sets `'allow-reject': False` (note: transition-level
-  key, hyphenated — see §2), or
+  key, hyphenated — see §2; `'allow-reject': 'admin'` generates it but restricts it to
+  `B`'s admin groups), or
 - `B`'s `reachable_phases` already explicitly defines its own transition back to `A`.
 
 This is why a typical "approve / reject" workflow only needs to declare the forward
@@ -126,7 +127,7 @@ resolved lazily when the transition is inspected (the callable receives the
 
 | Key | Type | Default | What it controls |
 |---|---|---|---|
-| `allow-reject` (hyphen, not underscore) | `bool` | `True` | Only meaningful on a forward transition's own config. Set `False` to suppress the automatic reciprocal reject transition described above. |
+| `allow-reject` (hyphen, not underscore) | `bool` or `'admin'` | `True` | Only meaningful on a forward transition's own config. `False` suppresses the automatic reciprocal reject transition described above; `'admin'` generates it with `allowed_groups` set to the admin groups of the phase it sends back from, so only that phase's admins may use it. Any other value raises `InvalidWorkflowConfiguration`. |
 | `reject` | `bool` | `False` (usually set automatically, see above — rarely set by hand) | Marks this transition as a "send back" transition. Affects: owner auto-guessing (defaults to the last owner of the destination phase), the default `require_message` (`True` for reject transitions), the default caption ("Send back to …"), button styling, and forces `State.transition_type = 'reject'` when executed. |
 | `caption` | `str` (or callable) | Falls back to a built-in, translated caption depending on the command (Take ownership / Release / Suspend / Resume / Delegate / Assign / "Send back to …" / "Go to: …") | The button/link label rendered by the shipped templates. |
 | `owner_mode` | `str`, informally one of `'none'` / `'user'` / `'last_owner'` / `'assign'` / `'assign-optional'` | `'none'` | How the new owner is auto-selected when no owner is explicitly supplied: `'none'` → unassigned, `'user'` → the acting user, `'last_owner'` → whoever last owned this phase, `'assign'`/`'assign-optional'` → show an owner picker in the transition form (the `-optional` variant allows leaving it empty). **Not validated** against this set — an unrecognized value silently behaves like `'none'`. |

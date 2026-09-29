@@ -94,6 +94,22 @@ doc.wfm.transition(request.user, 'published', None)
 See [docs/wf-configuration.md](docs/wf-configuration.md) for the full reference of
 every `config`/`defaults` key (`allow_release`, `owner_mode`, `properties`, ...).
 
+### Transition hooks and outcome messages
+
+A model can define hooks that `transition()` calls by naming convention:
+
+- `validate_<from>_to_<to>(self, user)` (also `validate_any_to_<to>`, `validate_<from>_to_any`,
+  `validate_phase_transition`): raise `ValidationError` to block the transition,
+  `TransitionWarning` / `TransitionInfo` to report something without blocking. They also run when
+  a GUI only *checks* a transition (e.g. before showing the confirmation form), so they must not
+  have side effects; the warnings/infos end up in `wfm.warnings` / `wfm.infos`.
+- `after_state_transition(self, previous_state, impersonated_by=None)`: runs inside the
+  transition's database transaction, after the new state is saved; an exception rolls the whole
+  transition back. Report its outcome to the user with `self.wfm.add_info(msg)` /
+  `self.wfm.add_warning(msg)` (collected in `wfm.transition_messages`; a transition nested on the
+  same instance keeps them). `workflango.contrib.sebastian` publishes them as Django messages
+  after a GUI transition.
+
 ## Django GUI (traditional views)
 
 Unlike sibling project [drf-sebastian](https://github.com/sigfrido/drf-sebastian) (a DRF-driven auto-GUI with field-level permissions), workflango has no opinion on your page layout or CRUD forms — it ships the workflow-specific pieces only: the change-state confirmation screen, the history table, and a handful of template fragments (buttons, edit-button, unread indicator) meant to be `{% include %}`d into your own list/detail templates.
@@ -142,7 +158,7 @@ django-admin compilemessages
 
 ## Impersonation
 
-Allows one user to perform transitions on behalf of another. The real actor is recorded in `State.impersonated_by`; `State.user` holds the impersonated identity. **workflango does not decide who may impersonate whom** — that's entirely an application concern (see below); the engine only records and, since `1.0.0rc1`, enforces an explicit hand-off (see "Ownership and impersonation" below).
+Allows one user to perform transitions on behalf of another. The real actor is recorded in `State.impersonated_by`; `State.user` holds the impersonated identity. **workflango does not decide who may impersonate whom** — that's entirely an application concern (see below); the engine only records and, since `1.0.0-rc1`, enforces an explicit hand-off (see "Ownership and impersonation" below).
 
 Enable globally in settings:
 
@@ -195,8 +211,10 @@ Which pattern fits — or a hybrid — is an application concern; workflango onl
 `state.owner == user` alone does not mean `user` is really acting: an admin impersonating userx would satisfy that comparison exactly as if they *were* userx, with no distinction and no forced audit trail. `State.owned_by(user, impersonated_by=None)` is the real check — it requires **both** the owner match **and** an impersonation-context match against what's already recorded on the state:
 
 ```python
-state.owned_by(user, impersonated_by)  # == state.owner == user and state.impersonated_by == impersonated_by
+state.owned_by(user, impersonated_by)  # == state.owner == user and state.owner_impersonated_by == impersonated_by
 ```
+
+`State.impersonated_by` records who **performed** the transition; the context in which the owner **holds** the record is `State.owner_impersonated_by`: the same value when the actor kept the record for themselves (`owner == user`), `None` when the record was assigned to someone else — an assigned owner always holds it in person, even if the assignment was made by an admin impersonating a third user. Automatic transitions started from hooks (e.g. `after_state_transition`) should therefore act as whoever holds the record being moved: `user=state.owner, impersonated_by=state.owner_impersonated_by`.
 
 `InstanceWorkflowManager.is_owner()` (and everything gated by it — plain field edits via `WorkflowModelUpdate`, `wf_editable`, phase-changing transitions, ...) goes through this. Practically: an admin impersonating userx on a record userx genuinely owns must explicitly call `take_ownership(userx, impersonated_by=admin)` — a real, audited `transition()` — before `is_owner()`-gated actions succeed; userx is symmetrically locked out until they call `take_ownership(userx)` (with no `impersonated_by`) to reclaim it back. This works purely by identity (`user == new_owner == current_owner`, see `transition_allowed()`), not by group membership, so it doesn't matter whether the impersonated target is a workflow "admin" for the state or not. A *different*, separately-authorized impersonator can also take over an existing claim the same way (workflango doesn't track which impersonator "owns" the impersonation itself, only which identity currently holds the record) — each claim is independently audited via `State.impersonated_by`.
 

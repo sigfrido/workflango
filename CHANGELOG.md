@@ -2,13 +2,68 @@
 
 All notable changes to this project are documented here, starting from this release. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [1.0.0rc2] - unreleased
+## [1.0.0-rc2] - 2026-09-29
+
+`workflango.contrib.sebastian` now requires **drf-sebastian 1.0.0-rc3** or later (it uses the
+`extra_context()` / `parent_is_editable()` hooks and the `{% actions "group" %}` tag introduced
+there).
+
+### Added
+
+- **Transition outcome messages**: `InstanceWorkflowManager.add_info(msg)` / `add_warning(msg)`
+  let `after_state_transition` (or any code running during a transition) report the outcome of
+  the transition just performed. They are collected in `wfm.transition_messages`
+  (`[(level, text)]`), kept apart from the validators' pre-check `infos`/`warnings`, and reset
+  only by the outermost `transition()` — a transition nested on the same instance (started from
+  `after_state_transition`) keeps the enclosing one's messages
+- `workflango.contrib.sebastian.publish_transition_messages(request, wfm)`: after a successful
+  GUI transition, `change_state_form` publishes `transition_messages` as Django messages (no-op
+  without `django.contrib.messages`); the validators' warnings stay in the confirmation form and
+  are not repeated
+- **`'allow-reject': 'admin'`** on a forward transition: the automatic reciprocal "send back"
+  transition is generated with `allowed_groups` = the admin groups of the phase it sends back
+  from, i.e. only that phase's admins may use it (`True` and `False` unchanged; any other value
+  raises `InvalidWorkflowConfiguration`)
+- **`reassign` command**: an admin who is not the owner gets a dedicated "Reassign (ADMIN)"
+  command (severity `error`, message required) instead of a `delegate` styled as an error
+- `State.owner_impersonated_by`: the impersonation context in which the owner holds the state
+  (see Changed)
+- `WFNestedGUIMixin` (`workflango.contrib.sebastian`): `NestedGUIMixin` for children of
+  workflow-managed parents — nested create/update/delete only when the parent is not suspended
+  and the request user **is the owner** of the parent (impersonation-aware), via sebastian's
+  `parent_is_editable()` hook
+
+### Changed
+
+- **Ownership after an assignment made while impersonating**: `State.impersonated_by` records
+  who performed the transition, but it was also read as the context in which the new owner holds
+  the record. When an admin impersonating user1 assigned a record to user2, the admin
+  impersonating user2 could act without taking ownership while user2 in person could not.
+  `owned_by()` now compares against `State.owner_impersonated_by` (= `impersonated_by` only when
+  the actor kept the record, `owner == user`; otherwise `None`): an assigned owner holds the
+  record in person, and an impersonator must take ownership explicitly (`impersonate`), after
+  which the owner can `reclaim` it. The "Not a transition" check and the `impersonate`/`reclaim`
+  transition types use the same context. **Automatic transitions** started from hooks should
+  pass `impersonated_by=state.owner_impersonated_by` of the record being moved
+- `workflango.contrib.sebastian` (**requires drf-sebastian ≥ 1.0.0-rc3**):
+  `SebastianWorkflowViewSetMixin` provides `workflow_transitions` to the templates through
+  sebastian's `extra_context()` hook (sebastian no longer looks for `get_workflow_transitions()`);
+  the `history` action belongs to the `workflow` action group and is rendered in the workflow box
+  of `detail.html` via `{% actions "workflow" %}`
+- Transition buttons: "send back" transitions listed among the phase transitions (e.g. after a
+  take-ownership in the same phase) use the same warning style as the reject/delegate/release
+  buttons
 
 ### Fixed
 
-- **`get_workflow_transitions` in `SebastianWorkflowViewSetMixin` ignored `impersonated_by`**: the call to `WFTransitionDescriptor.get_workflow_transitions(instance, self.request.user)` did not pass `impersonated_by`, so workflow action buttons (including "take ownership") were computed as if the user were acting on their own — causing "Prendi in carico" to appear even when the object was already owned in the current impersonation context
+- **`get_workflow_transitions` in `SebastianWorkflowViewSetMixin` ignored `impersonated_by`**:
+  workflow action buttons (including "take ownership") were computed as if the user were acting
+  on their own, so "take ownership" appeared even when the object was already owned in the
+  current impersonation context
+- Nested sebastian viewsets: a workflow admin could edit nested resources of a record they didn't
+  own; editing now requires ownership of the parent, admins included
 
-## [1.0.0rc1] - 2026-09-18
+## [1.0.0-rc1] - 2026-09-18
 
 This cycle accumulated several breaking renames (settings prefix, filter field names,
 owner-filter shortcuts, and the full phase/state terminology pass below) — see
@@ -49,7 +104,7 @@ consumer project.
 
 - `USER_CHOICES`'s `-7`/"Away" owner-filter shortcut (`filter_by_owner()` in `filters.py`), which hardcoded the lookup `owner__user_config__away` -- a relation specific to WebGPV's own User model, not present on a generic Django user model, so selecting it raised `FieldError: Unsupported lookup 'user_config__away' for ForeignKey or join on the field not permitted` for every other consumer. A generic hook for consumer-defined owner-filter shortcuts (so a project can add its own "Away"-equivalent without patching workflango) is being evaluated separately
 
-## [1.0.0rc1] - 2026-08-27
+## [1.0.0-rc1] - 2026-08-27
 
 First release candidate. Feature-complete and used in production (as the `workflow` app inside WebGPV, at Comune di Milano since 2014); this candidate exists to get more real-world mileage as a standalone package before committing to the API-stability guarantee of a full `1.0.0`.
 
