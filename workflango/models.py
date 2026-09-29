@@ -854,6 +854,28 @@ class InstanceWorkflowManager(object):
     def transition(self, user, new_phase, new_owner, message='', suspended=False,
                    force_transition_type=None, impersonated_by=None):
         """
+        Performs a transition between two phases (see _transition()).
+
+        transition_messages is reset only by the outermost call: a transition nested on the
+        same instance (e.g. started from after_state_transition) keeps the messages reported
+        by the enclosing one.
+        """
+        depth = getattr(self, '_transition_depth', 0)
+        if depth == 0:
+            self.transition_messages = []
+        self._transition_depth = depth + 1
+        try:
+            return self._transition(user, new_phase, new_owner, message=message,
+                                    suspended=suspended,
+                                    force_transition_type=force_transition_type,
+                                    impersonated_by=impersonated_by)
+        finally:
+            self._transition_depth = depth
+
+
+    def _transition(self, user, new_phase, new_owner, message='', suspended=False,
+                    force_transition_type=None, impersonated_by=None):
+        """
         Performs a transition between two phases.
         First, instance is validated (but not saved) through a call to full_clean().
         Transition is validated by 'transition_allowed' method, where all the validation
@@ -869,7 +891,6 @@ class InstanceWorkflowManager(object):
         # LOCK current state row, should raise instantly if the object is already locked.
         # TODO record changes other than transitions should also lock the record (on POST)
         self.instance.lock_instance()
-        self.transition_messages = []
 
         new_phase = State.phase_str(new_phase)
 

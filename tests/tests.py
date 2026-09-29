@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db.models import Q
@@ -1761,6 +1761,25 @@ class TransitionMessagesTest(TestCase):
         # kept apart from the validators' pre-check lists
         self.assertEqual(instance.wfm.infos, [])
         self.assertEqual(instance.wfm.warnings, [])
+
+    def test_nested_transition_keeps_outer_messages(self):
+        """Only the outermost transition resets transition_messages."""
+        wfm = WorkflowModelValid().wfm
+        wfm.transition_messages = [('info', 'stale')]
+        seen = []
+
+        def fake_transition(*args, **kwargs):
+            wfm.add_info('outer before')
+            if len(seen) == 0:
+                seen.append(1)
+                wfm.transition(None, 1, None)  # nested on the same instance
+            wfm.add_info('outer after')
+
+        with patch.object(wfm, '_transition', side_effect=fake_transition):
+            wfm.transition(None, 1, None)
+        self.assertEqual([t for _, t in wfm.transition_messages],
+                         ['outer before', 'outer before', 'outer after', 'outer after'])
+        self.assertEqual(wfm._transition_depth, 0)
 
     def test_publish_transition_messages(self):
         from django.contrib import messages
