@@ -154,6 +154,8 @@ django-admin makemessages -l it --no-location
 django-admin compilemessages
 ```
 
+Commit the compiled `locale/it/LC_MESSAGES/django.mo` together with the `.po`: packages installed from git (`pip install git+https://…@tag`) get no compile step, so without a versioned `.mo` the GUI stays in English. `CompiledCatalogTest` fails if the committed `.mo` is missing or out of date.
+
 `workflow_defaults`/module-level dicts and tuples evaluated once at import time (e.g. form field `choices`) must use `wgettext_lazy()` instead of `wgettext()`, or the translation gets baked in at whatever language was active during process startup instead of the requesting user's language.
 
 ## Impersonation

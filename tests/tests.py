@@ -1805,3 +1805,29 @@ class TransitionMessagesTest(TestCase):
         from workflango.contrib.sebastian import publish_transition_messages
         request = RequestFactory().post('/')  # no message storage: silently ignored
         publish_transition_messages(request, MagicMock(transition_messages=[('info', 'x')]))
+
+
+class CompiledCatalogTest(TestCase):
+    """The committed django.mo must match django.po: packages installed from git get no
+    compile step, so a missing or stale .mo silently leaves the GUI in English."""
+
+    def test_compiled_catalog_is_versioned_and_up_to_date(self):
+        import gettext
+        import shutil
+        import subprocess
+        import tempfile
+        from pathlib import Path
+        from unittest import SkipTest
+
+        lc = Path(__file__).resolve().parents[1] / 'workflango' / 'locale' / 'it' / 'LC_MESSAGES'
+        self.assertTrue((lc / 'django.mo').exists(),
+                        'django.mo missing: run compilemessages and commit it')
+        if shutil.which('msgfmt') is None:
+            raise SkipTest('msgfmt (GNU gettext) not available')
+        with tempfile.TemporaryDirectory() as tmp:
+            fresh = Path(tmp) / 'django.mo'
+            subprocess.run(['msgfmt', '-o', str(fresh), str(lc / 'django.po')], check=True)
+            with open(lc / 'django.mo', 'rb') as committed, open(fresh, 'rb') as compiled:
+                self.assertEqual(gettext.GNUTranslations(committed)._catalog,
+                                 gettext.GNUTranslations(compiled)._catalog,
+                                 'django.mo is stale: run compilemessages and commit it')

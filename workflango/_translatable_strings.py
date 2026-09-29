@@ -195,4 +195,10 @@ def _strings():  # pragma: no cover - never called, see module docstring
         pgettext('workflango', 'Transition'),
         pgettext('workflango', 'Date'),
         pgettext('workflango', 'Operator'),
+        pgettext('workflango', 'Suspended'),
+        pgettext('workflango', 'The object will be released and become available again for take ownership.'),
+        pgettext('workflango', 'The object will be rejected to the phase and user that previously assigned it to you.'),
+        pgettext('workflango', 'The transition will be performed as ADMIN; the following errors were detected: %(error)s.'),
+        pgettext('workflango', 'Impersonation is not enabled (WF_ALLOW_IMPERSONATE).'),
+        pgettext('workflango', 'Invalid boolean value (%(value)s): allowed 1/0, t(rue)/f(alse), y(es)/n(o)'),
     )

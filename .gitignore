@@ -51,8 +51,8 @@ coverage.xml
 .pytest_cache/
 cover/
 
-# Translations
-*.mo
+# Translations — compiled .mo files ARE versioned: a package installed from git
+# (pip install git+https://…) gets no compile step, and without .mo it stays in English.
 *.pot
 
 # Django stuff:

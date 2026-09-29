@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here, starting from this release. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.0-rc3] - unreleased
+
+### Fixed
+
+- **Italian translation missing when installed from git**: `*.mo` was gitignored, so a package installed with `pip install git+https://…@tag` shipped only `django.po` and the whole GUI chrome stayed in English. The compiled `locale/it/LC_MESSAGES/django.mo` is now versioned, and `CompiledCatalogTest` fails if it is missing or out of date with the `.po`
+- Strings missing from the Italian catalog (not listed in `_translatable_strings.py`): "Suspended", the release/reject explanations in the change-state form, the ADMIN transition warning, "Impersonation is not enabled", the invalid boolean filter value error
+
 ## [1.0.0-rc2] - 2026-09-29
 
 `workflango.contrib.sebastian` now requires **drf-sebastian 1.0.0-rc3** or later (it uses the
