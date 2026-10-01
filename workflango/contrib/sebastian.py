@@ -49,7 +49,7 @@ from rest_framework.response import Response
 
 from ..drf import WorkflowSerializerMixin, WorkflowViewSetMixin
 from ..exceptions import TransitionNotAllowed, get_exception_error_msg
-from ..i18n import wgettext_lazy
+from ..i18n import wgettext, wgettext_lazy
 from ..wf_transition import WFTransitionDescriptor
 
 __all__ = [
@@ -185,6 +185,12 @@ class SebastianWorkflowViewSetMixin(WorkflowViewSetMixin):
     def can_delete(self):
         """Workflow-managed objects cannot be deleted via the GUI."""
         return False
+
+    def get_page_title(self, action=None, obj=None):
+        """Page title: the workflow history page adds its own suffix to sebastian's default."""
+        if action == 'history' and obj is not None:
+            return f'{self.get_view_name()} - {obj} [{wgettext("Workflow history")}]'
+        return super().get_page_title(action, obj)
 
     def extra_context(self) -> dict:
         obj = getattr(self, '_sebastian_obj', None)

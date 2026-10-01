@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here, starting from this release. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.0-rc5] - unreleased
+
+### Changed
+
+- `SebastianWorkflowViewSetMixin.get_page_title()`: the workflow history page is titled "Label - <obj> [Workflow history]"; everything else uses sebastian's default page titles (**requires drf-sebastian ≥ 1.0.0-rc7**). The history template no longer hard-codes its own title
+
 ## [1.0.0-rc4] - 2026-09-29
 
 ### Fixed
