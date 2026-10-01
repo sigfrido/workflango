@@ -88,6 +88,42 @@ class WorkflowConfigTest(TestCase):
         with self.assertRaises(InvalidWorkflowConfiguration):
             self._config_with_reject('everyone')
 
+    def _config_with_button_style(self, style):
+        phases = (
+            (None, {'reachable_phases': {'a': {}}, 'edit': ['editors']}),
+            ('a', {'reachable_phases': {'b': {'button-style': style}}, 'edit': ['editors']}),
+            ('b', {'reachable_phases': {}, 'edit': ['editors']}),
+        )
+        return WorkflowConfig(None, phases, {'read': [], 'edit': [], 'admin': ['wf_admins']})
+
+    def test_button_style_valid_values(self):
+        for style in ('default', 'info', 'warning', 'success', 'danger', 'secondary'):
+            self._config_with_button_style(style)
+
+    def test_button_style_invalid_value(self):
+        with self.assertRaises(InvalidWorkflowConfiguration):
+            self._config_with_button_style('outline-primary')
+
+    def _descriptor(self, config, command='', severity='info'):
+        from workflango.wf_transition import WFTransitionDescriptor
+        t = WFTransitionDescriptor.__new__(WFTransitionDescriptor)
+        t.config, t.command = config, command
+        with patch.object(WFTransitionDescriptor, 'severity', severity):
+            return t.button_style
+
+    def test_button_style_forward_from_config(self):
+        self.assertEqual(self._descriptor({}), 'primary')
+        self.assertEqual(self._descriptor({'button-style': 'info'}), 'info')
+        self.assertEqual(self._descriptor({'button-style': 'warning'}), 'warning')
+        self.assertEqual(self._descriptor({'button-style': 'danger'}), 'danger')
+
+    def test_button_style_reject_and_commands_from_severity(self):
+        # 'button-style' applies to forward transitions only
+        self.assertEqual(self._descriptor({'reject': True, 'button-style': 'info'}, severity='warn'),
+                         'warning')
+        self.assertEqual(self._descriptor(None, command='reassign', severity='error'), 'danger')
+        self.assertEqual(self._descriptor(None, command='take-ownership', severity='info'), 'primary')
+
     def test_check_passes_for_valid_config(self):
         # WorkflowModelValid.workflow_phases has terminal phases (3 and 4, both
         # is_closed=True), every phase is reachable from None, and its groups/

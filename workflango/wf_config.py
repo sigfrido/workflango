@@ -79,6 +79,18 @@ from .exceptions import (
 
 
 
+
+# Values of a forward transition's 'button-style' → Bootstrap color (see WFTransitionDescriptor.button_style)
+BUTTON_STYLES = {
+    'default':   'primary',
+    'info':      'info',
+    'warning':   'warning',
+    'success':   'success',
+    'danger':    'danger',
+    'secondary': 'secondary',
+}
+
+
 class WorkflowConfig(dict):
     """
     Workflow configuration for a model, stored as a dict keyed by phase name.
@@ -100,6 +112,10 @@ class WorkflowConfig(dict):
     - 'admin': only members of the admin groups of the phase the record is sent back
       from (the generated reject gets those groups as 'allowed_groups');
     - False: no reject transition is generated.
+
+    A forward transition config's 'button-style' ('default' | 'info' | 'warning' | 'success' |
+    'danger' | 'secondary') sets the
+    color of its button (see WFTransitionDescriptor.button_style).
 
     Class-level caches (_workflow_admin, _workflow_admins) are shared across all
     WorkflowConfig instances. Call clear_cached_admins() in tests that modify users.
@@ -178,6 +194,12 @@ class WorkflowConfig(dict):
         for (from_phase, from_phase_conf) in self.items():
             if from_phase:
                 for (to_phase, from_reach_conf) in from_phase_conf['reachable_phases'].items():
+                    button_style = from_reach_conf.get('button-style', 'default')
+                    if button_style not in BUTTON_STYLES:
+                        raise InvalidWorkflowConfiguration(
+                            f"Invalid 'button-style' for {self._model}.{from_phase} -> {to_phase}: "
+                            f"{button_style!r} (expected one of {', '.join(BUTTON_STYLES)})"
+                        )
                     allow_reject = from_reach_conf.get('allow-reject', True)
                     if allow_reject not in (True, False, 'admin'):
                         raise InvalidWorkflowConfiguration(

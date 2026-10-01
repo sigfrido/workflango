@@ -4,7 +4,13 @@ All notable changes to this project are documented here, starting from this rele
 
 ## [1.0.0-rc5] - unreleased
 
+### Added
+
+- **`'button-style'` transition key** (`'default'` | `'info'` | `'warning'` | `'success'` | `'danger'` | `'secondary'`, default `'default'`): color of a forward transition's button and of its confirmation panel (`default` → primary, the others → the Bootstrap color of the same name). Any other value raises `InvalidWorkflowConfiguration`. `WFTransitionDescriptor.button_style` returns the resulting Bootstrap color; rejects and commands keep their severity colors (info → primary, warn → warning, error → danger)
+
 ### Changed
+
+- **Solid buttons**: workflow buttons in the sebastian pack are filled instead of outlined (forward transitions and info commands `btn-primary` instead of `btn-outline-primary`) and resolve their class through sebastian's `btn_class` filter, so skins can override them via `SEBASTIAN['BUTTON_STYLES']`. Cancel/Close/pagination buttons use `btn-secondary`; same in the django pack templates
 
 - `SebastianWorkflowViewSetMixin.get_page_title()`: the workflow history page is titled "Label - <obj> [Workflow history]"; everything else uses sebastian's default page titles (**requires drf-sebastian ≥ 1.0.0-rc7**). The history template no longer hard-codes its own title
 

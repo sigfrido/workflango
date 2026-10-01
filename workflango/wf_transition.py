@@ -357,11 +357,24 @@ class WFTransitionDescriptor(object):
                 pot_owners.remove(user_data)
 
     @property
+    def button_style(self):
+        """Bootstrap color of the transition button and of its confirmation panel.
+
+        Forward transitions use their 'button-style' config ('default' → primary, 'info',
+        'warning', 'success', 'danger', 'secondary'); rejects and commands follow severity (info → primary, warn → warning,
+        error → danger).
+        """
+        from .wf_config import BUTTON_STYLES
+        if self.is_forward:
+            return BUTTON_STYLES.get(self.get_config('button-style', 'default'), 'primary')
+        return {'info': 'primary', 'warn': 'warning', 'error': 'danger'}[self.severity]
+
+    @property
     def severity(self):
         """Returns 'info', 'warn', or 'error' for button-color mapping.
 
-        Maps to Bootstrap classes: info→btn-outline-primary, warn→btn-warning,
-        error→btn-danger.
+        Maps to Bootstrap colors (see button_style): info→primary, warn→warning,
+        error→danger.
 
         Admin-forced actions (snatch = take-ownership when record is already
         owned; reassign = delegate on someone else's record) are marked 'error'.

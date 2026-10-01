@@ -253,7 +253,6 @@ class SebastianWorkflowViewSetMixin(WorkflowViewSetMixin):
             transition = WFTransitionDescriptor(instance, phase, request.user, impersonated_by=impersonated_by)
             owner_choices = transition.get_potential_owners() if transition.show_owner else []
             default_owner = transition.get_default_owner() if transition.show_owner else None
-            severity_to_style = {'info': 'primary', 'warn': 'warning', 'error': 'danger'}
 
             pre_check_blocked = not transition.allowed()
             pre_check_errors = (
@@ -264,7 +263,7 @@ class SebastianWorkflowViewSetMixin(WorkflowViewSetMixin):
             response_data = {
                 'action': 'confirm',
                 'confirm_prompt': transition.caption,
-                'confirm_style': severity_to_style.get(transition.severity, 'primary'),
+                'confirm_style': transition.button_style,
                 'action_url': request.path,
                 'confirm_serializer': WorkflowActionSerializer(initial={
                     'phase': phase,
@@ -328,11 +327,10 @@ class SebastianWorkflowViewSetMixin(WorkflowViewSetMixin):
         if form_errors:
             owner_choices = transition.get_potential_owners() if transition.show_owner else []
             default_owner = transition.get_default_owner() if transition.show_owner else None
-            severity_to_style = {'info': 'primary', 'warn': 'warning', 'error': 'danger'}
             response = Response({
                 'action':          'confirm',
                 'confirm_prompt':  transition.caption,
-                'confirm_style':   severity_to_style.get(transition.severity, 'primary'),
+                'confirm_style':   transition.button_style,
                 'action_url':      request.path,
                 'owner_choices':   owner_choices,
                 'default_owner_id': default_owner.pk if default_owner else None,

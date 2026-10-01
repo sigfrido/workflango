@@ -52,7 +52,7 @@
                 <p{% if transition.phase_str != transition.destination and transition.destination_description %} title="{{ transition.destination_description }}"{% endif %}>{{ message }}</p>
                 <div class="d-flex">
                 <button class="btn {% if object.current_state.owner and not object.current_state|owned_by:request %}btn-danger{% else %}btn-primary{% endif %}" type="submit">{{ button_caption }}</button>
-                <a class="btn btn-outline-primary ms-3" href="{{ cancel_url }}">{% wtrans "Cancel" %}</a>
+                <a class="btn btn-secondary ms-3" href="{{ cancel_url }}">{% wtrans "Cancel" %}</a>
                 </div>
             </form>
         </div>

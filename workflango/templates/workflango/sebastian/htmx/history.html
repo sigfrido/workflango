@@ -52,10 +52,10 @@
   <small class="text-muted">{{ pagination.count }} {% wtrans "records" %}</small>
   <div>
     {% if pagination.previous %}
-    <a href="{{ pagination.previous }}" class="btn btn-outline-secondary btn-sm">{% icon "chevron-left" %}</a>
+    <a href="{{ pagination.previous }}" class="btn btn-secondary btn-sm">{% icon "chevron-left" %}</a>
     {% endif %}
     {% if pagination.next %}
-    <a href="{{ pagination.next }}" class="btn btn-outline-secondary btn-sm">{% icon "chevron-right" %}</a>
+    <a href="{{ pagination.next }}" class="btn btn-secondary btn-sm">{% icon "chevron-right" %}</a>
     {% endif %}
   </div>
 </div>
