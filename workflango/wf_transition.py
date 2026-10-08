@@ -193,8 +193,15 @@ class WFTransitionDescriptor(object):
         return self.phase_property('help_topic')
 
     @property
+    def phase_caption(self):
+        return self.wfconfig.phase_caption(self.phase_str)
+
+    @property
     def phase_description(self):
-        return self.phase_property('description')
+        return self.wfconfig.phase_description(self.phase_str)
+
+    # used by form_change_state.html (tooltip of the current phase)
+    state_description = phase_description
 
 
     # Transition properties
@@ -218,9 +225,9 @@ class WFTransitionDescriptor(object):
             elif self.command == 'assign':
                 caption = wgettext('Assign')
             elif self.is_reject:
-                caption = wgettext('Send back to %(destination)s') % {'destination': self.destination}
+                caption = wgettext('Send back to %(destination)s') % {'destination': self.destination_caption}
             else:
-                caption = wgettext('Go to: %(destination)s') % {'destination': self.destination}
+                caption = wgettext('Go to: %(destination)s') % {'destination': self.destination_caption}
         return caption
 
 
@@ -299,8 +306,20 @@ class WFTransitionDescriptor(object):
     def get_destination_phase_property(self, prop, defa=None):
         return self.wfconfig.get_phase_config(self.destination).get('properties', {}).get(prop, defa)
 
+    @property
+    def destination_caption(self):
+        return self.wfconfig.phase_caption(self.destination)
+
     def destination_description(self):
-        return self.get_destination_phase_property('description')
+        return self.wfconfig.phase_description(self.destination)
+
+    @property
+    def tooltip(self):
+        """Hover text of the transition button: description of the destination phase
+        (forward/reject transitions), else the caption."""
+        if not self.command and self.destination != self.phase_str:
+            return self.destination_description() or self.caption
+        return self.caption
 
     def destination_help_topic(self):
         return self.get_destination_phase_property('help_topic')

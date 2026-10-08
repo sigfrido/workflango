@@ -11,7 +11,6 @@ Model.configure_workflow(
         'properties' : {
             'edit_button_label' : 'Modifica',
             'help_topic' : 'workflow',
-            'description' : '',
         }
     },
 
@@ -25,6 +24,8 @@ Model.configure_workflow(
         }),
 
         ('aperta',  {
+            'caption' : 'Aperta',
+            'description' : 'Richiesta in lavorazione',
             'reachable_phases': {
                 'inviata' : {
                     'caption' : 'Risposta inviata',
@@ -39,11 +40,12 @@ Model.configure_workflow(
             'properties' : {
                 'allow_release': 'strict',
                 'help_topic' : 'proc_richieste_risp',
-                'description' : u"BlaBla",
             }
         }),
 
         ('inviata',  {
+            'caption' : 'Inviata',
+            'description' : 'Risposta inviata al richiedente',
             'is_closed' : True,
             'reachable_phases': {
                 'aperta' : {
@@ -54,7 +56,6 @@ Model.configure_workflow(
             'edit' : [], # Admin only
             'properties' : {
                 'help_topic' : 'proc_richieste_risp',
-                'description' : u"BlaBla",
             }
         }),
 
@@ -102,9 +103,16 @@ class WorkflowConfig(dict):
     Each phase entry is a dict with:
     - reachable_phases: {dest_phase: transition_config} — allowed next phases
     - read / edit / admin: lists of group names with the respective permission
+    - caption: short name of the phase ("Approval"); required by check(), defaults to the
+      phase key at runtime
+    - description: one-line description; required by check(); tooltip of the transition
+      buttons leading to the phase
+    Long descriptions (Markdown: permissions, operations), used only by generate_wf_doc, are
+    files <phase>.md in the description folder (configure_workflow(description_folder=...),
+    default <app>/wf_doc/<model_name>/): see phase_long_description(), check_descriptions().
     - is_closed: bool — terminal phase; no further transitions expected
     - allow_release / allow_delegate: 'strict' | 'always' | 'no' | 'yes'
-    - properties: arbitrary dict consumed by the view layer (help_topic, description, …)
+    - properties: arbitrary dict consumed by the view layer (help_topic, …)
 
     Reject transitions between adjacent phases are auto-configured from each forward
     transition config's 'allow-reject':
@@ -124,8 +132,10 @@ class WorkflowConfig(dict):
     _workflow_admin = None
     _workflow_admins = None
 
-    def __init__(self, model, model_config, model_defaults=None, impersonable_users_func=None, snapshot_serializer=None):
+    def __init__(self, model, model_config, model_defaults=None, impersonable_users_func=None,
+                 snapshot_serializer=None, description_folder=None):
         super(WorkflowConfig, self).__init__()
+        self._description_folder = description_folder
         self._model = model
         if model_defaults is None:
             model_defaults = {}
@@ -133,6 +143,8 @@ class WorkflowConfig(dict):
             raise InvalidWorkflowConfiguration(f"Parameter model_defaults for {self._model} must be a dict")
         self._model_defaults = model_defaults
         self._model_phases = []
+        self._phase_texts = {}      # phase → texts as written in its own config (check_phase_texts)
+        self._auto_rejects = set()  # (from, to) reject transitions generated automatically
         self._impersonable_users_func = impersonable_users_func
         self._snapshot_serializer = snapshot_serializer
         self._create_model_config(model_config)
@@ -165,6 +177,13 @@ class WorkflowConfig(dict):
         current_config['properties'].update(conf_dict.get('properties', {}))
         for custom_property in [k for k in conf_dict.keys() if k not in ['reachable_phases', 'properties']]:
             current_config[custom_property] = deepcopy(conf_dict[custom_property])
+        # Phase texts are per-phase, never inherited from defaults
+        for key_text in ('caption', 'description'):
+            current_config[key_text] = conf_dict.get(key_text, '')
+        if not current_config['caption']:
+            current_config['caption'] = new_key or ''
+        self._phase_texts[new_key] = {k: conf_dict[k] for k in ('caption', 'description')
+                                      if k in conf_dict}
         self[new_key] = current_config
 
 
@@ -213,7 +232,59 @@ class WorkflowConfig(dict):
                             if allow_reject == 'admin':
                                 reject_conf['allowed_groups'] = list(self[to_phase]['admin'])
                             to_reach_conf[from_phase] = reject_conf
+                            self._auto_rejects.add((to_phase, from_phase))
 
+
+    def phase_caption(self, phase):
+        """Short name of the phase ('' for the None start phase)."""
+        if phase is None:
+            return ''
+        return self.get_phase_config(phase).get('caption') or str(phase)
+
+    def phase_description(self, phase):
+        if phase is None:
+            return ''
+        return self.get_phase_config(phase).get('description', '')
+
+    def description_folder(self):
+        """(path, explicit) of the folder with the phases' long descriptions: the
+        `description_folder` passed to configure_workflow (absolute, or relative to the model's
+        app folder) or, if not set, <app folder>/wf_doc/<model_name>/."""
+        from pathlib import Path
+        from django.apps import apps
+        meta = getattr(self._model, '_meta', None)
+        app_path = Path(apps.get_app_config(meta.app_label).path) if meta else Path('.')
+        if self._description_folder:
+            return app_path / self._description_folder, True
+        return app_path / 'wf_doc' / (meta.model_name if meta else ''), False
+
+    def phase_long_description(self, phase):
+        """Markdown of <description folder>/<phase>.md, '' if missing."""
+        if phase is None:
+            return ''
+        folder, _ = self.description_folder()
+        path = folder / f'{phase}.md'
+        return path.read_text(encoding='utf-8') if path.is_file() else ''
+
+    def check_descriptions(self):
+        """Warnings (list of str, never raises) about the long descriptions: folder not
+        found, files not matching any phase, phases without a file."""
+        folder, explicit = self.description_folder()
+        name = getattr(self._model, '__name__', self._model)
+        if not folder.is_dir():
+            kind = 'description_folder' if explicit else 'default description folder (description_folder not set)'
+            return [f'{name}: {kind} not found: {folder}']
+        files = {p.stem for p in folder.glob('*.md')}
+        phases = set(self._model_phases)
+        warnings = [f'{name}: {folder / (f + ".md")} does not match any phase' for f in sorted(files - phases)]
+        warnings += [f'{name}: no long description for phase {p} ({folder / (p + ".md")})'
+                     for p in self._model_phases if p not in files]
+        return warnings
+
+    def is_auto_reject(self, from_phase, to_phase):
+        """True if from_phase → to_phase is a reject generated from to_phase's forward
+        transition (see _autoconfig_reject_transitions), not declared in the config."""
+        return (from_phase, to_phase) in self._auto_rejects
 
     def get_phase_config(self, phase):
         try:
@@ -362,6 +433,22 @@ class WorkflowConfig(dict):
         self.check_defined_groups()
         self.check_config_values()
         self.check_has_terminal_phase()
+        self.check_phase_texts()
+
+    def check_phase_texts(self):
+        """Every phase (but the None start phase) must declare a non-empty caption and
+        description, both strings. (Long descriptions are files: see check_descriptions().)"""
+        nome = getattr(self._model, '__name__', self._model)
+        for phase in self._model_phases:
+            testi = self._phase_texts.get(phase, {})
+            for key in ('caption', 'description'):
+                if not testi.get(key):
+                    raise InvalidWorkflowConfiguration(
+                        f"Missing '{key}' in phase {nome}.{phase}.")
+            for key, valore in testi.items():
+                if not isinstance(valore, str):
+                    raise InvalidWorkflowConfiguration(
+                        f"'{key}' of phase {nome}.{phase} must be a string.")
 
 
     def check_unreachable_phases(self):

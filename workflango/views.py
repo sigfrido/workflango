@@ -92,7 +92,7 @@ class ChangeStateView(CachedGetObjectMixin, WorkflowModelChangeState, UpdateView
 
 
     def get_transition_gui_message(self, transition):
-        return wgettext('Confirm the transition to phase: %(phase)s') % {'phase': transition.destination}
+        return wgettext('Confirm the transition to phase: %(phase)s') % {'phase': transition.destination_caption}
 
 
     def get_context_data(self, *args, **kwargs):
@@ -104,7 +104,7 @@ class ChangeStateView(CachedGetObjectMixin, WorkflowModelChangeState, UpdateView
         if transition.command:
             context['title'], context['message'], context['button_caption'] = self.command_captions[self.destination_phase]
         else:
-            context['title'] = wgettext('Transition to phase: %(phase)s') % {'phase': transition.destination}
+            context['title'] = wgettext('Transition to phase: %(phase)s') % {'phase': transition.destination_caption}
             context['message'] = self.get_transition_gui_message(transition)
             context['button_caption'] = transition.caption
         context['show_user'] = transition.show_owner

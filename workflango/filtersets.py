@@ -58,8 +58,9 @@ try:
         def _init_wf_fields(self, model):
             from django.contrib.auth import get_user_model
             User = get_user_model()
+            cfg = model.wfm_config
             self.filters['search_wf_phase'].field.choices = [
-                (s, s) for s in model.wfm_config.get_phases_list()
+                (s, cfg.phase_caption(s)) for s in cfg.get_phases_list()
             ]
             users = User.objects.filter(is_active=True).order_by('last_name', 'first_name')
             custom_shortcuts = [(key, label) for key, (label, _fn) in get_custom_owner_filters().items()]

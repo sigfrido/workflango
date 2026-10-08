@@ -157,7 +157,8 @@ class WorkflowFilterForm(forms.Form):
 
 
     def get_phase_choices(self):
-        phase_choices = [(x, x) for x in self.model.wfm_config.get_phases_list()]
+        cfg = self.model.wfm_config
+        phase_choices = [(x, cfg.phase_caption(x)) for x in cfg.get_phases_list()]
         return phase_choices
 
 

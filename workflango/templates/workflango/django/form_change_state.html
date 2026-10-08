@@ -11,7 +11,7 @@
         <div class="card-body">
             {{ form.errors }}
             <p>{% wtrans "Object" %}: <b>{{ object }}</b></p>
-            <p{% if transition.state_description %} title="{{ transition.state_description }}"{% endif %}>{% wtrans "Current phase" %}: {{ object.current_state.phase }}</p>
+            <p{% if transition.state_description %} title="{{ transition.state_description }}"{% endif %}>{% wtrans "Current phase" %}: {{ object.current_state.phase_caption }}</p>
             <p>{% wtrans "Owner" %}: <i>
             {% if object.current_state.owner %}
                 {% if object.current_state|owned_by:request %}
@@ -24,7 +24,7 @@
             {% endif %}</i>
             </p>
             {% if show_user and last_owner %}
-            <p>{% wtrans "Previous owner in phase" %} <i>{{ transition.destination }}</i>: <b>{{ last_owner }}</b></p>
+            <p>{% wtrans "Previous owner in phase" %} <i>{{ transition.destination_caption }}</i>: <b>{{ last_owner }}</b></p>
             {% endif %}
 
             <hr>
@@ -40,7 +40,7 @@
                 <p>{% wtrans "Recipient" %}: {{ dest_owner }}</p>
                 {% endif %}
                 {% if transition.command == 'reject' %}
-                <p>{% wtrans "Reject to phase" %}: <b>{{ object.current_state.get_previous_state.phase }}</b></p>
+                <p>{% wtrans "Reject to phase" %}: <b>{{ object.current_state.get_previous_state.phase_caption }}</b></p>
                 {% endif %}
                 {% if show_message %}
                 <div class="mb-3">

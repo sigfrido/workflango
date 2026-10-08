@@ -188,6 +188,22 @@ class State(models.Model):
         return self.get_instance().wfm_config[self.phase]
 
 
+    @property
+    def phase_caption(self):
+        """Short name of the phase (config 'caption'; the phase key if not set)."""
+        try:
+            return self.get_instance().wfm_config.phase_caption(self.phase)
+        except Exception:
+            return self.phase or ''
+
+    @property
+    def phase_description(self):
+        try:
+            return self.get_instance().wfm_config.phase_description(self.phase)
+        except Exception:
+            return ''
+
+
     def get_phase_order(self, relative_to=None):
         """
         Returns definition order for current phase
@@ -389,9 +405,14 @@ class WorkflowModel(models.Model):
 
 
     @classmethod
-    def configure_workflow(cls, config=None, defaults=None, impersonable_users=None, snapshot_serializer=None):
+    def configure_workflow(cls, config=None, defaults=None, impersonable_users=None, snapshot_serializer=None,
+                           description_folder=None):
         """
         Creates the workflow configuration for this model.
+
+        ``description_folder``: optional folder (absolute, or relative to the model's app
+        folder) holding the phases' long descriptions as ``<phase>.md`` (Markdown, used by
+        ``generate_wf_doc``). Default: ``<app>/wf_doc/<model_name>/``.
 
         ``impersonable_users``: optional callable ``(user) -> queryset`` returning the
         users ``user`` is allowed to impersonate. Default: superuser / WF_ADMIN / WF_ADMIN_GROUP.
@@ -410,6 +431,7 @@ class WorkflowModel(models.Model):
             cls, config, defaults,
             impersonable_users_func=impersonable_users,
             snapshot_serializer=snapshot_serializer,
+            description_folder=description_folder,
         )
 
 

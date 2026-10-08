@@ -209,4 +209,19 @@ def _strings():  # pragma: no cover - never called, see module docstring
         pgettext('workflango', 'records'),
         # Translators: "(as <real admin>)" next to the operator who acted while impersonated
         pgettext('workflango', 'as'),
+        # generate_wf_doc (workflango/wf_doc.py)
+        pgettext('workflango', 'Start'),
+        pgettext('workflango', 'workflow'),
+        pgettext('workflango', 'Phases'),
+        pgettext('workflango', 'Final phase'),
+        pgettext('workflango', 'Configuration'),
+        pgettext('workflango', 'Key'),
+        pgettext('workflango', 'Value'),
+        pgettext('workflango', 'phase code'),
+        pgettext('workflango', 'Next phases'),
+        pgettext('workflango', 'send back'),
+        pgettext('workflango', 'generated from the forward transition'),
+        pgettext('workflango', 'No outgoing transitions.'),
+        pgettext('workflango', 'Validations'),
+        pgettext('workflango', 'Generic workflow handlers'),
     )

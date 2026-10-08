@@ -70,6 +70,8 @@ class StateSerializer(serializers.ModelSerializer):
         states = instance.wfm.get_states().select_related('owner', 'user', 'impersonated_by')
     """
     transition_type_display = serializers.SerializerMethodField()
+    phase_caption = serializers.CharField(read_only=True)
+    phase_description = serializers.CharField(read_only=True)
     owner_display = serializers.SerializerMethodField()
     user_display = serializers.SerializerMethodField()
     impersonated_by_display = serializers.SerializerMethodField()
@@ -77,7 +79,7 @@ class StateSerializer(serializers.ModelSerializer):
     class Meta:
         model = State
         fields = [
-            'id', 'phase', 'state_date',
+            'id', 'phase', 'phase_caption', 'phase_description', 'state_date',
             'owner_id', 'owner_display',
             'user_id', 'user_display',
             'transition_type', 'transition_type_display',

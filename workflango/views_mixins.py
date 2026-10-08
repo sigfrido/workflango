@@ -129,6 +129,13 @@ class _BaseWorkflowTransitionMixin:
     def get_force_transition_type(self):
         return self.force_transition_type
 
+    @staticmethod
+    def _phase_caption(obj, phase):
+        try:
+            return obj.wfm_config.phase_caption(phase)
+        except Exception:  # destination may be a command (reject, release…) or unknown
+            return phase
+
     def check_and_transition(self):
         if getattr(self, 'transitioned', 0):
             # Guard against double-call: form_valid and forms_valid may both fire.
@@ -155,7 +162,8 @@ class _BaseWorkflowTransitionMixin:
             messages.add_message(
                 self.request, messages.ERROR,
                 wgettext("The transition to %(destination)s failed: %(error)s.") % {
-                    'destination': destination_phase, 'error': get_exception_error_msg(e),
+                    'destination': self._phase_caption(obj, destination_phase),
+                    'error': get_exception_error_msg(e),
                 },
             )
             transaction.set_rollback(True)
@@ -166,7 +174,7 @@ class _BaseWorkflowTransitionMixin:
     def after_transition(self, new_state):
         messages.add_message(
             self.request, messages.INFO,
-            wgettext("Transition to phase completed: %(phase)s") % {'phase': new_state.phase},
+            wgettext("Transition to phase completed: %(phase)s") % {'phase': new_state.phase_caption},
         )
 
     def check_transition_is_valid(self):

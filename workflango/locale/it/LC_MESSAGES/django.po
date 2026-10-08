@@ -576,6 +576,63 @@ msgctxt "workflango"
 msgid "as"
 msgstr "come"
 
+#. generate_wf_doc (workflango/wf_doc.py)
+msgctxt "workflango"
+msgid "Start"
+msgstr "Inizio"
+
+msgctxt "workflango"
+msgid "workflow"
+msgstr "workflow"
+
+msgctxt "workflango"
+msgid "Phases"
+msgstr "Fasi"
+
+msgctxt "workflango"
+msgid "Final phase"
+msgstr "Fase finale"
+
+msgctxt "workflango"
+msgid "Configuration"
+msgstr "Configurazione"
+
+msgctxt "workflango"
+msgid "Key"
+msgstr "Chiave"
+
+msgctxt "workflango"
+msgid "Value"
+msgstr "Valore"
+
+msgctxt "workflango"
+msgid "phase code"
+msgstr "codice della fase"
+
+msgctxt "workflango"
+msgid "Next phases"
+msgstr "Fasi successive"
+
+msgctxt "workflango"
+msgid "send back"
+msgstr "rimando"
+
+msgctxt "workflango"
+msgid "generated from the forward transition"
+msgstr "generata dalla transizione in avanti"
+
+msgctxt "workflango"
+msgid "No outgoing transitions."
+msgstr "Nessuna transizione in uscita."
+
+msgctxt "workflango"
+msgid "Validations"
+msgstr "Validazioni"
+
+msgctxt "workflango"
+msgid "Generic workflow handlers"
+msgstr "Handler generici del workflow"
+
 #~ msgctxt "workflango"
 #~ msgid "Away"
 #~ msgstr "Assente"

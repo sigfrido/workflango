@@ -31,7 +31,7 @@
       {% for state in items %}
       <tr>
         <td class="text-nowrap">{{ state.state_date|isodt:"d/m/Y H:i" }}</td>
-        <td><span class="badge bg-secondary">{{ state.phase }}</span></td>
+        <td><span class="badge bg-secondary" title="{{ state.phase_description }}">{{ state.phase_caption }}</span></td>
         <td>{{ state.owner_display|default:"—" }}</td>
         <td>
           {{ state.user_display|default:"—" }}

@@ -7,7 +7,7 @@
   <div class="card-body py-2">
     <div class="d-flex align-items-center gap-3 flex-wrap">
       <span class="fw-semibold text-secondary">Workflow</span>
-      <span class="badge bg-secondary">{{ data.current_state.phase }}</span>
+      <span class="badge bg-secondary" title="{{ data.current_state.phase_description }}">{{ data.current_state.phase_caption|default:data.current_state.phase }}</span>
       <span>{% icon "person" %} {{ data.current_state.owner_display|default:"—" }}</span>
       <small class="text-muted">{% icon "calendar" %} {{ data.current_state.state_date|isodt:"d/m/Y H:i" }}</small>
       {% if data.current_state.suspended %}
@@ -37,7 +37,7 @@
             hx-get="{{ object_url }}change_state_form/?phase={{ t.destination }}"
             hx-target="#wf-confirm-panel"
             hx-swap="innerHTML"
-            title="{{ t.caption }}">
+            title="{{ t.tooltip }}">
       {% if t.is_reject %}{% icon "arrow-left-circle" %}{% else %}{% icon "arrow-right-circle" %}{% endif %} {{ t.caption }}
     </button>
     {% endfor %}
@@ -60,7 +60,7 @@
             hx-get="{{ object_url }}change_state_form/?phase={{ t.destination }}"
             hx-target="#wf-confirm-panel"
             hx-swap="innerHTML"
-            title="{{ t.caption }}">
+            title="{{ t.tooltip }}">
       {% icon "arrow-left-circle" %} {{ t.caption }}
     </button>
     {% endwith %}

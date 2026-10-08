@@ -139,11 +139,11 @@ class SebastianWorkflowSerializerMixin(WorkflowSerializerMixin):  # pylint: disa
         if state.message:
             icons += f'<i class="bi bi-sticky ms-1 text-muted" title="{conditional_escape(state.message)}"></i>'
         return format_html(
-            '<span class="badge bg-secondary">{}</span>'
+            '<span class="badge bg-secondary" title="{}">{}</span>'
             ' <span class="ms-1">{}</span>'
             ' <small class="text-muted ms-1">{}</small>'
             '{}',
-            state.phase or '—', owner_str, date_str, mark_safe(icons),
+            state.phase_description, state.phase_caption or '—', owner_str, date_str, mark_safe(icons),
         )
 
 

@@ -37,13 +37,13 @@
                     {% if transition.is_disabled %}
                     <span class="btn btn-secondary btn-disabled disabled">{{ transition.caption }}</span>
                     {% else %}
-                    <a class="btn {% if transition.is_reject %}btn-warning{% else %}btn-primary{% endif %}" href="{{ object|change_state_url:transition.destination }}" title="{{ transition.destination_description|default:"" }}">{{ transition.caption }}</a>
+                    <a class="btn {% if transition.is_reject %}btn-warning{% else %}btn-primary{% endif %}" href="{{ object|change_state_url:transition.destination }}" title="{{ transition.tooltip }}">{{ transition.caption }}</a>
                     {% endif %}
                 {% endif %}
             {% endfor %}
 
             {% if reject_transition and not reject_transition.is_hidden %}
-                <a class="btn btn-warning" href="{{ object|change_state_url:"reject" }}" title="{% wtrans "Reject to phase" %} {{ st.get_previous_state.phase }}, {% wtrans "user" %} {{ st.get_previous_state.owner }}">{% wtrans "Reject" %}</a>
+                <a class="btn btn-warning" href="{{ object|change_state_url:"reject" }}" title="{% wtrans "Reject to phase" %} {{ st.get_previous_state.phase_caption }}, {% wtrans "user" %} {{ st.get_previous_state.owner }}">{% wtrans "Reject" %}</a>
             {% endif %}
             {% if st.can_release %}
                 <a class="btn btn-warning" href="{{ object|change_state_url:"release" }}">{% wtrans "Release" %}</a>

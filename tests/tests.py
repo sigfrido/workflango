@@ -55,6 +55,87 @@ class WorkflowConfigTest(TestCase):
             self.assertEqual(self.wc.get_phase_order('babic'), -1)
 
 
+    # ---- phase caption / description (#6), long descriptions in <phase>.md files
+
+    def _config(self, **phase_a):
+        return WorkflowConfig(WorkflowModelValid, (
+            (None, {'reachable_phases': {'a': {}}}),
+            ('a', {'reachable_phases': {'b': {}}, **phase_a}),
+            ('b', {'caption': 'B', 'description': 'Phase B', 'is_closed': True}),
+        ), {'read': [], 'edit': [], 'admin': []})
+
+    def test_phase_texts(self):
+        self.assertEqual((self.wc.phase_caption('3'), self.wc.phase_description('3')),
+                         ('Phase 3', 'Description of phase 3'))
+        self.assertEqual(self.wc.phase_caption(None), '')
+        wc = self._config()  # no caption: the phase key at runtime
+        self.assertEqual((wc.phase_caption('a'), wc.phase_description('a')), ('a', ''))
+
+    def test_phase_texts_not_inherited_from_defaults(self):
+        wc = WorkflowConfig(WorkflowModelValid, (
+            (None, {'reachable_phases': {'a': {}}}),
+            ('a', {'is_closed': True}),
+        ), {'read': [], 'edit': [], 'admin': [], 'caption': 'X', 'description': 'Y'})
+        self.assertEqual((wc.phase_caption('a'), wc.phase_description('a')), ('a', ''))
+
+    def test_check_requires_caption_and_description(self):
+        self._config(caption='A', description='Phase A').check()
+        for kwargs in ({'description': 'Phase A'}, {'caption': 'A'},
+                       {'caption': '', 'description': 'Phase A'},
+                       {'caption': 'A', 'description': 1}):
+            with self.subTest(**{k: repr(v) for k, v in kwargs.items()}):
+                with self.assertRaises(InvalidWorkflowConfiguration):
+                    self._config(**kwargs).check()
+
+    def _config_folder(self, folder):
+        return WorkflowConfig(WorkflowModelValid, (
+            (None, {'reachable_phases': {'a': {}}}),
+            ('a', {'caption': 'A', 'description': 'Phase A', 'reachable_phases': {'b': {}}}),
+            ('b', {'caption': 'B', 'description': 'Phase B', 'is_closed': True}),
+        ), {'read': [], 'edit': [], 'admin': []}, description_folder=folder)
+
+    def test_long_descriptions_from_files(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, 'a.md').write_text('**Phase A** in detail\n', encoding='utf-8')
+            Path(tmp, 'b.md').write_text('B', encoding='utf-8')
+            wc = self._config_folder(tmp)
+            self.assertEqual(wc.phase_long_description('a'), '**Phase A** in detail\n')
+            self.assertEqual(wc.phase_long_description(None), '')
+            self.assertEqual(wc.check_descriptions(), [])
+            Path(tmp, 'b.md').unlink()
+            Path(tmp, 'z.md').write_text('?', encoding='utf-8')
+            avvisi = wc.check_descriptions()
+            self.assertEqual(wc.phase_long_description('b'), '')
+        self.assertEqual(len(avvisi), 2)
+        self.assertIn('z.md does not match any phase', avvisi[0])
+        self.assertIn('no long description for phase b', avvisi[1])
+
+    def test_description_folder_not_found(self):
+        avvisi = self._config_folder('/nonexistent/wf_doc').check_descriptions()
+        self.assertEqual(len(avvisi), 1)
+        self.assertIn('description_folder not found: /nonexistent/wf_doc', avvisi[0])
+        folder, explicit = self._config_folder(None).description_folder()
+        self.assertFalse(explicit)
+        self.assertEqual(folder.parts[-2:], ('wf_doc', 'workflowmodelvalid'))
+        self.assertIn('description_folder not set', self._config_folder(None).check_descriptions()[0])
+        self.assertEqual(self._config_folder('docs/x').description_folder()[0].parts[-3:], ('tests', 'docs', 'x'))
+
+    def test_check_wf_config_prints_warnings(self):
+        from io import StringIO
+        from django.core.management import call_command
+        out, err = StringIO(), StringIO()
+        with patch.object(WorkflowModelValid.wfm_config, 'check_descriptions', return_value=['missing x']):
+            call_command('check_wf_config', 'tests.WorkflowModelValid', stdout=out, stderr=err)
+        self.assertIn('WARNING: missing x', err.getvalue())
+
+    def test_auto_rejects_are_tracked(self):
+        self.assertTrue(self.wc.is_auto_reject('2', '1'))    # from 1 -> 2
+        self.assertFalse(self.wc.is_auto_reject('4', '1'))   # declared in phase 4's config
+        self.assertFalse(self.wc.is_auto_reject('1', '2'))   # forward
+
+
     def test_editors_for_phase(self):
         # 'admin' : ['group1', 'group4'],  'edit' : ['group2'],
         groups = self.wc.editors_for_phase('1', False)
@@ -191,6 +272,30 @@ class WorkflowTest(TransactionTestCase):
         if user:
             instance.wfm.transition(user, 1, user)
         return instance
+
+
+    def test_phase_captions_in_transitions_and_states(self):
+        instance = self.create(self.user_1)
+        t3 = instance.wfm.get_transition(3, self.user_1)
+        self.assertIn('Phase 3', t3.caption)          # "Go to: <caption of 3>"
+        self.assertEqual(t3.destination_caption, 'Phase 3')
+        self.assertEqual(t3.tooltip, 'Description of phase 3')
+        self.assertEqual(instance.wfm.get_transition(2, self.user_1).caption, 'exec 12')
+        state = instance.current_state
+        self.assertEqual((state.phase_caption, state.phase_description),
+                         ('Phase 1', 'Description of phase 1'))
+
+    def test_phase_filter_choices_use_captions(self):
+        class _Form(WorkflowFilterForm):
+            model = self.OkModel
+        self.assertIn(('3', 'Phase 3'), _Form().get_phase_choices())
+
+    def test_state_serializer_has_phase_caption(self):
+        from workflango.drf import StateSerializer
+        instance = self.create(self.user_1)
+        data = StateSerializer(instance.current_state).data
+        self.assertEqual((data['phase'], data['phase_caption'], data['phase_description']),
+                         ('1', 'Phase 1', 'Description of phase 1'))
 
 
     # test user_groups
@@ -1841,6 +1946,107 @@ class TransitionMessagesTest(TestCase):
         from workflango.contrib.sebastian import publish_transition_messages
         request = RequestFactory().post('/')  # no message storage: silently ignored
         publish_transition_messages(request, MagicMock(transition_messages=[('info', 'x')]))
+
+
+class GenerateWfDocTest(TestCase):
+    """generate_wf_doc / wf_doc.workflow_markdown (#5)."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        WorkflowModelValid.configure_workflow(snapshot_serializer=WorkflowModelValidSerializer)
+
+    def _md(self, **kwargs):
+        from django.utils import translation
+        from workflango.wf_doc import workflow_markdown
+        with translation.override('en'):
+            return workflow_markdown(WorkflowModelValid, **kwargs)
+
+    def test_graph(self):
+        md = self._md(graph=True)
+        self.assertIn('```mermaid\nflowchart TD', md)
+        self.assertIn('start --> phase_1', md)
+        self.assertIn('phase_1 -->|"exec 12"| phase_2', md)
+        self.assertIn('phase_3(["Phase 3"])', md)          # closed phase
+        self.assertIn('phase_4 --> phase_1', md)            # declared back path
+        self.assertNotIn('phase_2 --> phase_1', md)         # automatic reject: not drawn
+        self.assertNotIn('phase_2 -.-> phase_1', md)
+        self.assertIn('click phase_1 "#phase-1"', md)
+        self.assertNotIn('mermaid', self._md(graph=False))
+
+    def test_phase_sections(self):
+        md = self._md(detailed=False)
+        self.assertIn('**Start**: [Phase 1](#phase-1)', md)
+        self.assertIn('<a id="phase-1"></a>\n\n### Phase 1\n\n_Description of phase 1_', md)
+        self.assertIn('- [Phase 2](#phase-2) — «exec 12»', md)
+        self.assertIn('- [Phase 1](#phase-1) (send back)', md)
+        self.assertLess(md.index('### Phase 4'), md.index('### Phase 0'))  # definition order
+        self.assertNotIn('Configuration', md)
+        self.assertNotIn('validate_', md)
+
+    def test_long_description_from_file(self):
+        with patch.object(WorkflowModelValid.wfm_config, 'phase_long_description',
+                          side_effect=lambda p: f'**Long {p}**' if p == '2' else ''):
+            md = self._md()
+        self.assertIn('_Description of phase 2_\n\n**Long 2**', md)
+
+    def test_detailed(self):
+        md = self._md()  # default: detailed
+        self.assertIn('`properties`:\n\n```yaml\nedit_button_label: Change\n```', md)
+        self.assertIn('| phase code | `2` |', md)
+        self.assertIn('| `allow_release` | no |', md)
+        self.assertIn('    - `allow-reject`: False', md)
+        self.assertIn('    - `auto`: generated from the forward transition', md)
+        self.assertIn('- `validate_1_to_2()`\n    Phase 1 to phase 2: refused when invalid_1_to_2 is set.', md)
+        self.assertIn('- `validate_any_to_2()`', md)
+        self.assertIn('## Generic workflow handlers', md)
+        self.assertIn('### `after_state_transition()`', md)
+        self.assertIn('### `validate_phase_transition()`', md)
+
+    def test_yaml(self):
+        from workflango.wf_doc import _yaml
+        value = {'label': 'Edit', 'fields': {'b', 'a'}, 'flag': True, 'none': None,
+                 'nested': {'x': 1, 'y': []}, 'tricky': 'a: b', 'word': 'yes'}
+        self.assertEqual(_yaml(value), [
+            'label: Edit', 'fields:', '  - a', '  - b', 'flag: true', 'none: null',
+            'nested:', '  x: 1', '  y: []', 'tricky: "a: b"', 'word: "yes"',
+        ])
+
+    def test_italian_labels(self):
+        from django.utils import translation
+        from workflango.wf_doc import workflow_markdown
+        with translation.override('it'):
+            md = workflow_markdown(WorkflowModelValid)
+        self.assertIn('## Fasi', md)
+        self.assertIn('#### Fasi successive', md)
+
+    def test_command_writes_default_paths_after_check(self):
+        import os
+        import tempfile
+        from io import StringIO
+        from django.core.management import call_command
+        from django.core.management.base import CommandError
+        with tempfile.TemporaryDirectory() as tmp:
+            cwd = os.getcwd()
+            os.chdir(tmp)
+            try:
+                call_command('generate_wf_doc', 'tests.WorkflowModelValid', stdout=StringIO())
+                with open('docs/workflow/WorkflowModelValid.md') as f:
+                    testo = f.read()
+                self.assertIn('flowchart TD', testo)
+                self.assertIn('validate_1_to_2', testo)
+                call_command('generate_wf_doc', 'tests.WorkflowModelValid', 'x/y.md', '--plain',
+                             '--nograph', stdout=StringIO())
+                with open('x/y.md') as f:
+                    testo = f.read()
+                self.assertNotIn('flowchart TD', testo)
+                self.assertNotIn('validate_1_to_2', testo)
+            finally:
+                os.chdir(cwd)
+        with patch.object(WorkflowModelValid.wfm_config, 'check',
+                          side_effect=InvalidWorkflowConfiguration('broken')):
+            with self.assertRaisesMessage(CommandError, 'broken'):
+                call_command('generate_wf_doc', 'tests.WorkflowModelValid', '--print', stdout=StringIO())
 
 
 class CompiledCatalogTest(TestCase):

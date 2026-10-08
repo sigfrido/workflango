@@ -57,6 +57,8 @@ class Supplier(WorkflowModel):
             'properties': {'editable_fields': {'company_name', 'tax_code', 'certification'}},
         }),
         ('proposed', {
+            'caption': 'Proposed',
+            'description': 'Supplier proposed, waiting for review',
             'reachable_phases': {
                 'active': {'allowed_groups': ['MANAGERS'], 'caption': 'Activate'},
             },
@@ -65,6 +67,8 @@ class Supplier(WorkflowModel):
             'properties': {'editable_fields': {'company_name', 'tax_code', 'certification'}},
         }),
         ('active', {
+            'caption': 'Active',
+            'description': 'Supplier approved: requests can target it',
             'reachable_phases': {
                 'archived': {'allowed_groups': ['MANAGERS'], 'caption': 'Archive'},
             },
@@ -73,6 +77,8 @@ class Supplier(WorkflowModel):
             'properties': {'editable_fields': {'certification'}},
         }),
         ('archived', {
+            'caption': 'Archived',
+            'description': 'Supplier no longer in use',
             'is_closed': True,
             'reachable_phases': {},
             'edit': [],
@@ -132,6 +138,8 @@ class Request(WorkflowModel):
             'properties': {'editable_fields': {'title', 'description', 'budget', 'supplier'}},
         }),
         ('draft', {
+            'caption': 'Draft',
+            'description': 'Request being written by its author',
             'reachable_phases': {
                 'submitted': {'caption': 'Submit'},
             },
@@ -140,6 +148,8 @@ class Request(WorkflowModel):
             'properties': {'editable_fields': {'title', 'description', 'budget', 'supplier'}},
         }),
         ('submitted', {
+            'caption': 'Submitted',
+            'description': 'Waiting for a manager to approve or reject it',
             'reachable_phases': {
                 'approved': {'allowed_groups': ['MANAGERS'], 'caption': 'Approve'},
                 'rejected': {'allowed_groups': ['MANAGERS'], 'caption': 'Reject'},
@@ -149,12 +159,16 @@ class Request(WorkflowModel):
             'properties': {'editable_fields': {'manager_notes', 'reference_code'}},
         }),
         ('approved', {
+            'caption': 'Approved',
+            'description': 'Request approved (closed)',
             'is_closed': True,
             'reachable_phases': {},
             'edit': [],
             'properties': {'editable_fields': set()},
         }),
         ('rejected', {
+            'caption': 'Rejected',
+            'description': 'Request rejected (closed)',
             'is_closed': True,
             'reachable_phases': {},
             'edit': [],

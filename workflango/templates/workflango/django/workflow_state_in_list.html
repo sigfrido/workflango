@@ -11,6 +11,6 @@
             <span{% if st|owned_by:request %} style="font-weight:bold; color:orange"{% endif %}>{% wtrans "RESUBMITTED" %}</span><br>
         {% endif %}
     {% endif %}
-    {% if st.suspended %}<span class="suspended" title="{% wtrans "suspended" %}"><b>s:</b>{{ st.phase }}</span>{% else %}{{ st.phase }}{% endif %}{% if not hide_owner %} ({{ st.owner|default:"n/a" }}){% endif %}
+    {% if st.suspended %}<span class="suspended" title="{% wtrans "suspended" %}"><b>s:</b>{{ st.phase_caption }}</span>{% else %}{{ st.phase_caption }}{% endif %}{% if not hide_owner %} ({{ st.owner|default:"n/a" }}){% endif %}
     </a><span><small>{{ st.state_date|date:"d/m/y" }}</small></span>
 {% endwith %}

@@ -20,7 +20,7 @@ Manages state transitions for any Django model: permissions by group, full trans
 - Generic views and CBV mixins (`WorkflowModelCreate/Update/List/Detail`)
 - `ChangeStateView` / `ObjectHistoryView` — ready-to-mount views for a traditional (non-DRF) Django GUI, with shipped, i18n-ready templates
 - Full Django i18n support for the library's own GUI chrome, with a bundled Italian translation catalog
-- Management commands: `init_wf_groups`, `check_wf_config`, `check_wf_objects`
+- Management commands: `init_wf_groups`, `check_wf_config`, `check_wf_objects`, `generate_wf_doc` (Markdown documentation of a workflow)
 - Test mixins (`WorkflowTestMixin`, `GUITestMixin`) for consumer apps
 
 ## Requirements

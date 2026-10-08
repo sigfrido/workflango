@@ -25,6 +25,7 @@ if omitted — `configure_workflow()` is a no-op if the model is already configu
 | `defaults` | `dict` | falls back to `workflow_defaults`, else `{}` | Deep-copied as the starting point for every phase's config before that phase's own keys are applied on top. This is where shared `read`/`edit`/`admin`/`properties` normally live, so individual phases only need to override what differs. |
 | `impersonable_users` | `callable(user) -> queryset` | `None` | Overrides the default impersonation policy (superusers / `WF_ADMIN_GROUP` members may impersonate any active user). See README.md "Impersonation". |
 | `snapshot_serializer` | a DRF `Serializer` class | `None` | Used by `get_workflow_snapshot()` to serialize the instance when a snapshot is taken (see the phase-level `snapshot` key below). |
+| `description_folder` | `str` / path (absolute, or relative to the model's app folder) | `<app>/wf_doc/<model_name>/` | Folder of the phases' **long descriptions**: one Markdown file `<phase>.md` per phase (who works it, permissions, operations, automatic steps), used only by `generate_wf_doc` (§5). Kept out of the phase config, which holds only what the GUI needs (`caption`, `description`). `check_wf_config` warns if the folder is missing, a file matches no phase or a phase has no file. |
 
 `impersonable_users(user)` is always evaluated against the real, originally-authenticated
 caller of the request, never against an already-impersonated identity — the DRF layer's
@@ -78,6 +79,8 @@ config=(
 
 | Key | Type | Default | What it controls |
 |---|---|---|---|
+| `caption` | `str` | the phase key | **Required by `check()`.** Short name of the phase ("Approval"), shown instead of the phase key everywhere in the GUI and in the default transition captions ("Go to: …", "Send back to …"). Per phase: never taken from `defaults`. |
+| `description` | `str` | `''` | **Required by `check()`.** One-line description: tooltip of the transition buttons leading to the phase and of the state badges; shown by `generate_wf_doc`. |
 | `read` | `list[str]` (group names) | **none** — must be supplied by the phase or `defaults`, or accessing it raises `KeyError`/`InvalidPhase` | Groups granted read permission on instances in this phase. |
 | `edit` | `list[str]` (group names) | **none**, same as `read` | Groups granted edit permission. Checked on the *source* phase for the acting user, and on the *target* phase for the new owner (who must be editor or admin there, or the transition is refused). |
 | `admin` | `list[str]` (group names) | **none**, same as `read` | Groups granted admin permission — a superset of edit rights (e.g. can release/delegate regardless of `allow_release`/`allow_delegate`). Checked on both source and target phase during a transition. |
@@ -146,12 +149,12 @@ mechanism by themselves — always pair them with `allowed_groups` (or the phase
 
 These go inside a phase's own `properties` dict (§1). Unlike the keys above,
 `properties` is mostly a free-form bag for your own application — workflango itself
-only reads these four:
+only reads these three (the former `properties['description']` is replaced by the
+phase-level `description`, §1):
 
 | Key | Type | Default | What it controls |
 |---|---|---|---|
 | `edit_button_label` | `str` | `None` (renders as an empty label) | Label of the "Edit" button on the detail view (shipped `workflow_edit_btn.html` template). Only relevant while the object is editable. |
-| `description` | `str` | `None` | The *destination* phase's `description` is rendered as the tooltip (`title=` attribute) on each transition button in the shipped `workflow_buttons.html` template. The *current* phase's `description` isn't rendered by any shipped template, but is available to host applications via `transition.phase_description`. |
 | `help_topic` | `str` | `None` | Not rendered by any shipped template — an extension point for host applications wanting contextual help links, available via `transition.phase_help_topic` / `transition.destination_help_topic()`. |
 | `disable_editing` | `bool` | `None`/falsy | When truthy, forces the object to read-only in `WorkflowDetailMixin`'s context (`wf_editable = False`) regardless of ownership — lets a phase declare itself non-editable even to its current owner. |
 
@@ -174,6 +177,12 @@ the specific problem.
 - Every group name used in a phase's `read`/`edit`/`admin` is declared in `settings.WF_USERS_GROUPS`.
 - At least one non-`None` phase has `is_closed: True` — otherwise an instance could
   never reach a final state, which is virtually always a configuration mistake.
+- Every non-`None` phase declares a non-empty `caption` and `description` (strings).
+
+`check_wf_config` also prints **warnings** (it does not fail) from
+`WorkflowConfig.check_descriptions()` about the long descriptions (§0 `description_folder`):
+the folder is not found (the explicit one, or the default when `description_folder` is not
+set), a `.md` file matches no phase, a phase has no `.md` file.
 - `allow_release`/`allow_delegate` are set to one of their allowed values:
 
 | Key | Default | Allowed values |
@@ -185,3 +194,33 @@ Any other value for these two keys raises `InvalidWorkflowConfiguration`. Note t
 `owner_mode` (§2) is **not** validated despite being effectively constrained to a
 fixed set of values by the code that consumes it — a typo there fails silently
 (falls back to `'none'`-like behavior) rather than raising at configuration time.
+
+## 5. Workflow documentation: `generate_wf_doc`
+
+```
+manage.py generate_wf_doc [--plain] [--nograph] [--print] [--language LANG] app.Model [output]
+```
+
+Writes the Markdown documentation of a model's workflow, browseable on GitHub and
+includable in pdoc documentation, after running `WorkflowConfig.check()` (a broken
+configuration is a `CommandError`, as in `check_wf_config`):
+
+- default output `docs/workflow/<Model>.md`; `--print` writes to stdout;
+- a mermaid `flowchart TD` of the phases (`--nograph` leaves it out): forward transitions labeled with
+  their `caption`, back paths only when declared in the config (dashed if `reject`), not
+  the automatic rejects; closed phases have rounded boxes; each phase links to its
+  section (`#phase-<key>`; GitHub ignores mermaid clicks, the graph stays readable);
+- one section per phase in definition order: `caption`, `description`, the long
+  description (`<description_folder>/<phase>.md`, Markdown as is) and the reachable phases,
+  linked, with the transition captions; the long-description warnings of `check_wf_config`
+  are printed too;
+- the phase configuration keys (dict values, e.g. `properties`, as YAML blocks), each
+  transition's keys (callables shown by name and first docstring line), the `validate_*` methods concerning the phase
+  (`validate_<phase>_to_any`, `validate_any_to_<phase>`, `validate_<phase>_to_<dest>`) and
+  the generic workflow handlers (`validate_phase_transition`, `after_state_transition`,
+  `get_workflow_snapshot`) defined by the model, with their docstrings — all left out by
+  `--plain`;
+- labels are translated (`--language`, default `LANGUAGE_CODE`).
+
+No image of the graph is produced: the mermaid source is rendered by GitHub, VS Code and
+most Markdown viewers.

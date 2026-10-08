@@ -42,6 +42,7 @@ class WorkflowModelValid(WorkflowModel):
 
 
     def validate_1_to_2(self, user):
+        """Phase 1 to phase 2: refused when invalid_1_to_2 is set."""
         if hasattr(self, 'invalid_1_to_2'):
             raise ValidationError('Invalidated transition: 1 to 2')
 
@@ -89,6 +90,7 @@ class WorkflowModelValid(WorkflowModel):
         }),
 
         (1, {
+            'caption' : 'Phase 1', 'description' : 'Description of phase 1',
             'snapshot': True,
             'reachable_phases' : {
                 2 : { 'caption' : 'exec 12' },
@@ -101,6 +103,7 @@ class WorkflowModelValid(WorkflowModel):
         }),
 
         (2, {
+            'caption' : 'Phase 2', 'description' : 'Description of phase 2',
 
             'reachable_phases' : {
                 3 : {},
@@ -116,6 +119,7 @@ class WorkflowModelValid(WorkflowModel):
         }),
 
         (3, {
+            'caption' : 'Phase 3', 'description' : 'Description of phase 3',
             'reachable_phases' : {},
             'admin' : [],
             'edit' : [],
@@ -124,6 +128,7 @@ class WorkflowModelValid(WorkflowModel):
         }),
 
         (4, {
+            'caption' : 'Phase 4', 'description' : 'Description of phase 4',
             'reachable_phases' : {
                 1 : {}, # required for testing reject_to_phase
                 0 : {
@@ -137,6 +142,7 @@ class WorkflowModelValid(WorkflowModel):
         }),
 
         (0, { # put here to test that phase keys are not being sorted
+            'caption' : 'Phase 0', 'description' : 'Description of phase 0',
             'reachable_phases' : {},
             'edit' : [],
         }),
