@@ -158,12 +158,14 @@ class WorkflowFilterForm(forms.Form):
 
     def get_phase_choices(self):
         cfg = self.model.wfm_config
-        phase_choices = [(x, cfg.phase_caption(x)) for x in cfg.get_phases_list()]
-        return phase_choices
+        metafilters = [(key, label) for key, (label, _phases) in cfg.phase_metafilters().items()]
+        return metafilters + [(x, cfg.phase_caption(x)) for x in cfg.get_phases_list()]
 
 
     def get_owner_choices(self):
-        return USER_CHOICES + tuple((key, label) for key, (label, _fn) in get_custom_owner_filters().items())
+        model_filters = self.model.wfm_config.owner_metafilters() if hasattr(self.model, 'wfm_config') else {}
+        return USER_CHOICES + tuple((key, label) for key, (label, _fn) in
+                                    {**get_custom_owner_filters(), **model_filters}.items())
 
 
 class SearchListForm(forms.Form):

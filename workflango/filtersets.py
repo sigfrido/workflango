@@ -59,11 +59,14 @@ try:
             from django.contrib.auth import get_user_model
             User = get_user_model()
             cfg = model.wfm_config
-            self.filters['search_wf_phase'].field.choices = [
-                (s, cfg.phase_caption(s)) for s in cfg.get_phases_list()
-            ]
+            self.filters['search_wf_phase'].field.choices = (
+                [(key, label) for key, (label, _phases) in cfg.phase_metafilters().items()]
+                + [('', '──────────')]
+                + [(s, cfg.phase_caption(s)) for s in cfg.get_phases_list()]
+            )
             users = User.objects.filter(is_active=True).order_by('last_name', 'first_name')
-            custom_shortcuts = [(key, label) for key, (label, _fn) in get_custom_owner_filters().items()]
+            custom_shortcuts = [(key, label) for key, (label, _fn) in
+                                {**get_custom_owner_filters(), **cfg.owner_metafilters()}.items()]
             self.filters['search_wf_owner'].field.choices = (
                 list(_USER_SHORTCUTS)
                 + custom_shortcuts

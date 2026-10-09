@@ -277,9 +277,7 @@ class WorkflowModelList(LoginRequiredMixin):
     def get_context_data(self, *args, **kwargs):
         context = super().get_context_data(*args, **kwargs)
         context['active_phases'] = self.model.wfm_config.get_phases_list(closed=False)
-        context['active_phases_filter'] = '&'.join(
-            [f"search_wf_phase={phase}" for phase in context['active_phases']]
-        )
+        context['active_phases_filter'] = 'search_wf_phase=phases_open'
         return context
 
     def get_queryset(self):

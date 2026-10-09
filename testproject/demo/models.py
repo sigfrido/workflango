@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
 
@@ -214,4 +215,10 @@ class Settings(models.Model):
 
 
 Supplier.configure_workflow()
-Request.configure_workflow()
+Request.configure_workflow(
+    # Metafilters of the list filters (#8): one more phase value, one owner value
+    phase_metafilters={'to_review': ('To review', ['submitted'])},
+    owner_metafilters={
+        'managers': ('Managers', lambda request: get_user_model().objects.filter(groups__name='MANAGERS')),
+    },
+)

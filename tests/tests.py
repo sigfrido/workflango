@@ -1390,6 +1390,112 @@ class OwnerFilterTest(TransactionTestCase):
             self.assertIn('value="staff"', html)
 
 
+class MetafilterTest(TransactionTestCase):
+    """Metafilters of the phase and owner filters (#8): builtin phases_open/phases_closed,
+    model phase_metafilters (list or callable) and owner_metafilters (users or Q)."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.OkModel = WorkflowModelValid
+        cls.OkModel.configure_workflow(snapshot_serializer=WorkflowModelValidSerializer)
+
+    setUp = OwnerFilterTest.setUp
+    _make_request = OwnerFilterTest._make_request
+    _create_owned_by = OwnerFilterTest._create_owned_by
+
+    def _closed(self):
+        instance = self._create_owned_by(self.user_1)
+        instance.wfm.transition(self.user_1, 3, None)  # phase 3: is_closed
+        return instance
+
+    def _filter(self, **params):
+        result = WorkflowFilter.filter_queryset(self._make_request(**params), self.OkModel.objects.all())
+        self.assertEqual(result['search_errors'], [])
+        return set(result['object_list'])
+
+    def test_builtin_open_and_closed(self):
+        in_1 = self._create_owned_by(self.user_1)
+        in_2 = self._create_owned_by(self.user_3)
+        closed = self._closed()
+        self.assertEqual(self._filter(search_wf_phase='phases_open'), {in_1, in_2})
+        self.assertEqual(self._filter(search_wf_phase='phases_closed'), {closed})
+        # mixed with a real phase (OR)
+        self.assertEqual(self._filter(search_wf_phase=['phases_closed', '2']), {closed, in_2})
+        # history mode: also past states
+        self.assertEqual(self._filter(search_wf_phase='phases_open', search_wf_history='all'),
+                         {in_1, in_2, closed})
+
+    def test_drf_backend(self):
+        from rest_framework.request import Request
+        from workflango.filters import WorkflowFilterBackend
+        in_1 = self._create_owned_by(self.user_1)
+        self._closed()
+        request = Request(RequestFactory().get('/', {'search_wf_phase': 'phases_open'}))
+        request.user = self.user_1
+        qs = WorkflowFilterBackend().filter_queryset(request, self.OkModel.objects.all(), None)
+        self.assertEqual(list(qs), [in_1])
+
+    def test_model_phase_metafilters(self):
+        in_1 = self._create_owned_by(self.user_1)
+        in_2 = self._create_owned_by(self.user_3)
+        cfg = self.OkModel.wfm_config
+        metafilters = {
+            'first_two': ('First two', [1, 2]),
+            'mine': ('Mine', lambda request, cfg: ['1'] if request.user == self.user_1 else []),
+        }
+        with patch.object(cfg, '_phase_metafilters', metafilters):
+            self.assertEqual(self._filter(search_wf_phase='first_two'), {in_1, in_2})
+            self.assertEqual(self._filter(search_wf_phase='mine'), {in_1})
+            self.assertEqual(cfg.expand_phase_metafilter('first_two'), ['1', '2'])
+
+            class _Form(WorkflowFilterForm):
+                model = WorkflowModelValid
+            chiavi = [k for k, _ in _Form().get_phase_choices()]
+            self.assertEqual(chiavi[:4], ['phases_open', 'phases_closed', 'first_two', 'mine'])
+
+    def test_model_owner_metafilters(self):
+        owned_1 = self._create_owned_by(self.user_1)
+        owned_3 = self._create_owned_by(self.user_3)
+        metafilters = {
+            'staff': ('Staff', lambda request: User.objects.filter(is_staff=True)),
+            'not_staff_q': ('Not staff', lambda lookup, request: build_Q(lookup, 'owner__is_staff', False)),
+        }
+        with patch.object(self.OkModel.wfm_config, '_owner_metafilters', metafilters):
+            self.assertEqual(self._filter(search_wf_owner='staff'), {owned_1})
+            self.assertEqual(self._filter(search_wf_owner='not_staff_q'), {owned_3})
+
+            class _Form(WorkflowFilterForm):
+                model = WorkflowModelValid
+            self.assertIn('value="staff"', str(_Form()['search_wf_owner']))
+
+    @override_settings(WF_CUSTOM_OWNER_FILTERS={
+        'staff': ('Global staff', lambda lookup, request: build_Q(lookup, 'owner__is_staff', False)),
+    })
+    def test_model_owner_metafilter_wins_over_global(self):
+        owned_1 = self._create_owned_by(self.user_1)
+        self._create_owned_by(self.user_3)
+        with patch.object(self.OkModel.wfm_config, '_owner_metafilters',
+                          {'staff': ('Staff', lambda request: [self.user_1])}):
+            self.assertEqual(self._filter(search_wf_owner='staff'), {owned_1})
+
+    def test_check_rejects_bad_keys(self):
+        cfg = self.OkModel.wfm_config
+        for phase_mf, owner_mf in (
+            ({'1': ('x', [2])}, {}),                       # clashes with a phase
+            ({'phases_open': ('x', [2])}, {}),             # clashes with a builtin
+            ({'x': ('x', ['nope'])}, {}),                  # unknown phase
+            ({}, {'me': ('x', lambda request: [])}),        # builtin owner shortcut
+            ({}, {'42': ('x', lambda request: [])}),        # numeric key
+            ({}, {'x': ('x', 'not callable')}),
+        ):
+            with self.subTest(phase=phase_mf, owner=owner_mf), \
+                    patch.object(cfg, '_phase_metafilters', phase_mf), \
+                    patch.object(cfg, '_owner_metafilters', owner_mf), \
+                    self.assertRaises(InvalidWorkflowConfiguration):
+                cfg.check_metafilters()
+
+
 class WorkflowSnapshotTest(TransactionTestCase):
 
     @classmethod

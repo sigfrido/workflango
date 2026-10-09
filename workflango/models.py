@@ -406,9 +406,18 @@ class WorkflowModel(models.Model):
 
     @classmethod
     def configure_workflow(cls, config=None, defaults=None, impersonable_users=None, snapshot_serializer=None,
-                           description_folder=None):
+                           description_folder=None, phase_metafilters=None, owner_metafilters=None):
         """
         Creates the workflow configuration for this model.
+
+        ``phase_metafilters``: optional ``{key: (label, phases)}``: extra values of the phase
+        filter standing for several phases (besides the builtin ``phases_open`` /
+        ``phases_closed``); ``phases`` is a list of phase keys or a
+        ``callable(request, wfm_config) -> iterable of phases``.
+
+        ``owner_metafilters``: optional ``{key: (label, fn)}``: extra values of the owner filter
+        for this model; ``fn(request)`` returns the users (queryset or iterable), or
+        ``fn(lookup, request)`` returns a ``Q`` (as ``settings.WF_CUSTOM_OWNER_FILTERS``).
 
         ``description_folder``: optional folder (absolute, or relative to the model's app
         folder) holding the phases' long descriptions as ``<phase>.md`` (Markdown, used by
@@ -432,6 +441,8 @@ class WorkflowModel(models.Model):
             impersonable_users_func=impersonable_users,
             snapshot_serializer=snapshot_serializer,
             description_folder=description_folder,
+            phase_metafilters=phase_metafilters,
+            owner_metafilters=owner_metafilters,
         )
 
 

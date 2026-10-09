@@ -633,6 +633,15 @@ msgctxt "workflango"
 msgid "Generic workflow handlers"
 msgstr "Handler generici del workflow"
 
+#. phase metafilters (wf_config.phase_metafilters)
+msgctxt "workflango"
+msgid "Open phases"
+msgstr "Fasi aperte"
+
+msgctxt "workflango"
+msgid "Closed phases"
+msgstr "Fasi chiuse"
+
 #~ msgctxt "workflango"
 #~ msgid "Away"
 #~ msgstr "Assente"

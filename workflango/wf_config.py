@@ -70,6 +70,7 @@ from copy import deepcopy
 from django.contrib.auth import get_user_model
 
 from django.conf import settings
+from .i18n import wgettext_lazy
 from .user_groups import user_in_groups, users_for_groups
 from .exceptions import (
     WorkflowModelNotConfigured,
@@ -80,6 +81,13 @@ from .exceptions import (
 
 
 
+
+# Builtin phase metafilters (values of the phase filter standing for several phases, #8)
+PHASES_OPEN = 'phases_open'
+PHASES_CLOSED = 'phases_closed'
+
+# Builtin owner filter shortcuts (filters.USER_CHOICES): reserved for owner metafilter keys
+OWNER_SHORTCUTS = ('me', 'me_or_none', 'none', 'someone', 'not_me', 'not_active', 'id')
 
 # Values of a forward transition's 'button-style' → Bootstrap color (see WFTransitionDescriptor.button_style)
 BUTTON_STYLES = {
@@ -133,9 +141,12 @@ class WorkflowConfig(dict):
     _workflow_admins = None
 
     def __init__(self, model, model_config, model_defaults=None, impersonable_users_func=None,
-                 snapshot_serializer=None, description_folder=None):
+                 snapshot_serializer=None, description_folder=None,
+                 phase_metafilters=None, owner_metafilters=None):
         super(WorkflowConfig, self).__init__()
         self._description_folder = description_folder
+        self._phase_metafilters = dict(phase_metafilters or {})
+        self._owner_metafilters = dict(owner_metafilters or {})
         self._model = model
         if model_defaults is None:
             model_defaults = {}
@@ -280,6 +291,51 @@ class WorkflowConfig(dict):
         warnings += [f'{name}: no long description for phase {p} ({folder / (p + ".md")})'
                      for p in self._model_phases if p not in files]
         return warnings
+
+    # ---- filter metafilters (#8)
+
+    def phase_metafilters(self):
+        """{key: (label, phases)} usable as values of the phase filter: the builtin
+        phases_open / phases_closed, then the model's own (configure_workflow(phase_metafilters=)).
+        `phases` is a list of phase keys or a callable(request, wfm_config) -> iterable of phases."""
+        return {
+            PHASES_OPEN: (wgettext_lazy('Open phases'), lambda request, cfg: cfg.get_phases_list(closed=False)),
+            PHASES_CLOSED: (wgettext_lazy('Closed phases'), lambda request, cfg: cfg.get_phases_list(closed=True)),
+            **self._phase_metafilters,
+        }
+
+    def owner_metafilters(self):
+        """{key: (label, fn)} of the model's owner metafilters (configure_workflow(owner_metafilters=)):
+        fn(request) -> users (queryset or iterable), or fn(lookup, request) -> Q."""
+        return dict(self._owner_metafilters)
+
+    def expand_phase_metafilter(self, key, request=None):
+        """Phase keys the metafilter `key` stands for (KeyError if not a metafilter)."""
+        _label, phases = self.phase_metafilters()[key]
+        if callable(phases):
+            phases = phases(request, self)
+        return [str(p) for p in phases]
+
+    def check_metafilters(self):
+        name = getattr(self._model, '__name__', self._model)
+        for key, value in self._phase_metafilters.items():
+            if key in self._model_phases or key in (PHASES_OPEN, PHASES_CLOSED):
+                raise InvalidWorkflowConfiguration(
+                    f"Phase metafilter {name}.{key}: key clashes with a phase or a builtin metafilter.")
+            if not (isinstance(value, (tuple, list)) and len(value) == 2):
+                raise InvalidWorkflowConfiguration(f"Phase metafilter {name}.{key} must be (label, phases).")
+            phases = value[1]
+            if not callable(phases):
+                unknown = [p for p in phases if str(p) not in self._model_phases]
+                if unknown:
+                    raise InvalidWorkflowConfiguration(
+                        f"Phase metafilter {name}.{key}: unknown phases {', '.join(map(str, unknown))}.")
+        for key, value in self._owner_metafilters.items():
+            if str(key).isdigit() or key in OWNER_SHORTCUTS:
+                raise InvalidWorkflowConfiguration(
+                    f"Owner metafilter {name}.{key}: key must not be numeric nor a builtin shortcut.")
+            if not (isinstance(value, (tuple, list)) and len(value) == 2 and callable(value[1])):
+                raise InvalidWorkflowConfiguration(f"Owner metafilter {name}.{key} must be (label, callable).")
 
     def is_auto_reject(self, from_phase, to_phase):
         """True if from_phase → to_phase is a reject generated from to_phase's forward
@@ -434,6 +490,7 @@ class WorkflowConfig(dict):
         self.check_config_values()
         self.check_has_terminal_phase()
         self.check_phase_texts()
+        self.check_metafilters()
 
     def check_phase_texts(self):
         """Every phase (but the None start phase) must declare a non-empty caption and

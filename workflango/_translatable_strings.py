@@ -209,6 +209,9 @@ def _strings():  # pragma: no cover - never called, see module docstring
         pgettext('workflango', 'records'),
         # Translators: "(as <real admin>)" next to the operator who acted while impersonated
         pgettext('workflango', 'as'),
+        # phase metafilters (wf_config.phase_metafilters)
+        pgettext('workflango', 'Open phases'),
+        pgettext('workflango', 'Closed phases'),
         # generate_wf_doc (workflango/wf_doc.py)
         pgettext('workflango', 'Start'),
         pgettext('workflango', 'workflow'),

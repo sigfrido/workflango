@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 import copy
+import functools
 import datetime
 
 from django.conf import settings
@@ -92,7 +93,7 @@ class BaseFilter:
             'object_list': None,
         }
         try:
-            annotations, search_query = cls.build_query(cls.get_search_fields(), request.GET, request)
+            annotations, search_query = cls.build_query(cls.get_search_fields_for(queryset), request.GET, request)
             if search_query:
                 result['filtering'] = True
                 if annotations:
@@ -131,6 +132,11 @@ class BaseFilter:
     @classmethod
     def post_process_search_fields(cls, sfdict):
         pass
+
+    @classmethod
+    def get_search_fields_for(cls, queryset):
+        """Search fields used to filter `queryset` (hook for filters depending on its model)."""
+        return cls.get_search_fields()
 
     @classmethod
     def build_query(cls, fields_dict, params_dict, request=None):
@@ -252,9 +258,21 @@ def get_custom_owner_filters():
     return getattr(settings, 'WF_CUSTOM_OWNER_FILTERS', {})
 
 
-def filter_by_owner(field, owners, request):
+def _owner_metafilter_q(fn, lookup, request):
+    """Q of a model owner metafilter: fn(lookup, request) -> Q, or fn(request) -> users."""
+    import inspect
+    if len(inspect.signature(fn).parameters) >= 2:
+        return fn(lookup, request)
+    result = fn(request)
+    if isinstance(result, Q):
+        return result
+    return build_Q(lookup, 'owner__in', list(result))
+
+
+def filter_by_owner(field, owners, request, model=None):
     status, lookup = _get_status_lookup(request)
     custom_filters = get_custom_owner_filters()
+    model_filters = model.wfm_config.owner_metafilters() if model is not None else {}
     q = None
     for owner_id in owners:
         if owner_id == 'me':
@@ -269,6 +287,9 @@ def filter_by_owner(field, owners, request):
             req = ~build_Q(lookup, 'owner', request.user) & build_Q(lookup, 'owner__isnull', False)
         elif owner_id == 'not_active':
             req = build_Q(lookup, 'owner__is_active', False)
+        elif owner_id in model_filters:
+            _, filter_fn = model_filters[owner_id]
+            req = _owner_metafilter_q(filter_fn, lookup, request)
         elif owner_id in custom_filters:
             _, filter_fn = custom_filters[owner_id]
             req = filter_fn(lookup, request)
@@ -278,9 +299,16 @@ def filter_by_owner(field, owners, request):
     return _fixed_filter(q, status)
 
 
-def filter_by_phase(field, states, request):
+def filter_by_phase(field, states, request, model=None):
+    """Phases filter; with the model, metafilter values (phases_open, phases_closed, the
+    model's phase_metafilters) are expanded into the phases they stand for."""
     status, lookup = _get_status_lookup(request)
-    req = build_Q(lookup, 'phase__in', states)
+    phases = []
+    metafilters = model.wfm_config.phase_metafilters() if model is not None else {}
+    for value in states:
+        expanded = model.wfm_config.expand_phase_metafilter(value, request) if value in metafilters else [value]
+        phases += [p for p in expanded if p not in phases]
+    req = build_Q(lookup, 'phase__in', phases)
     return _fixed_filter(req, status)
 
 
@@ -413,9 +441,25 @@ class WorkflowFilter(BaseFilter):
     }
 
     @classmethod
-    def post_process_search_fields(cls, sfdict):
-        if hasattr(cls, 'model') and hasattr(cls.model, 'wfm_config') and 'search_wf_phase' in sfdict:
-            sfdict['search_wf_phase']['choices'] = cls.model.wfm_config.get_phases_list()
+    def post_process_search_fields(cls, sfdict, model=None):
+        model = model or getattr(cls, 'model', None)
+        if model is None or not hasattr(model, 'wfm_config'):
+            return
+        cfg = model.wfm_config
+        if 'search_wf_phase' in sfdict:
+            sfdict['search_wf_phase']['choices'] = [*cfg.phase_metafilters(), *cfg.get_phases_list()]
+            sfdict['search_wf_phase']['custom_query'] = functools.partial(filter_by_phase, model=model)
+        if 'search_wf_owner' in sfdict:
+            sfdict['search_wf_owner']['custom_query'] = functools.partial(filter_by_owner, model=model)
+
+    @classmethod
+    def get_search_fields_for(cls, queryset):
+        """Search fields bound to the queryset's model when the filter class has none (e.g.
+        WorkflowFilterBackend): metafilters of the phase/owner filters need the model."""
+        sfdict = cls.get_search_fields()
+        if getattr(cls, 'model', None) is None:
+            cls.post_process_search_fields(sfdict, model=queryset.model)
+        return sfdict
 
 
 # ---------------------------------------------------------------------------

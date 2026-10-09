@@ -378,6 +378,43 @@ misbehaving callable (e.g. referencing a field that doesn't exist on your User m
 doesn't crash the request — it surfaces as a normal filter error instead, the same as
 any other filter mistake.
 
+### Metafilters (phase and owner)
+
+A **metafilter** is a value of the phase or owner filter standing for several phases or
+users, listed first in the filter choices:
+
+- phase filter (`search_wf_phase`): builtin **`phases_open`** / **`phases_closed`** (the
+  non-closed / closed phases of the model), plus the model's own;
+- owner filter (`search_wf_owner`): the model's own, besides the global
+  `WF_CUSTOM_OWNER_FILTERS` above (a model metafilter wins over a global one with the same key).
+
+Metafilters can be mixed with plain values (`?search_wf_phase=phases_closed&search_wf_phase=draft`)
+and work in history mode too. Model metafilters are `configure_workflow()` kwargs:
+
+```python
+MyRequest.configure_workflow(
+    phase_metafilters={
+        # a list of phases, or callable(request, wfm_config) -> iterable of phases
+        'approval_phases': (_('Approval phases'), ['approval', 'approval_dg']),
+        'my_phases': (_('Phases I can edit'),
+                      lambda request, cfg: cfg.get_phases_for_permissions(request.user, 'e')),
+    },
+    owner_metafilters={
+        # callable(request) -> users (queryset or iterable) ...
+        'my_office': (_('My office'),
+                      lambda request: User.objects.filter(office=request.user.office)),
+        # ... or callable(lookup, request) -> Q, as WF_CUSTOM_OWNER_FILTERS
+        'on_vacation': (_('On vacation'),
+                        lambda lookup, request: build_Q(lookup, 'owner__profile__away', True)),
+    },
+)
+```
+
+`check_wf_config` rejects phase metafilter keys clashing with a phase or a builtin, lists
+naming unknown phases, owner keys that are numeric or a builtin shortcut. The filter needs
+the model to expand model metafilters: `WorkflowFilter` gets it from the filtered queryset
+(so `WorkflowFilterBackend` works unchanged).
+
 ## Demo project
 
 `testproject/` (repository only, not part of the installed package) is a small, traditional Django project — plain class-based views, no REST framework — demonstrating workflango driving two related models with group-based permissions instead of sebastian's field-level ones:
