@@ -642,6 +642,14 @@ msgctxt "workflango"
 msgid "Closed phases"
 msgstr "Fasi chiuse"
 
+msgctxt "workflango"
+msgid "Start phase"
+msgstr "Fase iniziale"
+
+msgctxt "workflango"
+msgid "Graph"
+msgstr "Grafo"
+
 #~ msgctxt "workflango"
 #~ msgid "Away"
 #~ msgstr "Assente"

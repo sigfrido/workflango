@@ -5,11 +5,13 @@ management command).
 `workflow_markdown(model, detailed=True, graph=True)` returns a Markdown document,
 browseable on GitHub and includable in pdoc documentation:
 
-- mermaid graph of the phases (unless graph=False) (top-down; forward transitions labeled with their
+- preface.md of the description folder (as is), the start phase, a "Graph" section with the
+  mermaid graph of the phases (unless graph=False) (top-down; forward transitions labeled with their
   caption; reject transitions only when declared in the config, not the automatic ones),
   each phase linked to its section;
 - one section per phase, in definition order: caption, description, long description
   (<description folder>/<phase>.md, Markdown as is) and the reachable phases (linked);
+- at the end of each phase, links back to the graph and to the start phase; postface.md at the end;
 - unless `detailed=False`: the phase and transition configuration keys (dicts as YAML), the
   `validate_*` methods of the model concerning each phase and the generic workflow handlers,
   with their docstrings.
@@ -27,6 +29,9 @@ GENERIC_HANDLERS = ('validate_phase_transition', 'after_state_transition', 'get_
 _PHASE_KEYS = ('read', 'edit', 'admin', 'is_closed', 'allow_release', 'allow_delegate',
                'snapshot', 'properties')
 _TEXT_KEYS = ('caption', 'description', 'reachable_phases')
+
+
+GRAPH_ANCHOR = 'graph'
 
 
 def anchor(phase):
@@ -201,13 +206,16 @@ def workflow_markdown(model, detailed=True, graph=True):
     title = str(model._meta.verbose_name)
     lines = [f'# {title[:1].upper()}{title[1:]} — {wgettext("workflow")}', '']
 
-    initial = [cfg.start_phase]
-    if initial:
-        link = ', '.join(f'[{cfg.phase_caption(p)}](#{anchor(p)})' for p in initial)
-        lines += [f'**{wgettext("Start")}**: {link}', '']
+    preface = cfg.description_file('preface').strip()
+    if preface:
+        lines += [preface, '']
+
+    start = cfg.start_phase
+    start_link = f'[{cfg.phase_caption(start)}](#{anchor(start)})'
+    lines += [f'**{wgettext("Start phase")}**: {start_link}', '']
 
     if graph:
-        lines += _graph(cfg) + ['']
+        lines += [f'<a id="{GRAPH_ANCHOR}"></a>', '', f'## {wgettext("Graph")}', '', *_graph(cfg), '']
 
     lines += [f'## {wgettext("Phases")}', '']
     for phase in cfg.get_phases_list():
@@ -238,6 +246,12 @@ def workflow_markdown(model, detailed=True, graph=True):
             validators = _validators(model, cfg, phase)
             if validators:
                 lines += [f'#### {wgettext("Validations")}', '', *validators, '']
+        # back to the graph and to the start phase
+        back = [f'[{wgettext("Graph")}](#{GRAPH_ANCHOR})'] if graph else []
+        if phase != start:
+            back.append(f'[{wgettext("Start phase")}: {cfg.phase_caption(start)}](#{anchor(start)})')
+        if back:
+            lines += ['↑ ' + ' · '.join(back), '']
 
     if detailed:
         handlers = [(name, _own_method(model, name)) for name in GENERIC_HANDLERS]
@@ -248,5 +262,9 @@ def workflow_markdown(model, detailed=True, graph=True):
                 lines += [f'### `{name}()`', '']
                 doc = _docstring(method)
                 lines += [doc, ''] if doc else []
+
+    postface = cfg.description_file('postface').strip()
+    if postface:
+        lines += [postface, '']
 
     return '\n'.join(lines).rstrip() + '\n'

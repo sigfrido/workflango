@@ -27,7 +27,7 @@ if omitted — `configure_workflow()` is a no-op if the model is already configu
 | `snapshot_serializer` | a DRF `Serializer` class | `None` | Used by `get_workflow_snapshot()` to serialize the instance when a snapshot is taken (see the phase-level `snapshot` key below). |
 | `phase_metafilters` | `dict` `{key: (label, phases)}` | `{}` | Extra values of the phase filter standing for several phases (besides the builtin `phases_open` / `phases_closed`); `phases` is a list of phase keys or `callable(request, wfm_config) -> iterable of phases`. See README.md "Metafilters". Validated by `check()`. |
 | `owner_metafilters` | `dict` `{key: (label, fn)}` | `{}` | Extra values of the owner filter for this model: `fn(request) -> users` (queryset or iterable) or `fn(lookup, request) -> Q`. See README.md "Metafilters". Validated by `check()`. |
-| `description_folder` | `str` / path (absolute, or relative to the model's app folder) | `<app>/wf_doc/<model_name>/` | Folder of the phases' **long descriptions**: one Markdown file `<phase>.md` per phase (who works it, permissions, operations, automatic steps), used only by `generate_wf_doc` (§5). Kept out of the phase config, which holds only what the GUI needs (`caption`, `description`). `check_wf_config` warns if the folder is missing, a file matches no phase or a phase has no file. |
+| `description_folder` | `str` / path (absolute, or relative to the model's app folder) | `<app>/wf_doc/<model_name>/` | Folder of the phases' **long descriptions**: one Markdown file `<phase>.md` per phase (who works it, permissions, operations, automatic steps), plus optional `preface.md` / `postface.md`, used only by `generate_wf_doc` (§5). Kept out of the phase config, which holds only what the GUI needs (`caption`, `description`). `check_wf_config` warns if the folder is missing, a file matches no phase or a phase has no file. |
 
 `impersonable_users(user)` is always evaluated against the real, originally-authenticated
 caller of the request, never against an already-impersonated identity — the DRF layer's
@@ -208,20 +208,22 @@ includable in pdoc documentation, after running `WorkflowConfig.check()` (a brok
 configuration is a `CommandError`, as in `check_wf_config`):
 
 - default output `docs/workflow/<Model>.md`; `--print` writes to stdout;
-- a mermaid `flowchart TD` of the phases (`--nograph` leaves it out): forward transitions labeled with
+- `preface.md` of the description folder, as is (optional), then the start phase;
+- a "Graph" section (`#graph`) with a mermaid `flowchart TD` of the phases (`--nograph` leaves it out): forward transitions labeled with
   their `caption`, back paths only when declared in the config (dashed if `reject`), not
   the automatic rejects; closed phases have rounded boxes; each phase links to its
   section (`#phase-<key>`; GitHub ignores mermaid clicks, the graph stays readable);
 - one section per phase in definition order: `caption`, `description`, the long
   description (`<description_folder>/<phase>.md`, Markdown as is) and the reachable phases,
-  linked, with the transition captions; the long-description warnings of `check_wf_config`
-  are printed too;
+  linked, with the transition captions, and at the end links back to the graph and to the start
+  phase; the long-description warnings of `check_wf_config` are printed too;
 - the phase configuration keys (dict values, e.g. `properties`, as YAML blocks), each
   transition's keys (callables shown by name and first docstring line), the `validate_*` methods concerning the phase
   (`validate_<phase>_to_any`, `validate_any_to_<phase>`, `validate_<phase>_to_<dest>`) and
   the generic workflow handlers (`validate_phase_transition`, `after_state_transition`,
   `get_workflow_snapshot`) defined by the model, with their docstrings — all left out by
   `--plain`;
+- `postface.md` of the description folder, as is (optional), at the end.
 - labels are translated (`--language`, default `LANGUAGE_CODE`).
 
 No image of the graph is produced: the mermaid source is rendered by GitHub, VS Code and

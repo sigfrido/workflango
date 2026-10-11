@@ -1,6 +1,10 @@
 # Request — workflow
 
-**Start**: [Draft](#phase-draft)
+**Start phase**: [Draft](#phase-draft)
+
+<a id="graph"></a>
+
+## Graph
 
 ```mermaid
 flowchart TD
@@ -59,6 +63,8 @@ editable_fields:
 
 - [Submitted](#phase-submitted) — «Submit»
 
+↑ [Graph](#graph)
+
 <a id="phase-submitted"></a>
 
 ### Submitted
@@ -97,6 +103,8 @@ editable_fields:
 - [Draft](#phase-draft) (send back)
     - `auto`: generated from the forward transition
 
+↑ [Graph](#graph) · [Start phase: Draft](#phase-draft)
+
 <a id="phase-approved"></a>
 
 ### Approved
@@ -131,6 +139,8 @@ editable_fields: []
 - [Submitted](#phase-submitted) (send back)
     - `auto`: generated from the forward transition
 
+↑ [Graph](#graph) · [Start phase: Draft](#phase-draft)
+
 <a id="phase-rejected"></a>
 
 ### Rejected
@@ -164,3 +174,5 @@ editable_fields: []
 
 - [Submitted](#phase-submitted) (send back)
     - `auto`: generated from the forward transition
+
+↑ [Graph](#graph) · [Start phase: Draft](#phase-draft)

@@ -1,6 +1,10 @@
 # Supplier — workflow
 
-**Start**: [Proposed](#phase-proposed)
+**Start phase**: [Proposed](#phase-proposed)
+
+<a id="graph"></a>
+
+## Graph
 
 ```mermaid
 flowchart TD
@@ -53,6 +57,8 @@ editable_fields:
 - [Active](#phase-active) — «Activate»
     - `allowed_groups`: MANAGERS
 
+↑ [Graph](#graph)
+
 <a id="phase-active"></a>
 
 ### Active
@@ -88,6 +94,8 @@ editable_fields:
 - [Proposed](#phase-proposed) (send back)
     - `auto`: generated from the forward transition
 
+↑ [Graph](#graph) · [Start phase: Proposed](#phase-proposed)
+
 <a id="phase-archived"></a>
 
 ### Archived
@@ -121,3 +129,5 @@ editable_fields: []
 
 - [Active](#phase-active) (send back)
     - `auto`: generated from the forward transition
+
+↑ [Graph](#graph) · [Start phase: Proposed](#phase-proposed)

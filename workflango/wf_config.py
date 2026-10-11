@@ -81,6 +81,10 @@ from .exceptions import (
 PHASES_OPEN = 'phases_open'
 PHASES_CLOSED = 'phases_closed'
 
+# Files of the description folder that are not phases: preface and postface of the generated
+# workflow documentation (generate_wf_doc, #10)
+DOC_FILES = ('preface', 'postface')
+
 # Builtin owner filter shortcuts (filters.USER_CHOICES): reserved for owner metafilter keys
 OWNER_SHORTCUTS = ('me', 'me_or_none', 'none', 'someone', 'not_me', 'not_active', 'id')
 
@@ -294,8 +298,13 @@ class WorkflowConfig(dict):
         """Markdown of <description folder>/<phase>.md, '' if missing."""
         if phase is None:
             return ''
+        return self.description_file(phase)
+
+    def description_file(self, name):
+        """Markdown of <description folder>/<name>.md ('' if missing): a phase's long
+        description, or one of DOC_FILES (preface, postface of generate_wf_doc)."""
         folder, _ = self.description_folder()
-        path = folder / f'{phase}.md'
+        path = folder / f'{name}.md'
         return path.read_text(encoding='utf-8') if path.is_file() else ''
 
     def check_descriptions(self):
@@ -308,7 +317,10 @@ class WorkflowConfig(dict):
             return [f'{name}: {kind} not found: {folder}']
         files = {p.stem for p in folder.glob('*.md')}
         phases = set(self._model_phases)
-        warnings = [f'{name}: {folder / (f + ".md")} does not match any phase' for f in sorted(files - phases)]
+        warnings = [f'{name}: {folder / (f + ".md")} does not match any phase'
+                    for f in sorted(files - phases - set(DOC_FILES))]
+        warnings += [f'{name}: phase {p} clashes with the reserved file {p}.md (generate_wf_doc)'
+                     for p in self._model_phases if p in DOC_FILES]
         warnings += [f'{name}: no long description for phase {p} ({folder / (p + ".md")})'
                      for p in self._model_phases if p not in files]
         return warnings

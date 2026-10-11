@@ -2117,13 +2117,40 @@ class GenerateWfDocTest(TestCase):
 
     def test_phase_sections(self):
         md = self._md(detailed=False)
-        self.assertIn('**Start**: [Phase 1](#phase-1)', md)
+        self.assertIn('**Start phase**: [Phase 1](#phase-1)', md)
+        self.assertIn('· [Start phase: Phase 1](#phase-1)', md)
         self.assertIn('<a id="phase-1"></a>\n\n### Phase 1\n\n_Description of phase 1_', md)
         self.assertIn('- [Phase 2](#phase-2) — «exec 12»', md)
         self.assertIn('- [Phase 1](#phase-1) (send back)', md)
         self.assertLess(md.index('### Phase 4'), md.index('### Phase 0'))  # definition order
         self.assertNotIn('Configuration', md)
         self.assertNotIn('validate_', md)
+
+    def test_preface_postface_graph_section_and_links(self):
+        texts = {'preface': '**Intro** of the workflow\n', 'postface': 'Final notes\n'}
+        with patch.object(WorkflowModelValid.wfm_config, 'description_file',
+                          side_effect=lambda name: texts.get(name, '')):
+            md = self._md(graph=True)
+        order = [md.index(x) for x in ('# ', '**Intro** of the workflow', '**Start phase**',
+                                       '<a id="graph"></a>\n\n## Graph', '## Phases', 'Final notes')]
+        self.assertEqual(order, sorted(order))
+        self.assertTrue(md.rstrip().endswith('Final notes'))
+        # end of each phase: back to the graph and to the start phase (not on the start phase itself)
+        self.assertIn('↑ [Graph](#graph) · [Start phase: Phase 1](#phase-1)', md)
+        self.assertEqual(md.count('↑ [Graph](#graph)\n'), 1)  # phase 1: only the graph link
+
+    def test_preface_postface_not_reported_as_extra_files(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as tmp:
+            for nome in ('a', 'b', 'preface', 'postface'):
+                Path(tmp, f'{nome}.md').write_text('x', encoding='utf-8')
+            wc = WorkflowConfig(WorkflowModelValid, (
+                ('a', {'caption': 'A', 'description': 'A', 'reachable_phases': {'b': {}}}),
+                ('b', {'caption': 'B', 'description': 'B', 'is_closed': True}),
+            ), {'read': [], 'edit': [], 'admin': []}, description_folder=tmp)
+            self.assertEqual(wc.check_descriptions(), [])
+            self.assertEqual(wc.description_file('preface'), 'x')
 
     def test_long_description_from_file(self):
         with patch.object(WorkflowModelValid.wfm_config, 'phase_long_description',
