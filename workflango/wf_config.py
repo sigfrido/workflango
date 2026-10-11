@@ -16,12 +16,7 @@ Model.configure_workflow(
 
     config = (
 
-        # Defines start phase
-        (None, {
-            'reachable_phases': {
-                'aperta' : {},
-            },
-        }),
+        # The first phase is the start phase: records are created into it by its editors/admins
 
         ('aperta',  {
             'caption' : 'Aperta',
@@ -173,10 +168,36 @@ class WorkflowConfig(dict):
                 conf_dict = element[1]
             else:
                 raise InvalidWorkflowConfiguration(f"Parameter model_config for {self._model} must be a tuple of dict with key name or a tuple of (name, dict)")
+            if key is None:
+                raise InvalidWorkflowConfiguration(
+                    f"{self._model}: the None phase is no longer configured: the start phase is the "
+                    f"first phase of the configuration (remove the None entry).")
             self._create_phase_config(key, conf_dict)
 
+        if not self._model_phases:
+            raise InvalidWorkflowConfiguration(f"{self._model}: the workflow has no phases.")
         self._model_phases = tuple(self._model_phases)
+        self._create_start_entry()
         self._autoconfig_reject_transitions()
+
+    def _create_start_entry(self):
+        """Internal entry for records not yet in the workflow (key None), derived from the
+        first phase: it only reaches the first phase, records can be created by the first
+        phase's editors/admins, and the creation form sees the first phase's properties.
+        Not configurable (#9)."""
+        start = self._get_default_phase_config()
+        first = self[self.start_phase]
+        for key in ('read', 'edit', 'admin', 'properties'):
+            if key in first:
+                start[key] = deepcopy(first[key])
+        start['reachable_phases'] = {self.start_phase: {}}
+        start['caption'] = start['description'] = ''
+        self[None] = start
+
+    @property
+    def start_phase(self):
+        """The start phase: the first phase of the configuration."""
+        return self._model_phases[0]
 
 
     def _create_phase_config(self, key, conf_dict):

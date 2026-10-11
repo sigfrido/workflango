@@ -78,17 +78,7 @@ class WorkflowModelValid(WorkflowModel):
     }
 
     workflow_phases = (
-
-        (None, {
-            'reachable_phases' : {
-                1 : {}
-            },
-
-            'admin' : ['group1', 'group4'],
-            #edit is not set, should get it from defaults
-            'read' : [],
-        }),
-
+        # start phase: the first one (no None entry, #9)
         (1, {
             'caption' : 'Phase 1', 'description' : 'Description of phase 1',
             'snapshot': True,

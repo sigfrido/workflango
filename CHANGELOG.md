@@ -15,6 +15,8 @@ All notable changes to this project are documented here, starting from this rele
 
 ### Changed
 
+- **Breaking — no `None` phase** (#9): the start phase is the first phase of the configuration, objects are created into it by its editors/admins; a `None` entry raises `InvalidWorkflowConfiguration` (see `docs/upgrade-checklist.md` §6). Internally the entry for objects not yet in the workflow is derived from the first phase (groups, properties; reaches only the first phase), so the engine behaves as before. New `WorkflowConfig.start_phase`
+
 - **Breaking**: the phase `properties['description']` key is no longer read (it was the tooltip of the transition buttons): use the phase-level `description` key
 
 - **Solid buttons**: workflow buttons in the sebastian pack are filled instead of outlined (forward transitions and info commands `btn-primary` instead of `btn-outline-primary`) and resolve their class through sebastian's `btn_class` filter, so skins can override them via `SEBASTIAN['BUTTON_STYLES']`. Cancel/Close/pagination buttons use `btn-secondary`; same in the django pack templates

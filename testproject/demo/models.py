@@ -52,11 +52,6 @@ class Supplier(WorkflowModel):
     # (see forms.py) -- workflango itself doesn't know about it, same as any other
     # app-specific key under 'properties' (see docs/wf-configuration.md, section 3).
     workflow_phases = (
-        (None, {
-            'reachable_phases': {'proposed': {}},
-            'edit': ['USERS', 'MANAGERS'],
-            'properties': {'editable_fields': {'company_name', 'tax_code', 'certification'}},
-        }),
         ('proposed', {
             'caption': 'Proposed',
             'description': 'Supplier proposed, waiting for review',
@@ -133,11 +128,6 @@ class Request(WorkflowModel):
     # (see forms.py) -- workflango itself doesn't know about it, same as any other
     # app-specific key under 'properties' (see docs/wf-configuration.md, section 3).
     workflow_phases = (
-        (None, {
-            'reachable_phases': {'draft': {}},
-            'edit': ['USERS', 'MANAGERS'],
-            'properties': {'editable_fields': {'title', 'description', 'budget', 'supplier'}},
-        }),
         ('draft', {
             'caption': 'Draft',
             'description': 'Request being written by its author',

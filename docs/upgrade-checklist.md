@@ -265,6 +265,24 @@ grep -rn "\.transition(.*new_state\s*=\|\.transition_allowed(.*new_state\s*=\|\.
 
 ---
 
+## 6. No `None` phase in the configuration (1.0.0-rc5, #9)
+
+The start phase is now the **first phase of the configuration**, and objects can be created by
+its editors/admins. A `(None, {...})` entry (or a dict with `'name': None`) raises
+`InvalidWorkflowConfiguration`: remove it.
+
+- If the `None` entry had the same groups as the first phase (the usual case), nothing else
+  changes.
+- If it granted creation to different groups, add a first phase for the creators and move the
+  current first phase after it.
+- If it had `properties` used by the creation form, they now come from the first phase.
+
+```
+grep -rn "(None, {" --include=*.py .
+```
+
+---
+
 ## After applying all sections
 
 ```

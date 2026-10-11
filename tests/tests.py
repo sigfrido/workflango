@@ -59,7 +59,6 @@ class WorkflowConfigTest(TestCase):
 
     def _config(self, **phase_a):
         return WorkflowConfig(WorkflowModelValid, (
-            (None, {'reachable_phases': {'a': {}}}),
             ('a', {'reachable_phases': {'b': {}}, **phase_a}),
             ('b', {'caption': 'B', 'description': 'Phase B', 'is_closed': True}),
         ), {'read': [], 'edit': [], 'admin': []})
@@ -73,7 +72,6 @@ class WorkflowConfigTest(TestCase):
 
     def test_phase_texts_not_inherited_from_defaults(self):
         wc = WorkflowConfig(WorkflowModelValid, (
-            (None, {'reachable_phases': {'a': {}}}),
             ('a', {'is_closed': True}),
         ), {'read': [], 'edit': [], 'admin': [], 'caption': 'X', 'description': 'Y'})
         self.assertEqual((wc.phase_caption('a'), wc.phase_description('a')), ('a', ''))
@@ -89,7 +87,6 @@ class WorkflowConfigTest(TestCase):
 
     def _config_folder(self, folder):
         return WorkflowConfig(WorkflowModelValid, (
-            (None, {'reachable_phases': {'a': {}}}),
             ('a', {'caption': 'A', 'description': 'Phase A', 'reachable_phases': {'b': {}}}),
             ('b', {'caption': 'B', 'description': 'Phase B', 'is_closed': True}),
         ), {'read': [], 'edit': [], 'admin': []}, description_folder=folder)
@@ -130,6 +127,33 @@ class WorkflowConfigTest(TestCase):
             call_command('check_wf_config', 'tests.WorkflowModelValid', stdout=out, stderr=err)
         self.assertIn('WARNING: missing x', err.getvalue())
 
+    # ---- start phase = first phase; no None entry in the configuration (#9)
+
+    def test_none_entry_rejected(self):
+        for config in (
+            ((None, {'reachable_phases': {'a': {}}}), ('a', {'caption': 'A', 'description': 'A'})),
+            ({'name': None, 'reachable_phases': {'a': {}}}, {'name': 'a'}),
+        ):
+            with self.subTest(config=config), self.assertRaisesRegex(InvalidWorkflowConfiguration, 'None'):
+                WorkflowConfig(WorkflowModelValid, config, {'read': [], 'edit': [], 'admin': []})
+        with self.assertRaisesRegex(InvalidWorkflowConfiguration, 'no phases'):
+            WorkflowConfig(WorkflowModelValid, (), {})
+
+    def test_start_entry_derived_from_first_phase(self):
+        wc = WorkflowConfig(WorkflowModelValid, (
+            ('a', {'caption': 'A', 'description': 'A', 'reachable_phases': {'b': {}},
+                   'edit': ['editors'], 'admin': ['a_admins'], 'properties': {'fields': ['x']}}),
+            ('b', {'caption': 'B', 'description': 'B', 'is_closed': True}),
+        ), {'read': ['readers'], 'edit': [], 'admin': ['wf_admins']})
+        self.assertEqual(wc.start_phase, 'a')
+        start = wc[None]
+        self.assertEqual(start['reachable_phases'], {'a': {}})
+        self.assertEqual((start['read'], start['edit'], start['admin']), (['readers'], ['editors'], ['a_admins']))
+        self.assertEqual(start['properties'], {'fields': ['x']})
+        self.assertEqual(wc.get_phases_list(), ('a', 'b'))  # not a phase
+        self.assertFalse(wc.is_auto_reject('a', None))
+        wc.check_unreachable_phases()  # every phase reachable from the derived start entry
+
     def test_auto_rejects_are_tracked(self):
         self.assertTrue(self.wc.is_auto_reject('2', '1'))    # from 1 -> 2
         self.assertFalse(self.wc.is_auto_reject('4', '1'))   # declared in phase 4's config
@@ -149,7 +173,6 @@ class WorkflowConfigTest(TestCase):
 
     def _config_with_reject(self, allow_reject):
         phases = (
-            (None, {'reachable_phases': {'a': {}}, 'edit': ['editors']}),
             ('a', {'reachable_phases': {'b': {'allow-reject': allow_reject}}, 'edit': ['editors']}),
             ('b', {'reachable_phases': {}, 'edit': ['editors'], 'admin': ['b_admins']}),
         )
@@ -171,7 +194,6 @@ class WorkflowConfigTest(TestCase):
 
     def _config_with_button_style(self, style):
         phases = (
-            (None, {'reachable_phases': {'a': {}}, 'edit': ['editors']}),
             ('a', {'reachable_phases': {'b': {'button-style': style}}, 'edit': ['editors']}),
             ('b', {'reachable_phases': {}, 'edit': ['editors']}),
         )
@@ -215,7 +237,6 @@ class WorkflowConfigTest(TestCase):
 
     def test_check_raises_without_terminal_phase(self):
         wc = WorkflowConfig(WorkflowModelValid, (
-            (None, {'reachable_phases': {'a': {}}, 'admin': [], 'edit': [], 'read': []}),
             ('a', {'reachable_phases': {}, 'admin': [], 'edit': [], 'read': []}),
         ))
         with self.assertRaises(InvalidWorkflowConfiguration):
@@ -273,6 +294,20 @@ class WorkflowTest(TransactionTestCase):
             instance.wfm.transition(user, 1, user)
         return instance
 
+
+    def test_creation_by_first_phase_editors_only(self):
+        from workflango.exceptions import TransitionNotAllowed
+        # phase 1: edit group2, admin group1/group4 -> group3 cannot create
+        self.assertTrue(self.OkModel.wfm_config.can_create(self.user_2))
+        self.assertTrue(self.OkModel.wfm_config.can_create(self.user_1))
+        self.assertFalse(self.OkModel.wfm_config.can_create(self.user_3))
+        instance = self.OkModel.objects.create()
+        with self.assertRaises(TransitionNotAllowed):
+            instance.wfm.transition(self.user_3, 1, self.user_3)
+        with self.assertRaises(TransitionNotAllowed):  # only into the start phase
+            instance.wfm.transition(self.user_2, 2, self.user_2)
+        instance.wfm.transition(self.user_2, 1, self.user_2)
+        self.assertEqual(instance.current_state.phase, '1')
 
     def test_phase_captions_in_transitions_and_states(self):
         instance = self.create(self.user_1)

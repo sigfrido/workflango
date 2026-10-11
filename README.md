@@ -70,13 +70,15 @@ class MyDocument(WorkflowModel):
 
 MyDocument.configure_workflow(
     config=(
-        (None, {'reachable_phases': {'draft': {}}}),
+        # the first phase is the start phase: created into it by its editors/admins
         ('draft', {
+            'caption': 'Draft', 'description': 'Document being written',
             'reachable_phases': {'published': {'caption': 'Publish', 'owner_mode': 'none'}},
             'read': ['EDITORS'], 'edit': ['EDITORS'], 'admin': ['ADMINS'],
             'is_closed': False,
         }),
-        ('published', {'is_closed': True, 'reachable_phases': {}}),
+        ('published', {'caption': 'Published', 'description': 'Document published',
+                       'is_closed': True, 'reachable_phases': {}}),
     ),
     defaults={'read': ['EDITORS'], 'edit': ['EDITORS'], 'admin': ['ADMINS']},
 )

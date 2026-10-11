@@ -21,7 +21,7 @@ if omitted — `configure_workflow()` is a no-op if the model is already configu
 
 | kwarg | Type | Default | What it does |
 |---|---|---|---|
-| `config` | a `tuple` — every other shape raises `InvalidWorkflowConfiguration` | falls back to the class attribute `workflow_phases` | The full phase table. Each **element** of the tuple describes one phase, and may be either a `(phase_name, dict)` pair or a `dict` that includes its own `'name'` key (the two are interchangeable — mixing styles within the same `config` is fine). `None` as `phase_name`/`'name'` defines the entry point (the phase an object is created into). |
+| `config` | a `tuple` — every other shape raises `InvalidWorkflowConfiguration` | falls back to the class attribute `workflow_phases` | The full phase table. Each **element** of the tuple describes one phase, and may be either a `(phase_name, dict)` pair or a `dict` that includes its own `'name'` key (the two are interchangeable — mixing styles within the same `config` is fine). The **first phase is the start phase**: objects are created into it, by its editors/admins (a `None` entry, the former explicit entry point, raises `InvalidWorkflowConfiguration`; when creators must differ from those who work the first phase, model it as two phases). |
 | `defaults` | `dict` | falls back to `workflow_defaults`, else `{}` | Deep-copied as the starting point for every phase's config before that phase's own keys are applied on top. This is where shared `read`/`edit`/`admin`/`properties` normally live, so individual phases only need to override what differs. |
 | `impersonable_users` | `callable(user) -> queryset` | `None` | Overrides the default impersonation policy (superusers / `WF_ADMIN_GROUP` members may impersonate any active user). See README.md "Impersonation". |
 | `snapshot_serializer` | a DRF `Serializer` class | `None` | Used by `get_workflow_snapshot()` to serialize the instance when a snapshot is taken (see the phase-level `snapshot` key below). |
@@ -68,7 +68,7 @@ These go in the second element of each `(phase_name, {...})` pair in `config=`
 
 ```python
 config=(
-    (None, {'reachable_phases': {'draft': {}}}),
+    # the first phase is the start phase (no None entry)
     ('draft', {
         'reachable_phases': {'published': {}},
         'read': ['EDITORS'], 'edit': ['EDITORS'], 'admin': ['ADMINS'],
@@ -175,7 +175,7 @@ the specific problem.
 
 `check()` validates:
 
-- Every phase is reachable from `None` (via `reachable_phases`).
+- Every phase is reachable from the start phase (the first one, via `reachable_phases`).
 - Every group name used in a phase's `read`/`edit`/`admin` is declared in `settings.WF_USERS_GROUPS`.
 - At least one non-`None` phase has `is_closed: True` — otherwise an instance could
   never reach a final state, which is virtually always a configuration mistake.

@@ -201,7 +201,7 @@ def workflow_markdown(model, detailed=True, graph=True):
     title = str(model._meta.verbose_name)
     lines = [f'# {title[:1].upper()}{title[1:]} — {wgettext("workflow")}', '']
 
-    initial = [d for d in cfg[None]['reachable_phases']]
+    initial = [cfg.start_phase]
     if initial:
         link = ', '.join(f'[{cfg.phase_caption(p)}](#{anchor(p)})' for p in initial)
         lines += [f'**{wgettext("Start")}**: {link}', '']
