@@ -32,7 +32,7 @@
       <tr>
         <td class="text-nowrap">{{ state.state_date|isodt:"d/m/Y H:i" }}</td>
         <td><span class="badge bg-secondary" title="{{ state.phase_description }}">{{ state.phase_caption }}</span></td>
-        <td>{{ state.owner_display|default:"—" }}</td>
+        <td>{{ state.owner_display|default:"—" }}{% if state.unread %} <i class="bi bi-envelope-fill text-primary" title="{% wtrans "Unread" %}"></i>{% endif %}</td>
         <td>
           {{ state.user_display|default:"—" }}
           {% if state.impersonated_by_display %}

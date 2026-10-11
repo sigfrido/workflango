@@ -295,6 +295,21 @@ class WorkflowTest(TransactionTestCase):
         return instance
 
 
+    def test_unread_flag_rule(self):
+        # unread when the new owner is not the user performing the transition (#87 opus)
+        instance = self.create(self.user_1)
+        self.assertFalse(instance.current_state.unread)               # created for oneself
+        instance.wfm.transition(self.user_1, 2, self.user_3)           # assigned to another
+        first = instance.states.order_by('id').first()
+        instance.refresh_from_db()
+        self.assertTrue(instance.current_state.unread)
+        first.refresh_from_db()
+        self.assertFalse(first.unread)                                 # previous state reset
+        user_group_add(self.user_4, 'group4')                          # admin of phase 2
+        instance.wfm.take_ownership(self.user_4)                       # snatch: owner = actor
+        instance.refresh_from_db()
+        self.assertFalse(instance.current_state.unread)
+
     def test_creation_by_first_phase_editors_only(self):
         from workflango.exceptions import TransitionNotAllowed
         # phase 1: edit group2, admin group1/group4 -> group3 cannot create

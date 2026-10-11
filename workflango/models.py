@@ -64,7 +64,9 @@ class State(models.Model):
     - user: the user who triggered the transition into this state
     - transition_type: auto-derived category (new/assign/delegate/reject/…)
     - suspended: soft-lock that blocks further transitions until resumed
-    - unread: True when the owner has not yet viewed the object in this state
+    - unread: True when the owner has not yet viewed the object in this state: set when the new
+      owner is not the user performing the transition, cleared when the owner opens it (GUI)
+      or marks it read; previous states are always cleared
     - impersonated_by: set when an admin performed the transition impersonating another user;
       `user` holds the impersonated identity, `impersonated_by` the real actor
     - snapshot: optional JSON snapshot of the object at transition time (audit/rollback)

@@ -1,5 +1,5 @@
 {% extends 'sebastian/htmx/detail.html' %}
-{% load sebastian_tags %}
+{% load sebastian_tags workflow_tags %}
 
 {% block extra_fields_before %}
 {% if data.current_state %}
@@ -16,7 +16,22 @@
       {% if data.current_state.message %}
       <i class="bi bi-sticky text-muted" title="{{ data.current_state.message }}"></i>
       {% endif %}
-      <span class="ms-auto">{% actions "workflow" %}</span>
+      <span class="ms-auto d-flex align-items-center gap-2">
+        {# "unread" flag: toggle for the owner (the detail opened by the owner marks it read), #}
+        {# a plain icon for everyone else                                                      #}
+        {% if data.wf_owned_by_me %}
+          {% if data.current_state.unread %}
+          <button class="btn {{ 'primary'|btn_class:skin_name }} btn-sm" hx-post="{{ object_url }}mark_as_read/"
+                  title="{% wtrans "Mark as read" %}">{% icon "envelope-fill" %}</button>
+          {% else %}
+          <button class="btn {{ 'secondary'|btn_class:skin_name }} btn-sm" hx-post="{{ object_url }}mark_as_unread/"
+                  title="{% wtrans "Mark as unread" %}">{% icon "envelope-open" %}</button>
+          {% endif %}
+        {% elif data.current_state.unread %}
+          <i class="bi bi-envelope-fill text-primary" title="{% wtrans "Unread" %}"></i>
+        {% endif %}
+        {% actions "workflow" %}
+      </span>
     </div>
   </div>
 </div>

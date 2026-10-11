@@ -56,14 +56,16 @@ replacements for `workflango.drf`'s plain `WorkflowSerializerMixin`/`WorkflowVie
 
 | On `SebastianWorkflowSerializerMixin` | Purpose |
 |---|---|
-| `current_state_for_list` | `@gui_field`-decorated HTML badge column (phase, owner, date, suspended/message icons) for `Sebastian.list_fields`. Never in the JSON API response. |
-| `to_representation()` override | Adds `__can_update` to the payload when `request.sebastian_gui` is set, so list/detail templates know whether to show an edit link — impersonation-aware via `State.owned_by()`. |
+| `current_state_for_list` | `@gui_field`-decorated HTML badge column (phase, owner, date, unread/suspended/message icons) for `Sebastian.list_fields`. Never in the JSON API response. |
+| `to_representation()` override | Adds `__can_update` and `wf_owned_by_me` to the payload when `request.sebastian_gui` is set, so list/detail templates know whether to show an edit link and the unread toggle — impersonation-aware via `State.owned_by()`. |
 
 | On `SebastianWorkflowViewSetMixin` | Purpose |
 |---|---|
 | `template_namespace = 'workflango'` | Tells sebastian's renderer to resolve templates from `workflango/sebastian/{pack}/...` before falling back to `sebastian/{pack}/...` — see the four fragments shipped at `workflango/templates/workflango/sebastian/htmx/{list,detail,confirm,history}.html`. |
 | `can_update()` / `can_delete()` | GUI permission hooks read by sebastian's `GUIMixin` — impersonation-aware ownership check; deletion always disabled. |
 | `extra_context()` / `get_workflow_transitions()` | sebastian's `extra_context()` hook puts `workflow_transitions` (from `get_workflow_transitions()`, impersonation-aware) into the template context, driving the transition buttons in `detail.html`. |
+| `retrieve()` override | **Unread flag**: the GUI detail opened by the current owner (`State.owned_by()`, so not by an admin merely impersonating them) clears `State.unread`, as the django pack's `WorkflowDetailMixin`. |
+| `mark_as_read` / `mark_as_unread` actions | GUI URLs only (`gui_url = True`, no action button), owner only: the unread toggle rendered by `detail.html` in the workflow box (envelope icon, before *History*). `mark_as_read` goes back to the detail, `mark_as_unread` to the list (reopening the detail would clear it again). Non-owners see a plain envelope icon while the state is unread; the list column and `history.html` show it too. |
 | `history` action | GUI-flavored alias of `workflow_history`, in the `workflow` action group: rendered in the workflow box of `detail.html` via `{% actions "workflow" %}`. |
 | `change_state_form` action | GET renders the inline confirmation form (`confirm.html`, with the validators' warnings/infos); POST performs the transition, publishes the transition outcome messages (`publish_transition_messages()`, see below) and returns updated detail data for an htmx swap. Uses `WorkflowActionSerializer` (also in this module) as its schema. |
 

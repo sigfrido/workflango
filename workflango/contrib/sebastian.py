@@ -117,7 +117,10 @@ class SebastianWorkflowSerializerMixin(WorkflowSerializerMixin):  # pylint: disa
             state = instance.wfm_state
             if state:
                 impersonated_by = getattr(request, 'impersonated_by', None)
-                ret['__can_update'] = state.owned_by(request.user, impersonated_by) and not state.suspended
+                owned = state.owned_by(request.user, impersonated_by)
+                ret['__can_update'] = owned and not state.suspended
+                # the "unread" toggle in the workflow panel is for the owner only
+                ret['wf_owned_by_me'] = owned
             # No __can_update when unmanaged: template falls back to view.can_update() (True)
         return ret
 
@@ -134,6 +137,9 @@ class SebastianWorkflowSerializerMixin(WorkflowSerializerMixin):  # pylint: disa
         date_str = date_format(localtime(state.state_date), self.wf_datetime_format) if state.state_date else ''
         owner_str = str(state.owner) if state.owner else '—'
         icons = ''
+        if state.unread:
+            icons += (f'<i class="bi bi-envelope-fill ms-1 text-primary" '
+                      f'title="{conditional_escape(wgettext("Unread"))}"></i>')
         if state.suspended:
             icons += '<i class="bi bi-hourglass-split ms-1 text-warning" title="Suspended"></i>'
         if state.message:
@@ -209,6 +215,47 @@ class SebastianWorkflowViewSetMixin(WorkflowViewSetMixin):
     # ------------------------------------------------------------------
     # Actions
     # ------------------------------------------------------------------
+
+    def retrieve(self, request, *args, **kwargs):
+        """GUI detail opened by the current owner: the state is no longer unread (as the
+        django pack's WorkflowDetailMixin). Not when the viewer only impersonates the owner
+        without being the recorded owner identity (owned_by)."""
+        if getattr(request, 'sebastian_gui', False):
+            state = self.get_object().wfm_state
+            if state is not None and state.unread and state.owned_by(
+                    request.user, getattr(request, 'impersonated_by', None)):
+                state.unread = False
+                state.save(update_fields=['unread'])
+        return super().retrieve(request, *args, **kwargs)
+
+    def _set_unread_by_owner(self, request, unread):
+        from rest_framework.exceptions import PermissionDenied
+        instance = self.get_object()
+        state = instance.wfm_state
+        if state is None or not state.owned_by(request.user, getattr(request, 'impersonated_by', None)):
+            raise PermissionDenied(wgettext("Only the current owner can change the read state."))
+        if state.unread != unread:
+            state.unread = unread
+            state.save(update_fields=['unread'])
+        return Response({'unread': state.unread})
+
+    @action(detail=True, methods=['post'])
+    def mark_as_read(self, request, pk=None, **kwargs):  # noqa: ARG002
+        """GUI toggle of the workflow panel (owner only): back to the detail."""
+        return self._set_unread_by_owner(request, False)
+
+    @action(detail=True, methods=['post'])
+    def mark_as_unread(self, request, pk=None, **kwargs):  # noqa: ARG002
+        """GUI toggle of the workflow panel (owner only): back to the list, as reopening the
+        detail would mark it read again."""
+        response = self._set_unread_by_owner(request, True)
+        if getattr(request, 'sebastian_gui', False):
+            response['HX-Redirect'] = request.path.rstrip('/').rsplit('/', 2)[0] + '/'
+        return response
+
+    # GUI URLs only (no action button: the toggle is rendered by the workflow panel template)
+    mark_as_read.gui_url = True
+    mark_as_unread.gui_url = True
 
     @action(detail=True, methods=['get'])
     def history(self, request, pk=None, **kwargs):  # noqa: ARG002
