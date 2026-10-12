@@ -20,6 +20,8 @@ All notable changes to this project are documented here, starting from this rele
 
 ### Changed
 
+- **Workflow filter order**: the *Owner* filter comes right after *Phase* (`WorkflowFilterSetMixin`)
+
 - **Breaking — no `None` phase** (#9): the start phase is the first phase of the configuration, objects are created into it by its editors/admins; a `None` entry raises `InvalidWorkflowConfiguration` (see `docs/upgrade-checklist.md` §6). Internally the entry for objects not yet in the workflow is derived from the first phase (groups, properties; reaches only the first phase), so the engine behaves as before. New `WorkflowConfig.start_phase`
 
 - **Breaking**: the phase `properties['description']` key is no longer read (it was the tooltip of the transition buttons): use the phase-level `description` key
