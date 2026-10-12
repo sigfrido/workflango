@@ -27,6 +27,7 @@ if omitted — `configure_workflow()` is a no-op if the model is already configu
 | `snapshot_serializer` | a DRF `Serializer` class | `None` | Used by `get_workflow_snapshot()` to serialize the instance when a snapshot is taken (see the phase-level `snapshot` key below). |
 | `phase_metafilters` | `dict` `{key: (label, phases)}` | `{}` | Extra values of the phase filter standing for several phases (besides the builtin `phases_open` / `phases_closed`); `phases` is a list of phase keys or `callable(request, wfm_config) -> iterable of phases`. See README.md "Metafilters". Validated by `check()`. |
 | `owner_metafilters` | `dict` `{key: (label, fn)}` | `{}` | Extra values of the owner filter for this model: `fn(request) -> users` (queryset or iterable) or `fn(lookup, request) -> Q`. See README.md "Metafilters". Validated by `check()`. |
+| `version` | `str` `'MAJOR.MINOR.PATCH'` | `None` (not versioned) | Version of the workflow (#11). The recorded version lives in `wf_version.json` in the description folder, written by `propose_wf_version` (§6), which also keeps the workflow's `CHANGELOG.md`; `check_wf_config` and `generate_wf_doc` warn about unrecorded changes; `generate_wf_doc` shows the version. |
 | `description_folder` | `str` / path (absolute, or relative to the model's app folder) | `<app>/wf_doc/<model_name>/` | Folder of the phases' **long descriptions**: one Markdown file `<phase>.md` per phase (who works it, permissions, operations, automatic steps), plus optional `preface.md` / `postface.md`, used only by `generate_wf_doc` (§5). Kept out of the phase config, which holds only what the GUI needs (`caption`, `description`). `check_wf_config` warns if the folder is missing, a file matches no phase or a phase has no file. |
 
 `impersonable_users(user)` is always evaluated against the real, originally-authenticated
@@ -228,3 +229,55 @@ configuration is a `CommandError`, as in `check_wf_config`):
 
 No image of the graph is produced: the mermaid source is rendered by GitHub, VS Code and
 most Markdown viewers.
+
+With `configure_workflow(version=...)` the document starts with the version and a link to the
+workflow changelog (§6), relative to the output folder.
+
+## 6. Workflow versions: `propose_wf_version`
+
+```
+manage.py propose_wf_version [--new-version X] [--write] [--check] [--language LANG] app.Model
+```
+
+A development tool (not for production) keeping the version of a workflow in step with its
+changes, with no need for git: the last recorded version is a snapshot, `wf_version.json`,
+committed in the description folder with the workflow's `CHANGELOG.md`.
+
+The snapshot (`workflango.wf_version.snapshot()`) holds:
+- `phases`: the effective configuration of each phase (defaults applied, callables by
+  qualified name; automatic reject transitions left out, they follow `allow-reject`);
+- `handlers`: hashes of the code (AST without the docstring: comments and formatting do not
+  count) and of the docstring of the model's own `validate_<from>_to_<to>` methods and generic
+  handlers (`validate_phase_transition`, `after_state_transition`, `get_workflow_snapshot`);
+- `texts`: hashes of the `.md` files of the folder (long descriptions, preface, postface).
+
+The command compares the current workflow with the snapshot and classifies the changes:
+
+| Change | Level |
+|---|---|
+| phase added or removed (renaming = removed + added), start phase changed | major |
+| destination added to or removed from `reachable_phases` | major |
+| any other phase or transition key: groups, `owner_mode`, `allow-reject`, `require_message`, `is_closed`, `properties`, unknown keys… | minor |
+| handler added, removed or with different code | minor |
+| `caption`, `description` (phase and transition), `button-style`, handler docstrings, `.md` files | patch |
+
+Then:
+- without options: lists the changes and proposes the next version (the highest level
+  bumped from the recorded one);
+- `--write`: records the version — the one given with `--new-version`, else the one in
+  `configure_workflow` if already raised, else the proposed one; refused if lower than
+  needed — writing `wf_version.json` and adding at the top of `CHANGELOG.md` an entry
+  `## [X.Y.Z] - date` with *Major changes / Minor changes / Texts* (labels translated,
+  `--language`), to be reviewed by hand before committing; the first run records the initial
+  version (`--new-version`, `configure_workflow` or `1.0.0`). Source code is never touched:
+  the command reminds to set `configure_workflow(version=...)`;
+- `--check` (tests, CI): fails if the workflow has no version, has unrecorded changes or
+  declares a version other than the recorded one.
+
+`check_wf_config` and `generate_wf_doc` print the same warnings
+(`WorkflowConfig.check_version()`). Not seen: changes in code called by the handlers
+(helpers, services) — add them to the changelog entry by hand.
+
+Typical workflow: change the configuration/handlers/texts → `propose_wf_version app.Model`
+→ set `version=` → `propose_wf_version app.Model --write` → review `CHANGELOG.md` →
+`generate_wf_doc` → commit.

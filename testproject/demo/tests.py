@@ -407,5 +407,11 @@ class ManagementCommandTests(TestCase):
         # see their output; not raising is the actual regression check.
         call_command('check_wf_config', 'demo.Supplier', 'demo.Request', stdout=io.StringIO())
 
+    def test_workflow_versions_recorded(self):
+        # workflango #11: any change to the demo workflows must be recorded with
+        # propose_wf_version --write (demo/wf_doc/<model>/wf_version.json, CHANGELOG.md)
+        for model in ('demo.Supplier', 'demo.Request'):
+            call_command('propose_wf_version', model, '--check', stdout=io.StringIO())
+
     def test_check_wf_objects_accepts_explicit_model_args(self):
         call_command('check_wf_objects', 'demo.Supplier', stdout=io.StringIO())

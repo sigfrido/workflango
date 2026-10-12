@@ -657,3 +657,75 @@ msgstr "Per questo passaggio il messaggio è obbligatorio."
 #~ msgctxt "workflango"
 #~ msgid "Away"
 #~ msgstr "Assente"
+
+msgctxt "workflango"
+msgid "{where}: `{key}` changed ({old} → {new})"
+msgstr "{where}: `{key}` modificato ({old} → {new})"
+
+msgctxt "workflango"
+msgid "Phase {phase} added"
+msgstr "Fase {phase} aggiunta"
+
+msgctxt "workflango"
+msgid "Phase {phase} removed"
+msgstr "Fase {phase} rimossa"
+
+msgctxt "workflango"
+msgid "Start phase changed: {old} → {new}"
+msgstr "Fase iniziale cambiata: {old} → {new}"
+
+msgctxt "workflango"
+msgid "{where}: destination {dest} added"
+msgstr "{where}: aggiunta la destinazione {dest}"
+
+msgctxt "workflango"
+msgid "{where}: destination {dest} removed"
+msgstr "{where}: rimossa la destinazione {dest}"
+
+msgctxt "workflango"
+msgid "`{name}()` added"
+msgstr "`{name}()` aggiunto"
+
+msgctxt "workflango"
+msgid "`{name}()` removed"
+msgstr "`{name}()` rimosso"
+
+msgctxt "workflango"
+msgid "`{name}()`: code changed"
+msgstr "`{name}()`: codice modificato"
+
+msgctxt "workflango"
+msgid "`{name}()`: docstring changed"
+msgstr "`{name}()`: docstring modificata"
+
+msgctxt "workflango"
+msgid "`{name}` changed"
+msgstr "`{name}` modificato"
+
+msgctxt "workflango"
+msgid "Initial version."
+msgstr "Versione iniziale."
+
+msgctxt "workflango"
+msgid "Major changes"
+msgstr "Modifiche maggiori"
+
+msgctxt "workflango"
+msgid "Minor changes"
+msgstr "Modifiche minori"
+
+msgctxt "workflango"
+msgid "Texts"
+msgstr "Testi"
+
+msgctxt "workflango"
+msgid "Version"
+msgstr "Versione"
+
+msgctxt "workflango"
+msgid "changelog"
+msgstr "modifiche"
+
+msgctxt "workflango"
+msgid "workflow changelog"
+msgstr "modifiche del workflow"

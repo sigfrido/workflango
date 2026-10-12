@@ -1,5 +1,7 @@
 # Request — workflow
 
+**Version**: 1.0.0 — [changelog](../../demo/wf_doc/request/CHANGELOG.md)
+
 **Start phase**: [Draft](#phase-draft)
 
 <a id="graph"></a>

@@ -1,0 +1,95 @@
+{
+  "version": "1.0.0",
+  "date": "2026-10-12",
+  "phases": {
+    "proposed": {
+      "read": [
+        "USERS",
+        "MANAGERS"
+      ],
+      "edit": [
+        "USERS",
+        "MANAGERS"
+      ],
+      "admin": [
+        "MANAGERS"
+      ],
+      "properties": {
+        "edit_button_label": "Edit",
+        "editable_fields": [
+          "certification",
+          "company_name",
+          "tax_code"
+        ]
+      },
+      "is_closed": false,
+      "snapshot": false,
+      "allow_release": "strict",
+      "caption": "Proposed",
+      "description": "Supplier proposed, waiting for review",
+      "reachable_phases": {
+        "active": {
+          "allowed_groups": [
+            "MANAGERS"
+          ],
+          "caption": "Activate"
+        }
+      }
+    },
+    "active": {
+      "read": [
+        "USERS",
+        "MANAGERS"
+      ],
+      "edit": [
+        "MANAGERS"
+      ],
+      "admin": [
+        "MANAGERS"
+      ],
+      "properties": {
+        "edit_button_label": "Edit",
+        "editable_fields": [
+          "certification"
+        ]
+      },
+      "is_closed": false,
+      "snapshot": false,
+      "allow_release": "strict",
+      "caption": "Active",
+      "description": "Supplier approved: requests can target it",
+      "reachable_phases": {
+        "archived": {
+          "allowed_groups": [
+            "MANAGERS"
+          ],
+          "caption": "Archive"
+        }
+      }
+    },
+    "archived": {
+      "read": [
+        "USERS",
+        "MANAGERS"
+      ],
+      "edit": [],
+      "admin": [],
+      "properties": {
+        "edit_button_label": "Edit",
+        "editable_fields": []
+      },
+      "is_closed": true,
+      "snapshot": false,
+      "allow_release": "strict",
+      "caption": "Archived",
+      "description": "Supplier no longer in use",
+      "reachable_phases": {}
+    }
+  },
+  "handlers": {},
+  "texts": {
+    "active.md": "c50ec1b2a5f3aeaa",
+    "archived.md": "bec5998d9544161c",
+    "proposed.md": "8e310791dcea79b3"
+  }
+}

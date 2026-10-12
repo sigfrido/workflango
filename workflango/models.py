@@ -408,9 +408,16 @@ class WorkflowModel(models.Model):
 
     @classmethod
     def configure_workflow(cls, config=None, defaults=None, impersonable_users=None, snapshot_serializer=None,
-                           description_folder=None, phase_metafilters=None, owner_metafilters=None):
+                           description_folder=None, phase_metafilters=None, owner_metafilters=None,
+                           version=None):
         """
         Creates the workflow configuration for this model.
+
+        ``version``: optional version of the workflow (``'MAJOR.MINOR.PATCH'``, #11). The
+        recorded version and the workflow it describes are kept in ``wf_version.json`` in the
+        description folder by the ``propose_wf_version`` command, which proposes the next
+        version from the changes; ``check_wf_config`` warns about unrecorded changes. ``None``:
+        workflow not versioned.
 
         ``phase_metafilters``: optional ``{key: (label, phases)}``: extra values of the phase
         filter standing for several phases (besides the builtin ``phases_open`` /
@@ -445,6 +452,7 @@ class WorkflowModel(models.Model):
             description_folder=description_folder,
             phase_metafilters=phase_metafilters,
             owner_metafilters=owner_metafilters,
+            version=version,
         )
 
 

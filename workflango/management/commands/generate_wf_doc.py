@@ -32,16 +32,17 @@ class Command(BaseCommand):
             model.wfm_config.check()
         except Exception as e:
             raise CommandError(f'{model.__name__}: {e}') from e
-        for warning in model.wfm_config.check_descriptions():
+        for warning in [*model.wfm_config.check_descriptions(), *model.wfm_config.check_version()]:
             self.stderr.write(self.style.WARNING(f'WARNING: {warning}'))
 
+        output = options['output'] or str(Path('docs') / 'workflow' / f'{model.__name__}.md')
         with translation.override(options['language']):
-            text = workflow_markdown(model, detailed=not options['plain'], graph=not options['nograph'])
+            text = workflow_markdown(model, detailed=not options['plain'], graph=not options['nograph'],
+                                     base_dir=Path(output).parent.resolve())
 
         if options['print_only']:
             self.stdout.write(text, ending='')
             return
-        output = options['output'] or str(Path('docs') / 'workflow' / f'{model.__name__}.md')
         path = Path(output)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding='utf-8')

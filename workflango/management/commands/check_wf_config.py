@@ -16,7 +16,8 @@ class Command(BaseCommand):
             try:
                 model.wfm_config.check()
                 print(f"OK: {model.__name__}")
-                for warning in model.wfm_config.check_descriptions():
+                for warning in [*model.wfm_config.check_descriptions(),
+                                *model.wfm_config.check_version()]:
                     self.stderr.write(self.style.WARNING(f"WARNING: {warning}"))
             except Exception as e:
                 raise CommandError(str(e))

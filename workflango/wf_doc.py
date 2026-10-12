@@ -2,9 +2,11 @@
 Markdown documentation of a model's workflow configuration (see the `generate_wf_doc`
 management command).
 
-`workflow_markdown(model, detailed=True, graph=True)` returns a Markdown document,
-browseable on GitHub and includable in pdoc documentation:
+`workflow_markdown(model, detailed=True, graph=True, base_dir=None)` returns a Markdown
+document, browseable on GitHub and includable in pdoc documentation (`base_dir`: folder of the
+document, for the relative link to the workflow changelog):
 
+- the workflow version (configure_workflow(version=)) with a link to its changelog (#11);
 - preface.md of the description folder (as is), the start phase, a "Graph" section with the
   mermaid graph of the phases (unless graph=False) (top-down; forward transitions labeled with their
   caption; reject transitions only when declared in the config, not the automatic ones),
@@ -201,10 +203,27 @@ def _validators(model, cfg, phase):
     return lines
 
 
-def workflow_markdown(model, detailed=True, graph=True):
+def _changelog_link(cfg, base_dir=None):
+    """Path of the workflow changelog relative to `base_dir` (the folder of the generated
+    document; default: the current directory)."""
+    import os
+    from .wf_version import CHANGELOG_FILE
+    path = cfg.description_folder()[0] / CHANGELOG_FILE
+    return os.path.relpath(path, base_dir or os.getcwd()).replace(os.sep, '/')
+
+
+def workflow_markdown(model, detailed=True, graph=True, base_dir=None):
     cfg = model.wfm_config
     title = str(model._meta.verbose_name)
     lines = [f'# {title[:1].upper()}{title[1:]} — {wgettext("workflow")}', '']
+
+    if cfg.version:
+        # changelog of the workflow (propose_wf_version), linked when present
+        from .wf_version import CHANGELOG_FILE
+        version = f'**{wgettext("Version")}**: {cfg.version}'
+        if (cfg.description_folder()[0] / CHANGELOG_FILE).is_file():
+            version += f' — [{wgettext("changelog")}]({_changelog_link(cfg, base_dir)})'
+        lines += [version, '']
 
     preface = cfg.description_file('preface').strip()
     if preface:

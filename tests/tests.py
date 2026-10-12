@@ -2171,7 +2171,7 @@ class GenerateWfDocTest(TestCase):
         import tempfile
         from pathlib import Path
         with tempfile.TemporaryDirectory() as tmp:
-            for nome in ('a', 'b', 'preface', 'postface'):
+            for nome in ('a', 'b', 'preface', 'postface', 'CHANGELOG'):
                 Path(tmp, f'{nome}.md').write_text('x', encoding='utf-8')
             wc = WorkflowConfig(WorkflowModelValid, (
                 ('a', {'caption': 'A', 'description': 'A', 'reachable_phases': {'b': {}}}),
@@ -2269,3 +2269,242 @@ class CompiledCatalogTest(TestCase):
                 self.assertEqual(gettext.GNUTranslations(committed)._catalog,
                                  gettext.GNUTranslations(compiled)._catalog,
                                  'django.mo is stale: run compilemessages and commit it')
+
+
+# Functions for WorkflowVersionTest: same code, different comments/formatting or docstring
+def _handler_a(self, user):
+    """Doc A."""
+    if user:  # a comment
+        return 1
+
+
+def _handler_b(self, user):
+    """Doc A."""
+    # another comment
+    if user:
+        return 1
+
+
+def _handler_c(self, user):
+    """Doc C."""
+    if user:
+        return 1
+
+
+def _handler_d(self, user):
+    """Doc A."""
+    if user:
+        return 2
+
+
+class WorkflowVersionTest(TestCase):
+    """Workflow versions, snapshot diff and propose_wf_version (#11)."""
+
+    BASE = (
+        ('a', {'caption': 'A', 'description': 'Phase A', 'edit': ['group1'],
+               'reachable_phases': {'b': {'caption': 'Go to B'}}}),
+        ('b', {'caption': 'B', 'description': 'Phase B', 'is_closed': True}),
+    )
+
+    def setUp(self):
+        import tempfile
+        self._tmp = tempfile.TemporaryDirectory()
+        self.folder = self._tmp.name
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _cfg(self, config=None, version='1.0.0'):
+        return WorkflowConfig(WorkflowModelValid, config or self.BASE,
+                              {'read': [], 'edit': [], 'admin': []},
+                              description_folder=self.folder, version=version)
+
+    def _phases(self, **changes):
+        """BASE with phase 'a' / its transition to 'b' updated."""
+        from copy import deepcopy
+        config = deepcopy(self.BASE)
+        a = config[0][1]
+        a.update(changes.pop('phase', {}))
+        a['reachable_phases']['b'].update(changes.pop('transition', {}))
+        return config
+
+    def _diff(self, new_config):
+        from workflango.wf_version import diff, snapshot
+        return diff(snapshot(self._cfg()), snapshot(self._cfg(new_config)))
+
+    def test_no_changes(self):
+        self.assertEqual(self._diff(self.BASE), [])
+
+    def test_auto_rejects_not_in_snapshot(self):
+        from workflango.wf_version import snapshot
+        snap = snapshot(self._cfg())
+        self.assertEqual(list(snap['phases']['b']['reachable_phases']), [])
+        # allow-reject False removes the automatic reject: minor (key changed), not major
+        changes = self._diff(self._phases(transition={'allow-reject': False}))
+        self.assertEqual([c.level for c in changes], ['minor'])
+
+    def test_major_changes(self):
+        from copy import deepcopy
+        config = deepcopy(self.BASE) + (('c', {'caption': 'C', 'description': 'Phase C',
+                                               'is_closed': True}),)
+        config[0][1]['reachable_phases']['c'] = {}
+        changes = self._diff(config)
+        self.assertEqual({c.level for c in changes}, {'major'})
+        texts = ' | '.join(c.text for c in changes)
+        self.assertIn('Phase «C» (`c`) added', texts)
+        self.assertIn('«A»: destination «C» added', texts)
+        # removing the destination and the phase
+        removed = self._diff(((
+            'a', {'caption': 'A', 'description': 'Phase A', 'edit': ['group1']}),
+            ('c', {'caption': 'C', 'description': 'Phase C', 'is_closed': True}),
+        ))
+        texts = ' | '.join(c.text for c in removed)
+        self.assertIn('Phase «B» (`b`) removed', texts)
+        self.assertIn('«A»: destination «B» removed', texts)
+
+    def test_start_phase_changed(self):
+        changes = self._diff((self.BASE[1], self.BASE[0]))
+        self.assertIn('Start phase changed: `a` → `b`', [c.text for c in changes])
+
+    def test_minor_and_patch_keys(self):
+        cases = [
+            ({'phase': {'edit': ['group2']}}, 'minor'),
+            ({'phase': {'is_closed': True}}, 'minor'),
+            ({'phase': {'properties': {'help': 'x'}}}, 'minor'),
+            ({'transition': {'require_message': True}}, 'minor'),
+            ({'transition': {'owner_mode': 'none'}}, 'minor'),
+            ({'phase': {'caption': 'A2'}}, 'patch'),
+            ({'phase': {'description': 'Other'}}, 'patch'),
+            ({'transition': {'caption': 'Send to B'}}, 'patch'),
+            ({'transition': {'button-style': 'danger'}}, 'patch'),
+        ]
+        for change, level in cases:
+            with self.subTest(change=change):
+                changes = self._diff(self._phases(**change))
+                self.assertEqual([c.level for c in changes], [level])
+        text = self._diff(self._phases(phase={'edit': ['group2']}))[0].text
+        self.assertEqual(text, '«A»: `edit` changed (["group1"] → ["group2"])')
+
+    def test_handler_hashes(self):
+        from workflango.wf_version import _handler_hashes
+        a, b, c, d = (_handler_hashes(f) for f in (_handler_a, _handler_b, _handler_c, _handler_d))
+        self.assertEqual(a, b)              # comments and formatting do not count
+        self.assertEqual(a[0], c[0])        # docstring only: same code…
+        self.assertNotEqual(a[1], c[1])     # …different doc
+        self.assertNotEqual(a[0], d[0])     # code changed
+
+    def test_handler_changes(self):
+        from workflango.wf_version import diff, snapshot
+        old = snapshot(self._cfg())
+        self.assertIn('validate_1_to_2', old['handlers'])
+        self.assertIn('after_state_transition', old['handlers'])
+        self.assertNotIn('validate_unique', old['handlers'])    # Django's, not a handler
+        new = {**old, 'handlers': dict(old['handlers'])}
+        new['handlers']['validate_1_to_2'] = {**old['handlers']['validate_1_to_2'], 'doc': 'x'}
+        self.assertEqual([(c.level, c.text) for c in diff(old, new)],
+                         [('patch', '`validate_1_to_2()`: docstring changed')])
+        new['handlers']['validate_1_to_2'] = {'code': 'x', 'doc': 'x'}
+        new['handlers']['validate_a_to_b'] = {'code': 'y', 'doc': ''}
+        del new['handlers']['after_state_transition']
+        self.assertEqual(sorted((c.level, c.text) for c in diff(old, new)), [
+            ('minor', '`after_state_transition()` removed'),
+            ('minor', '`validate_1_to_2()`: code changed'),
+            ('minor', '`validate_a_to_b()` added'),
+        ])
+
+    def test_texts(self):
+        from pathlib import Path
+        from workflango.wf_version import diff, snapshot
+        Path(self.folder, 'a.md').write_text('A', encoding='utf-8')
+        Path(self.folder, 'CHANGELOG.md').write_text('log', encoding='utf-8')
+        old = snapshot(self._cfg())
+        self.assertEqual(list(old['texts']), ['a.md'])            # changelog left out
+        Path(self.folder, 'a.md').write_text('A, more', encoding='utf-8')
+        Path(self.folder, 'preface.md').write_text('Intro', encoding='utf-8')
+        self.assertEqual([(c.level, c.text) for c in diff(old, snapshot(self._cfg()))],
+                         [('patch', '`a.md` changed'), ('patch', '`preface.md` changed')])
+
+    def test_versions(self):
+        from workflango.wf_version import bump, is_enough, parse_version, required_level, Change
+        self.assertEqual(bump('1.2.3', 'major'), '2.0.0')
+        self.assertEqual(bump('1.2.3', 'minor'), '1.3.0')
+        self.assertEqual(bump('1.2.3', 'patch'), '1.2.4')
+        self.assertTrue(is_enough('1.3.0', '1.2.3', 'minor'))
+        self.assertTrue(is_enough('2.0.0', '1.2.3', 'minor'))
+        self.assertFalse(is_enough('1.2.4', '1.2.3', 'minor'))
+        self.assertEqual(required_level([Change('patch', ''), Change('minor', '')]), 'minor')
+        self.assertIsNone(required_level([]))
+        with self.assertRaises(ValueError):
+            parse_version('1.2')
+
+    def test_check_version(self):
+        from workflango.wf_version import write_snapshot
+        self.assertEqual(self._cfg(version=None).check_version(), [])
+        self.assertIn('wf_version.json missing', self._cfg().check_version()[0])
+        write_snapshot(self._cfg(), '1.0.0')
+        self.assertEqual(self._cfg().check_version(), [])
+        self.assertIn('differs from the recorded version 1.0.0',
+                      self._cfg(version='1.1.0').check_version()[0])
+        warning = self._cfg(self._phases(phase={'edit': ['group2']})).check_version()[0]
+        self.assertIn('workflow changed since version 1.0.0 (1 changes, minor)', warning)
+
+    def _command(self, cfg, *args):
+        from io import StringIO
+        from django.core.management import call_command
+        out = StringIO()
+        with patch.object(WorkflowModelValid, 'wfm_config', cfg, create=True):
+            call_command('propose_wf_version', 'tests.WorkflowModelValid', '--language', 'en',
+                         *args, stdout=out)
+        return out.getvalue()
+
+    def test_command(self):
+        import json
+        from pathlib import Path
+        from django.core.management.base import CommandError
+        changelog = Path(self.folder, 'CHANGELOG.md')
+        # first version
+        out = self._command(self._cfg(), '--write')
+        self.assertIn('initial version 1.0.0', out)
+        self.assertEqual(json.loads(Path(self.folder, 'wf_version.json').read_text())['version'], '1.0.0')
+        self.assertIn('## [1.0.0] - ', changelog.read_text())
+        self.assertIn('Initial version.', changelog.read_text())
+        self.assertIn('recorded, no changes', self._command(self._cfg(), '--check'))
+        # a minor change: proposed, refused if too low, recorded with --write
+        changed = self._cfg(self._phases(phase={'edit': ['group2']}))
+        with self.assertRaisesMessage(CommandError, 'workflow changed since version 1.0.0'):
+            self._command(changed, '--check')
+        out = self._command(changed)
+        self.assertIn('1 changes since version 1.0.0 (minor) — proposed version 1.1.0', out)
+        self.assertIn('[minor] «A»: `edit` changed', out)
+        self.assertIn('set configure_workflow(version=\'1.1.0\', ...)', out)
+        with self.assertRaisesMessage(CommandError, 'version 1.0.1 too low for minor changes'):
+            self._command(changed, '--new-version', '1.0.1')
+        self._command(changed, '--write')
+        text = changelog.read_text()
+        self.assertLess(text.index('## [1.1.0]'), text.index('## [1.0.0]'))   # newest first
+        self.assertIn('### Minor changes\n\n- «A»: `edit` changed', text)
+        self.assertTrue(text.startswith('# '))
+        # declared version now 1.1.0: check passes
+        changed.version = '1.1.0'
+        self.assertIn('version 1.1.0 recorded', self._command(changed, '--check'))
+        with self.assertRaisesMessage(CommandError, 'no version in configure_workflow'):
+            self._command(self._cfg(version=None), '--check')
+
+    def test_italian_changelog(self):
+        from django.utils import translation
+        from workflango.wf_version import Change, changelog_entry
+        with translation.override('it'):
+            entry = changelog_entry('2.0.0', [Change('major', 'x'), Change('patch', 'y')])
+        self.assertIn('### Modifiche maggiori\n\n- x', entry)
+        self.assertIn('### Testi\n\n- y', entry)
+
+    def test_doc_header(self):
+        from pathlib import Path
+        from django.utils import translation
+        from workflango.wf_doc import workflow_markdown
+        cfg = self._cfg()
+        Path(self.folder, 'CHANGELOG.md').write_text('# log', encoding='utf-8')
+        with patch.object(WorkflowModelValid, 'wfm_config', cfg, create=True), translation.override('en'):
+            md = workflow_markdown(WorkflowModelValid, base_dir=Path(self.folder).parent)
+        name = Path(self.folder).name
+        self.assertIn(f'**Version**: 1.0.0 — [changelog]({name}/CHANGELOG.md)', md)

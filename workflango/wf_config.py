@@ -141,8 +141,9 @@ class WorkflowConfig(dict):
 
     def __init__(self, model, model_config, model_defaults=None, impersonable_users_func=None,
                  snapshot_serializer=None, description_folder=None,
-                 phase_metafilters=None, owner_metafilters=None):
+                 phase_metafilters=None, owner_metafilters=None, version=None):
         super(WorkflowConfig, self).__init__()
+        self.version = version   # workflow version (#11, see wf_version), None = not versioned
         self._description_folder = description_folder
         self._phase_metafilters = dict(phase_metafilters or {})
         self._owner_metafilters = dict(owner_metafilters or {})
@@ -307,6 +308,11 @@ class WorkflowConfig(dict):
         path = folder / f'{name}.md'
         return path.read_text(encoding='utf-8') if path.is_file() else ''
 
+    def check_version(self):
+        """Warnings about the workflow version (see wf_version.check_version)."""
+        from .wf_version import check_version
+        return check_version(self)
+
     def check_descriptions(self):
         """Warnings (list of str, never raises) about the long descriptions: folder not
         found, files not matching any phase, phases without a file."""
@@ -318,7 +324,7 @@ class WorkflowConfig(dict):
         files = {p.stem for p in folder.glob('*.md')}
         phases = set(self._model_phases)
         warnings = [f'{name}: {folder / (f + ".md")} does not match any phase'
-                    for f in sorted(files - phases - set(DOC_FILES))]
+                    for f in sorted(files - phases - set(DOC_FILES) - {'CHANGELOG'})]  # wf_version
         warnings += [f'{name}: phase {p} clashes with the reserved file {p}.md (generate_wf_doc)'
                      for p in self._model_phases if p in DOC_FILES]
         warnings += [f'{name}: no long description for phase {p} ({folder / (p + ".md")})'

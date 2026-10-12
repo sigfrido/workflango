@@ -204,8 +204,12 @@ class Settings(models.Model):
         return obj
 
 
-Supplier.configure_workflow()
+# Workflow versions (#11): after changing a workflow run `propose_wf_version demo.<Model>`,
+# set the version here, then `propose_wf_version demo.<Model> --write`
+# (wf_version.json and CHANGELOG.md in demo/wf_doc/<model>/)
+Supplier.configure_workflow(version='1.0.0')
 Request.configure_workflow(
+    version='1.0.0',
     # Metafilters of the list filters (#8): one more phase value, one owner value
     phase_metafilters={'to_review': ('To review', ['submitted'])},
     owner_metafilters={

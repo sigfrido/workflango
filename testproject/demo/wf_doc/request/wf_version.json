@@ -1,0 +1,117 @@
+{
+  "version": "1.0.0",
+  "date": "2026-10-12",
+  "phases": {
+    "draft": {
+      "read": [
+        "USERS",
+        "MANAGERS"
+      ],
+      "edit": [
+        "USERS",
+        "MANAGERS"
+      ],
+      "admin": [
+        "MANAGERS"
+      ],
+      "properties": {
+        "edit_button_label": "Edit",
+        "editable_fields": [
+          "budget",
+          "description",
+          "supplier",
+          "title"
+        ]
+      },
+      "is_closed": false,
+      "snapshot": false,
+      "allow_release": "strict",
+      "caption": "Draft",
+      "description": "Request being written by its author",
+      "reachable_phases": {
+        "submitted": {
+          "caption": "Submit"
+        }
+      }
+    },
+    "submitted": {
+      "read": [
+        "USERS",
+        "MANAGERS"
+      ],
+      "edit": [],
+      "admin": [
+        "MANAGERS"
+      ],
+      "properties": {
+        "edit_button_label": "Edit",
+        "editable_fields": [
+          "manager_notes",
+          "reference_code"
+        ]
+      },
+      "is_closed": false,
+      "snapshot": false,
+      "allow_release": "strict",
+      "caption": "Submitted",
+      "description": "Waiting for a manager to approve or reject it",
+      "reachable_phases": {
+        "approved": {
+          "allowed_groups": [
+            "MANAGERS"
+          ],
+          "caption": "Approve"
+        },
+        "rejected": {
+          "allowed_groups": [
+            "MANAGERS"
+          ],
+          "caption": "Reject"
+        }
+      }
+    },
+    "approved": {
+      "read": [
+        "USERS",
+        "MANAGERS"
+      ],
+      "edit": [],
+      "admin": [],
+      "properties": {
+        "edit_button_label": "Edit",
+        "editable_fields": []
+      },
+      "is_closed": true,
+      "snapshot": false,
+      "allow_release": "strict",
+      "caption": "Approved",
+      "description": "Request approved (closed)",
+      "reachable_phases": {}
+    },
+    "rejected": {
+      "read": [
+        "USERS",
+        "MANAGERS"
+      ],
+      "edit": [],
+      "admin": [],
+      "properties": {
+        "edit_button_label": "Edit",
+        "editable_fields": []
+      },
+      "is_closed": true,
+      "snapshot": false,
+      "allow_release": "strict",
+      "caption": "Rejected",
+      "description": "Request rejected (closed)",
+      "reachable_phases": {}
+    }
+  },
+  "handlers": {},
+  "texts": {
+    "approved.md": "be295e2abcf6b891",
+    "draft.md": "9703f1f7ca12613c",
+    "rejected.md": "768ffe9910a53b45",
+    "submitted.md": "2cb2ab8609327839"
+  }
+}

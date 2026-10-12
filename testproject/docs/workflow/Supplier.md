@@ -1,5 +1,7 @@
 # Supplier — workflow
 
+**Version**: 1.0.0 — [changelog](../../demo/wf_doc/supplier/CHANGELOG.md)
+
 **Start phase**: [Proposed](#phase-proposed)
 
 <a id="graph"></a>
