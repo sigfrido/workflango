@@ -159,7 +159,7 @@ class WFTransitionDescriptor(object):
         value = None
         if self.config:
             value = self.config.get(key, None)
-        if not value:
+        if value is None:  # an explicit falsy value (e.g. require_message: False) is kept
             return default
         if callable(value):
             return value(self)

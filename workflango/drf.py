@@ -300,7 +300,7 @@ class WorkflowViewSetMixin:
     # ------------------------------------------------------------------
 
     @action(detail=True, methods=['get'])
-    def workflow_history(self, request, pk=None):  # noqa: ARG002
+    def workflow_history(self, request, pk=None, **kwargs):  # noqa: ARG002
         """Returns all State records for this instance, oldest first."""
         instance = self.get_object()
         states = instance.wfm.get_states().select_related('owner', 'user', 'impersonated_by')
@@ -312,7 +312,7 @@ class WorkflowViewSetMixin:
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
-    def change_state(self, request, pk=None):  # noqa: ARG002
+    def change_state(self, request, pk=None, **kwargs):  # noqa: ARG002
         """
         Perform a workflow transition.
 
@@ -342,6 +342,12 @@ class WorkflowViewSetMixin:
         acting_user, impersonated_by = self.resolve_acting_user(request, data['user'])
         self.check_wf_permission(instance, acting_user, impersonated_by)
 
+        from .wf_transition import WFTransitionDescriptor
+        transition = WFTransitionDescriptor(instance, data['phase'], acting_user,
+                                            impersonated_by=impersonated_by)
+        if transition.require_message and not (data.get('message') or '').strip():
+            raise DRFValidationError({'message': wgettext("A message is required for this transition.")})
+
         owner = None
         if data['owner']:
             try:
@@ -367,7 +373,7 @@ class WorkflowViewSetMixin:
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])
-    def mark_read(self, request, pk=None):  # noqa: ARG002
+    def mark_read(self, request, pk=None, **kwargs):  # noqa: ARG002
         """
         Set or clear the ``unread`` flag on the current state.
 

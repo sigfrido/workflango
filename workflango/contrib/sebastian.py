@@ -349,6 +349,11 @@ class SebastianWorkflowViewSetMixin(WorkflowViewSetMixin):
 
         form_errors: dict = {}
 
+        # Required message (transition key 'require_message' or the default rule): checked here
+        # too, the textarea's 'required' attribute is only a client-side hint
+        if transition.require_message and not (data.get('message') or '').strip():
+            form_errors['message'] = [wgettext("A message is required for this transition.")]
+
         if data['owner']:
             try:
                 owner = get_user_model().objects.get(pk=data['owner'], is_active=True)

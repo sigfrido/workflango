@@ -216,6 +216,7 @@ def _strings():  # pragma: no cover - never called, see module docstring
         pgettext('workflango', 'Start'),
         pgettext('workflango', 'Start phase'),
         pgettext('workflango', 'Graph'),
+        pgettext('workflango', 'A message is required for this transition.'),
         pgettext('workflango', 'workflow'),
         pgettext('workflango', 'Phases'),
         pgettext('workflango', 'Final phase'),

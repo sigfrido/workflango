@@ -27,6 +27,11 @@ All notable changes to this project are documented here, starting from this rele
 
 - `SebastianWorkflowViewSetMixin.get_page_title()`: the workflow history page is titled "Label - <obj> [Workflow history]"; everything else uses sebastian's default page titles (**requires drf-sebastian ≥ 1.0.0-rc7**). The history template no longer hard-codes its own title
 
+### Fixed
+
+- **`require_message` enforced server-side** (opus #88): the sebastian `change_state_form` and the DRF `change_state` action reject a transition without message when the transition requires one (it was only the textarea's `required` attribute); `WFTransitionDescriptor.get_config()` keeps explicit falsy values, so `'require_message': False` now overrides the default rule
+- DRF `change_state` / `mark_read` / `workflow_history` actions accept the viewset's lookup kwargs (they failed with a `lookup_field` other than `pk`)
+
 ## [1.0.0-rc4] - 2026-09-29
 
 ### Fixed

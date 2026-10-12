@@ -650,6 +650,10 @@ msgctxt "workflango"
 msgid "Graph"
 msgstr "Grafo"
 
+msgctxt "workflango"
+msgid "A message is required for this transition."
+msgstr "Per questo passaggio il messaggio è obbligatorio."
+
 #~ msgctxt "workflango"
 #~ msgid "Away"
 #~ msgstr "Assente"

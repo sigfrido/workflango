@@ -310,6 +310,19 @@ class WorkflowTest(TransactionTestCase):
         instance.refresh_from_db()
         self.assertFalse(instance.current_state.unread)
 
+    def test_require_message_from_transition_config(self):
+        instance = self.create(self.user_1)
+        reachable = self.OkModel.wfm_config['1']['reachable_phases']
+        self.assertFalse(instance.wfm.get_transition(3, self.user_1).require_message)  # default rule
+        with patch.dict(reachable['3'], {'require_message': True}):
+            self.assertTrue(instance.wfm.get_transition(3, self.user_1).require_message)
+        instance.wfm.transition(self.user_1, 2, self.user_3)               # phase 2: group3 edits
+        instance.refresh_from_db()
+        back = self.OkModel.wfm_config['2']['reachable_phases']['1']      # automatic reject
+        self.assertTrue(instance.wfm.get_transition(1, self.user_3).require_message)
+        with patch.dict(back, {'require_message': False}):              # explicit False is kept
+            self.assertFalse(instance.wfm.get_transition(1, self.user_3).require_message)
+
     def test_creation_by_first_phase_editors_only(self):
         from workflango.exceptions import TransitionNotAllowed
         # phase 1: edit group2, admin group1/group4 -> group3 cannot create
