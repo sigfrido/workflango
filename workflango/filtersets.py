@@ -38,16 +38,16 @@ try:
                 choices=[], label=wgettext_lazy('Phase'),
                 widget=forms.SelectMultiple(attrs={'class': 'ts-select'}),
             )),
+            ('search_wf_owner', _NoopMultipleChoiceFilter(
+                choices=[], label=wgettext_lazy('Owner'),
+                widget=forms.SelectMultiple(attrs={'class': 'ts-select'}),
+            )),
             ('search_wf_message', django_filters.CharFilter(method=_wf_noop, label=wgettext_lazy('Message'))),
             ('search_wf_suspended', django_filters.ChoiceFilter(
                 method=_wf_noop, choices=_BOOL_CHOICES, label=wgettext_lazy('Suspended'),
             )),
             ('search_wf_unread', django_filters.ChoiceFilter(
                 method=_wf_noop, choices=_BOOL_CHOICES, label=wgettext_lazy('Unread'),
-            )),
-            ('search_wf_owner', _NoopMultipleChoiceFilter(
-                choices=[], label=wgettext_lazy('Owner'),
-                widget=forms.SelectMultiple(attrs={'class': 'ts-select'}),
             )),
             ('search_wf_history', django_filters.ChoiceFilter(
                 method=_wf_noop, choices=_STATE_CHOICES, label=wgettext_lazy('History'),

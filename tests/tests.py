@@ -2508,3 +2508,15 @@ class WorkflowVersionTest(TestCase):
             md = workflow_markdown(WorkflowModelValid, base_dir=Path(self.folder).parent)
         name = Path(self.folder).name
         self.assertIn(f'**Version**: 1.0.0 — [changelog]({name}/CHANGELOG.md)', md)
+
+
+class WorkflowFilterSetOrderTest(TestCase):
+    """Workflow fields of the filterset: Owner right after Phase."""
+
+    def test_order(self):
+        from unittest import SkipTest
+        from workflango.filtersets import WorkflowFilterSetMixin
+        if not hasattr(WorkflowFilterSetMixin, 'declared_filters'):
+            raise SkipTest('django-filter not installed')
+        names = [n for n in WorkflowFilterSetMixin.declared_filters]
+        self.assertEqual(names[:2], ['search_wf_phase', 'search_wf_owner'])
