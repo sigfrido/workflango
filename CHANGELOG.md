@@ -2,7 +2,9 @@
 
 All notable changes to this project are documented here, starting from this release. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [1.0.0-rc6] - unreleased
+## [1.0.0] - 2026-10-13
+
+First stable release (requires drf-sebastian ≥ 1.0.0 for the sebastian pack). Changes since 1.0.0-rc5:
 
 ### Added
 

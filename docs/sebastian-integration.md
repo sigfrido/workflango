@@ -16,7 +16,7 @@ never imported by any core workflango module: importing it is the opt-in.
 
 ## Prerequisites
 
-Both `djangorestframework` and `drf-sebastian` **1.0.0-rc3 or later** installed and
+Both `djangorestframework` and `drf-sebastian` **1.0.0 or later** installed and
 configured in the consuming project (this module relies on sebastian's `extra_context()`
 and `parent_is_editable()` hooks and on its `{% actions "group" %}` tag). `drf-sebastian` is not published on PyPI — install it from its own
 repository. Importing `workflango.contrib.sebastian` without it installed raises a
