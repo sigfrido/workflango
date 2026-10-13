@@ -2245,6 +2245,94 @@ class GenerateWfDocTest(TestCase):
                 call_command('generate_wf_doc', 'tests.WorkflowModelValid', '--print', stdout=StringIO())
 
 
+class WorkflowDocTemplateTest(TestCase):
+    """generate_wf_doc --template / WF_DOC_TEMPLATE: the document wrapped in a Markdown template."""
+
+    TEMPLATE = (
+        '---\nfooter: "{{ title }} — {{version_label}} ({{ model }}, {{ verbose_name }})"\n---\n'
+        '<style>\nh2 { break-before: page; }\n</style>\n\n{{ content }}\n\n{{ unknown }}\n')
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        WorkflowModelValid.configure_workflow(snapshot_serializer=WorkflowModelValidSerializer)
+
+    def _doc(self, template, version='1.2.0'):
+        from django.utils import translation
+        from workflango.wf_doc import workflow_document
+        with patch.object(WorkflowModelValid.wfm_config, 'version', version), \
+                translation.override('en'):
+            return workflow_document(WorkflowModelValid, template)
+
+    def test_no_template_unchanged(self):
+        from django.utils import translation
+        from workflango.wf_doc import workflow_markdown
+        with translation.override('en'):
+            self.assertEqual(self._doc(None, version=None), workflow_markdown(WorkflowModelValid))
+
+    def test_placeholders(self):
+        doc = self._doc(self.TEMPLATE)
+        self.assertIn('footer: "Workflow model valid — workflow — Version 1.2.0 '
+                      '(tests.WorkflowModelValid, workflow model valid)"', doc)
+        self.assertIn('h2 { break-before: page; }', doc)          # CSS braces untouched
+        self.assertIn('{{ unknown }}', doc)                       # unknown placeholders too
+        self.assertIn('\n# Workflow model valid — workflow\n', doc)  # the content
+        self.assertEqual(self._doc('{{ date }}|{{content}}').split('|')[0],
+                         __import__('datetime').date.today().isoformat())
+
+    def test_placeholders_in_content_not_replaced(self):
+        with patch('workflango.wf_doc.workflow_markdown', return_value='a {{ title }} b'):
+            self.assertEqual(self._doc('[{{ content }}]'), '[a {{ title }} b]')
+
+    def test_not_versioned(self):
+        doc = self._doc('v={{ version }}|l={{ version_label }}|{{ content }}', version=None)
+        self.assertTrue(doc.startswith('v=|l=|'))
+
+    def test_content_required(self):
+        from workflango.wf_doc import check_template
+        with self.assertRaises(ValueError):
+            check_template('{{ title }} only')
+        check_template('{{content}}')
+
+    def _command(self, *args, settings_template=None):
+        import os
+        import tempfile
+        from io import StringIO
+        from django.core.management import call_command
+        tmp = tempfile.mkdtemp()
+        cwd = os.getcwd()
+        os.chdir(tmp)
+        try:
+            with override_settings(WF_DOC_TEMPLATE=settings_template):
+                call_command('generate_wf_doc', 'tests.WorkflowModelValid', 'out.md', *args,
+                             stdout=StringIO(), stderr=StringIO())
+            with open('out.md', encoding='utf-8') as f:
+                return f.read()
+        finally:
+            os.chdir(cwd)
+
+    def _file(self, text):
+        import tempfile
+        f = tempfile.NamedTemporaryFile('w', suffix='.md', delete=False, encoding='utf-8')
+        f.write(text)
+        f.close()
+        return f.name
+
+    def test_command(self):
+        from django.core.management.base import CommandError
+        template = self._file('HEAD {{ title }}\n{{ content }}')
+        self.assertTrue(self._command('--template', template).startswith('HEAD '))
+        # default from settings, ignored with --no-template
+        self.assertTrue(self._command(settings_template=template).startswith('HEAD '))
+        self.assertTrue(self._command('--no-template', settings_template=template).startswith('# '))
+        # errors before writing anything
+        senza = self._file('HEAD {{ title }}')
+        with self.assertRaisesMessage(CommandError, 'no {{ content }} placeholder'):
+            self._command('--template', senza)
+        with self.assertRaisesMessage(CommandError, 'Template not found'):
+            self._command('--template', '/non/esiste.md')
+
+
 class CompiledCatalogTest(TestCase):
     """The committed django.mo must match django.po: packages installed from git get no
     compile step, so a missing or stale .mo silently leaves the GUI in English."""

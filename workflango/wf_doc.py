@@ -212,10 +212,15 @@ def _changelog_link(cfg, base_dir=None):
     return os.path.relpath(path, base_dir or os.getcwd()).replace(os.sep, '/')
 
 
+def workflow_title(model):
+    """Title of the workflow document: "<Verbose name> — workflow"."""
+    name = str(model._meta.verbose_name)
+    return f'{name[:1].upper()}{name[1:]} — {wgettext("workflow")}'
+
+
 def workflow_markdown(model, detailed=True, graph=True, base_dir=None):
     cfg = model.wfm_config
-    title = str(model._meta.verbose_name)
-    lines = [f'# {title[:1].upper()}{title[1:]} — {wgettext("workflow")}', '']
+    lines = [f'# {workflow_title(model)}', '']
 
     if cfg.version:
         # changelog of the workflow (propose_wf_version), linked when present
@@ -287,3 +292,39 @@ def workflow_markdown(model, detailed=True, graph=True, base_dir=None):
         lines += [postface, '']
 
     return '\n'.join(lines).rstrip() + '\n'
+
+
+# Placeholders of the document template: {{ name }} (inner spaces optional); unknown ones and
+# anything else (e.g. CSS braces) are left as they are.
+_PLACEHOLDER = re.compile(r'\{\{\s*(\w+)\s*\}\}')
+CONTENT_PLACEHOLDER = 'content'
+
+
+def check_template(template):
+    """ValueError if the template text lacks the only required placeholder, {{ content }}."""
+    if not any(m.group(1) == CONTENT_PLACEHOLDER for m in _PLACEHOLDER.finditer(template)):
+        raise ValueError('The document template has no {{ content }} placeholder')
+
+
+def workflow_document(model, template=None, **kwargs):
+    """The workflow document (`workflow_markdown(model, **kwargs)`), wrapped in `template` if
+    given: a Markdown text whose placeholders are replaced — title, version, version_label
+    ("Version 1.0.1", empty if not versioned), model ("app_label.Model"), verbose_name, date
+    (YYYY-MM-DD) and content (the document; required). E.g. a front matter for PDF export with
+    the title and version in the page footer."""
+    content = workflow_markdown(model, **kwargs)
+    if template is None:
+        return content
+    check_template(template)
+    from datetime import date
+    version = model.wfm_config.version or ''
+    values = {
+        'title': workflow_title(model),
+        'version': version,
+        'version_label': f'{wgettext("Version")} {version}' if version else '',
+        'model': model._meta.label,
+        'verbose_name': str(model._meta.verbose_name),
+        'date': date.today().isoformat(),
+        CONTENT_PLACEHOLDER: content,
+    }
+    return _PLACEHOLDER.sub(lambda m: values.get(m.group(1), m.group(0)), template)

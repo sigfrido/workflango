@@ -4,6 +4,10 @@ All notable changes to this project are documented here, starting from this rele
 
 ## [1.0.0-rc6] - unreleased
 
+### Added
+
+- **Document template for `generate_wf_doc`**: `--template FILE` (default `settings.WF_DOC_TEMPLATE`; `--no-template` ignores it) wraps the generated document in a Markdown template, e.g. a front matter for PDF export with title and version in the page footer. Plain replacement of the placeholders `{{ content }}` (required: error, nothing written, if missing), `{{ title }}`, `{{ version }}`, `{{ version_label }}`, `{{ model }}`, `{{ verbose_name }}`, `{{ date }}`; everything else (CSS braces, unknown placeholders) is left as is. `wf_doc.workflow_document()`, `workflow_title()`, `check_template()`
+
 ### Changed
 
 - **Workflow filter order**: the *Owner* filter comes right after *Phase* (`WorkflowFilterSetMixin`)

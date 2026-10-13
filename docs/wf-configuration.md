@@ -201,7 +201,8 @@ fixed set of values by the code that consumes it — a typo there fails silently
 ## 5. Workflow documentation: `generate_wf_doc`
 
 ```
-manage.py generate_wf_doc [--plain] [--nograph] [--print] [--language LANG] app.Model [output]
+manage.py generate_wf_doc [--plain] [--nograph] [--print] [--language LANG]
+                          [--template FILE | --no-template] app.Model [output]
 ```
 
 Writes the Markdown documentation of a model's workflow, browseable on GitHub and
@@ -232,6 +233,44 @@ most Markdown viewers.
 
 With `configure_workflow(version=...)` the document starts with the version and a link to the
 workflow changelog (§6), relative to the output folder.
+
+**Document template.** `--template FILE` (default `settings.WF_DOC_TEMPLATE`, if set;
+`--no-template` ignores the setting) wraps the document in a Markdown template, e.g. to add a
+front matter for PDF export (Markdown Preview Enhanced / puppeteer: page footer with title,
+version and page numbers) and print CSS. Placeholders are plain replacements of `{{ name }}`
+(inner spaces optional); anything else in the template — CSS braces, unknown placeholders — is
+left as is, and placeholders inside the generated content are never replaced:
+
+| Placeholder | Value |
+|---|---|
+| `{{ content }}` | the generated document — **required**: a template without it is an error (nothing is written), as a missing template file |
+| `{{ title }}` | the document title, e.g. "Request — workflow" (its H1) |
+| `{{ version }}` | the workflow version (`configure_workflow(version=)`), empty if not versioned |
+| `{{ version_label }}` | "Version 1.2.0" (translated, `--language`), empty if not versioned |
+| `{{ model }}` | `app_label.Model` |
+| `{{ verbose_name }}` | the model's verbose name |
+| `{{ date }}` | generation date, `YYYY-MM-DD` |
+
+```markdown
+---
+puppeteer:
+  displayHeaderFooter: true
+  headerTemplate: '<div></div>'
+  footerTemplate: >
+    <div style="font-size:10px; width:100%; padding:0 1cm; display:flex; justify-content:space-between;">
+      <span>{{ title }} — {{ version_label }}</span>
+      <span><span class="pageNumber"></span> / <span class="totalPages"></span></span>
+    </div>
+---
+
+<style>
+h2 { break-before: page; }
+</style>
+
+{{ content }}
+```
+
+Python: `workflango.wf_doc.workflow_document(model, template=None, **kwargs)`.
 
 ## 6. Workflow versions: `propose_wf_version`
 
