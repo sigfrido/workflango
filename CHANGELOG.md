@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here, starting from this release. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.0-rc6] - unreleased
+
+### Changed
+
+- **Workflow filter order**: the *Owner* filter comes right after *Phase* (`WorkflowFilterSetMixin`)
+
 ## [1.0.0-rc5] - 2026-10-12
 
 ### Added
@@ -19,8 +25,6 @@ All notable changes to this project are documented here, starting from this rele
 - **`'button-style'` transition key** (`'default'` | `'info'` | `'warning'` | `'success'` | `'danger'` | `'secondary'`, default `'default'`): color of a forward transition's button and of its confirmation panel (`default` → primary, the others → the Bootstrap color of the same name). Any other value raises `InvalidWorkflowConfiguration`. `WFTransitionDescriptor.button_style` returns the resulting Bootstrap color; rejects and commands keep their severity colors (info → primary, warn → warning, error → danger)
 
 ### Changed
-
-- **Workflow filter order**: the *Owner* filter comes right after *Phase* (`WorkflowFilterSetMixin`)
 
 - **Breaking — no `None` phase** (#9): the start phase is the first phase of the configuration, objects are created into it by its editors/admins; a `None` entry raises `InvalidWorkflowConfiguration` (see `docs/upgrade-checklist.md` §6). Internally the entry for objects not yet in the workflow is derived from the first phase (groups, properties; reaches only the first phase), so the engine behaves as before. New `WorkflowConfig.start_phase`
 
