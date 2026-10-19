@@ -1,4 +1,10 @@
 {% load sebastian_tags workflow_tags %}
+{% comment %}
+Sebastian renders every confirmation of a workflow ViewSet with this template (namespace override):
+confirmations that are not workflow transitions (delete, actions with a confirmation serializer)
+keep Sebastian's own modal.
+{% endcomment %}
+{% if 'phase' not in data %}{% include "sebastian/htmx/confirm.html" %}{% else %}
 {# Inline workflow confirmation form — rendered into #wf-confirm-panel (innerHTML swap). #}
 {# On success, hx-target reloads the full detail page (#sebastian-content).             #}
 <div class="card border-{{ data.confirm_style|default:'primary' }} mt-3">
@@ -102,3 +108,4 @@
 
   </div>
 </div>
+{% endif %}

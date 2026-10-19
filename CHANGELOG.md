@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here, starting from this release. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.1] - unreleased
+
+### Fixed
+
+- **Non-workflow confirmations on workflow ViewSets (Sebastian pack)**: the workflow `confirm.html` overrides Sebastian's for the whole ViewSet, so a delete confirmation or an action with a confirmation serializer was rendered as the transition panel (message field, phase hidden input) and posted without its fields; when the response is not a workflow transition (no `phase`) the template now renders Sebastian's own modal
+
 ## [1.0.0] - 2026-10-13
 
 First stable release (requires drf-sebastian ≥ 1.0.0 for the sebastian pack). Changes since 1.0.0-rc5:
