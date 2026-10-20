@@ -2160,12 +2160,12 @@ class GenerateWfDocTest(TestCase):
                           side_effect=lambda name: texts.get(name, '')):
             md = self._md(graph=True)
         order = [md.index(x) for x in ('# ', '**Intro** of the workflow', '**Start phase**',
-                                       '<a id="graph"></a>\n\n## Graph', '## Phases', 'Final notes')]
+                                       '<a id="graph"></a>\n\n## State diagram', '## Phases', 'Final notes')]
         self.assertEqual(order, sorted(order))
         self.assertTrue(md.rstrip().endswith('Final notes'))
         # end of each phase: back to the graph and to the start phase (not on the start phase itself)
-        self.assertIn('↑ [Graph](#graph) · [Start phase: Phase 1](#phase-1)', md)
-        self.assertEqual(md.count('↑ [Graph](#graph)\n'), 1)  # phase 1: only the graph link
+        self.assertIn('↑ [State diagram](#graph) · [Start phase: Phase 1](#phase-1)', md)
+        self.assertEqual(md.count('↑ [State diagram](#graph)\n'), 1)  # phase 1: only the graph link
 
     def test_preface_postface_not_reported_as_extra_files(self):
         import tempfile
@@ -2596,6 +2596,12 @@ class WorkflowVersionTest(TestCase):
             md = workflow_markdown(WorkflowModelValid, base_dir=Path(self.folder).parent)
         name = Path(self.folder).name
         self.assertIn(f'**Version**: 1.0.0 — [changelog]({name}/CHANGELOG.md)', md)
+        # without the link (e.g. for an online help, where the changelog is not reachable)
+        with patch.object(WorkflowModelValid, 'wfm_config', cfg, create=True), translation.override('en'):
+            md = workflow_markdown(WorkflowModelValid, base_dir=Path(self.folder).parent,
+                                   changelog=False)
+        self.assertIn('**Version**: 1.0.0\n', md)
+        self.assertNotIn('CHANGELOG.md', md)
 
 
 class WorkflowFilterSetOrderTest(TestCase):

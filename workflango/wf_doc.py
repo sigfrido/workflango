@@ -7,7 +7,7 @@ document, browseable on GitHub and includable in pdoc documentation (`base_dir`:
 document, for the relative link to the workflow changelog):
 
 - the workflow version (configure_workflow(version=)) with a link to its changelog (#11);
-- preface.md of the description folder (as is), the start phase, a "Graph" section with the
+- preface.md of the description folder (as is), the start phase, a "State diagram" section with the
   mermaid graph of the phases (unless graph=False) (top-down; forward transitions labeled with their
   caption; reject transitions only when declared in the config, not the automatic ones),
   each phase linked to its section;
@@ -218,7 +218,9 @@ def workflow_title(model):
     return f'{name[:1].upper()}{name[1:]} — {wgettext("workflow")}'
 
 
-def workflow_markdown(model, detailed=True, graph=True, base_dir=None):
+def workflow_markdown(model, detailed=True, graph=True, base_dir=None, changelog=True):
+    """changelog=False: the version without the link to the workflow changelog (e.g. a
+    document published where the changelog is not reachable, like an online help)."""
     cfg = model.wfm_config
     lines = [f'# {workflow_title(model)}', '']
 
@@ -226,7 +228,7 @@ def workflow_markdown(model, detailed=True, graph=True, base_dir=None):
         # changelog of the workflow (propose_wf_version), linked when present
         from .wf_version import CHANGELOG_FILE
         version = f'**{wgettext("Version")}**: {cfg.version}'
-        if (cfg.description_folder()[0] / CHANGELOG_FILE).is_file():
+        if changelog and (cfg.description_folder()[0] / CHANGELOG_FILE).is_file():
             version += f' — [{wgettext("changelog")}]({_changelog_link(cfg, base_dir)})'
         lines += [version, '']
 
@@ -239,7 +241,7 @@ def workflow_markdown(model, detailed=True, graph=True, base_dir=None):
     lines += [f'**{wgettext("Start phase")}**: {start_link}', '']
 
     if graph:
-        lines += [f'<a id="{GRAPH_ANCHOR}"></a>', '', f'## {wgettext("Graph")}', '', *_graph(cfg), '']
+        lines += [f'<a id="{GRAPH_ANCHOR}"></a>', '', f'## {wgettext("State diagram")}', '', *_graph(cfg), '']
 
     lines += [f'## {wgettext("Phases")}', '']
     for phase in cfg.get_phases_list():
@@ -271,7 +273,7 @@ def workflow_markdown(model, detailed=True, graph=True, base_dir=None):
             if validators:
                 lines += [f'#### {wgettext("Validations")}', '', *validators, '']
         # back to the graph and to the start phase
-        back = [f'[{wgettext("Graph")}](#{GRAPH_ANCHOR})'] if graph else []
+        back = [f'[{wgettext("State diagram")}](#{GRAPH_ANCHOR})'] if graph else []
         if phase != start:
             back.append(f'[{wgettext("Start phase")}: {cfg.phase_caption(start)}](#{anchor(start)})')
         if back:

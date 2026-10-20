@@ -31,6 +31,9 @@ class Command(BaseCommand):
                  '{{ content }} required). Default: settings.WF_DOC_TEMPLATE, if set.')
         parser.add_argument('--no-template', action='store_true',
             help='Ignore settings.WF_DOC_TEMPLATE.')
+        parser.add_argument('--no-changelog', action='store_true',
+            help='Version without the link to the workflow changelog (e.g. for an online help, '
+                 'where the changelog is not reachable).')
 
     def handle(self, *args, **options):
         [model] = get_model_list(options['model'])
@@ -46,7 +49,8 @@ class Command(BaseCommand):
         with translation.override(options['language']):
             text = workflow_document(model, template, detailed=not options['plain'],
                                      graph=not options['nograph'],
-                                     base_dir=Path(output).parent.resolve())
+                                     base_dir=Path(output).parent.resolve(),
+                                     changelog=not options['no_changelog'])
 
         if options['print_only']:
             self.stdout.write(text, ending='')

@@ -215,7 +215,7 @@ def _strings():  # pragma: no cover - never called, see module docstring
         # generate_wf_doc (workflango/wf_doc.py)
         pgettext('workflango', 'Start'),
         pgettext('workflango', 'Start phase'),
-        pgettext('workflango', 'Graph'),
+        pgettext('workflango', 'State diagram'),
         pgettext('workflango', 'A message is required for this transition.'),
         pgettext('workflango', 'workflow'),
         pgettext('workflango', 'Phases'),

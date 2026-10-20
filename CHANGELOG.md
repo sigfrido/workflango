@@ -4,6 +4,14 @@ All notable changes to this project are documented here, starting from this rele
 
 ## [1.0.1] - unreleased
 
+### Changed
+
+- **Workflow documentation** (`generate_wf_doc`): the "Graph" section is now "State diagram" (Italian: «Diagramma di stato»; opus #92)
+
+### Added
+
+- **`generate_wf_doc --no-changelog`** (`workflow_markdown(..., changelog=False)`): the version without the link to the workflow changelog, for documents published where the changelog is not reachable, like an online help (opus #92)
+
 ### Fixed
 
 - **Non-workflow confirmations on workflow ViewSets (Sebastian pack)**: the workflow `confirm.html` overrides Sebastian's for the whole ViewSet, so a delete confirmation or an action with a confirmation serializer was rendered as the transition panel (message field, phase hidden input) and posted without its fields; when the response is not a workflow transition (no `phase`) the template now renders Sebastian's own modal

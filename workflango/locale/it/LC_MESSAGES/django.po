@@ -647,8 +647,8 @@ msgid "Start phase"
 msgstr "Fase iniziale"
 
 msgctxt "workflango"
-msgid "Graph"
-msgstr "Grafo"
+msgid "State diagram"
+msgstr "Diagramma di stato"
 
 msgctxt "workflango"
 msgid "A message is required for this transition."
