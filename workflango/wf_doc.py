@@ -218,11 +218,18 @@ def workflow_title(model):
     return f'{name[:1].upper()}{name[1:]} — {wgettext("workflow")}'
 
 
+# The document below its title is wrapped in <div class="wf_doc" markdown="1">, so that a
+# stylesheet can target its elements (e.g. the phase headings). Markdown inside it is rendered
+# by GitHub and markdown-it (blank lines around the content) and by Python-Markdown with the
+# md_in_html extension (markdown="1").
+WF_DOC_CLASS = 'wf_doc'
+
+
 def workflow_markdown(model, detailed=True, graph=True, base_dir=None, changelog=True):
     """changelog=False: the version without the link to the workflow changelog (e.g. a
     document published where the changelog is not reachable, like an online help)."""
     cfg = model.wfm_config
-    lines = [f'# {workflow_title(model)}', '']
+    lines = [f'# {workflow_title(model)}', '', f'<div class="{WF_DOC_CLASS}" markdown="1">', '']
 
     if cfg.version:
         # changelog of the workflow (propose_wf_version), linked when present
@@ -293,7 +300,7 @@ def workflow_markdown(model, detailed=True, graph=True, base_dir=None, changelog
     if postface:
         lines += [postface, '']
 
-    return '\n'.join(lines).rstrip() + '\n'
+    return '\n'.join(lines).rstrip() + '\n\n</div>\n'
 
 
 # Placeholders of the document template: {{ name }} (inner spaces optional); unknown ones and

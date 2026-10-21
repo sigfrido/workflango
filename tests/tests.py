@@ -2162,7 +2162,9 @@ class GenerateWfDocTest(TestCase):
         order = [md.index(x) for x in ('# ', '**Intro** of the workflow', '**Start phase**',
                                        '<a id="graph"></a>\n\n## State diagram', '## Phases', 'Final notes')]
         self.assertEqual(order, sorted(order))
-        self.assertTrue(md.rstrip().endswith('Final notes'))
+        # the document below its title is wrapped in <div class="wf_doc"> (styles)
+        self.assertIn('\n\n<div class="wf_doc" markdown="1">\n\n', md)
+        self.assertTrue(md.rstrip().endswith('Final notes\n\n</div>'))
         # end of each phase: back to the graph and to the start phase (not on the start phase itself)
         self.assertIn('↑ [State diagram](#graph) · [Start phase: Phase 1](#phase-1)', md)
         self.assertEqual(md.count('↑ [State diagram](#graph)\n'), 1)  # phase 1: only the graph link

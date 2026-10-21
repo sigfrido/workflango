@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here, starting from this release. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [1.0.1] - unreleased
+## [1.0.1] - 2026-10-21
 
 ### Changed
 
@@ -10,6 +10,8 @@ All notable changes to this project are documented here, starting from this rele
 
 ### Added
 
+- **Workflow documents wrapped for styling**: below its title the generated document is in `<div class="wf_doc" markdown="1">` (`wf_doc.WF_DOC_CLASS`), so a stylesheet can target its elements, e.g. the phase headings; GitHub and markdown-it render the Markdown inside it, Python-Markdown with `md_in_html` (opus #92)
+- `workflango.__version__`, as in drf-sebastian (installed metadata of an editable install can be stale)
 - **`generate_wf_doc --no-changelog`** (`workflow_markdown(..., changelog=False)`): the version without the link to the workflow changelog, for documents published where the changelog is not reachable, like an online help (opus #92)
 
 ### Fixed
