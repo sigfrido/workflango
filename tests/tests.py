@@ -1093,6 +1093,29 @@ class WorkflowTest(TransactionTestCase):
 
 
 
+    def test_no_delegate_phase_allows_admin_snatch_and_reassign(self):
+        # allow_delegate='no' forbids the owner to delegate, not the phase admins to snatch
+        # or reassign, nor the owner to assign the next phase
+        from workflango.exceptions import TransitionNotAllowed as TransitionError
+        cfg = self.OkModel.wfm_config.get_phase_config('2')
+        cfg['allow_delegate'] = 'no'
+        try:
+            instance = self.create(self.user_1)
+            instance.wfm.transition(self.user_1, 2, self.user_3)
+            with self.assertRaises(TransitionError):
+                instance.wfm.transition(self.user_3, 2, self.user_3_b)       # owner delegates
+            state = instance.wfm.transition(self.user_4, 2, self.user_4)    # admin snatch
+            self.assertEqual(state.transition_type, 'snatch')
+            state = instance.wfm.transition(self.user_4, 2, self.user_3)    # admin reassigns
+            self.assertEqual(state.owner, self.user_3)
+            with self.assertRaises(TransitionError):
+                instance.wfm.transition(self.user_3, 2, self.user_3_b)
+            # a phase transition assigning another owner is not a delegation
+            state = instance.wfm.transition(self.user_3, 4, self.user_3_b)
+            self.assertEqual((state.phase, state.owner), ('4', self.user_3_b))
+        finally:
+            cfg.pop('allow_delegate')
+
     def test_transition_type_assign(self):
         instance_1 = self.OkModel.objects.create()
 

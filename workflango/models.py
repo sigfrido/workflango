@@ -827,7 +827,11 @@ class InstanceWorkflowManager(object):
                 if (user != new_owner) and not (is_admin):
                     self.raise_transition_error("User must be admin to set owner in a transition")
 
-        if current_owner and new_owner and current_owner != new_owner and not current_state.can_delegate:
+        # allow_delegate='no' forbids the owner to hand the record over within the phase: phase
+        # transitions assigning the next owner are not delegations, and the phase admins' snatch
+        # and reassign (offered by get_workflow_transitions) stay allowed
+        if (current_owner and new_owner and current_owner != new_owner and source_phase == new_phase
+                and not (current_state.can_delegate or is_admin)):
             self.raise_transition_error(f"User is not allowed to delegate in this phase ({source_phase})")
 
         reachable_phases = source_phase_config['reachable_phases']

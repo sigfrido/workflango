@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here, starting from this release. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Fixed
+
+- **`allow_delegate: 'no'` blocked more than delegation**: the check of `transition_allowed` also refused the admin's snatch and reassign of a record owned by a non-admin (although `get_workflow_transitions` offers them) and any phase transition assigning another owner, rejects included; it now forbids only the owner's hand-over within the phase (opus #106)
+
 ## [1.0.1] - 2026-10-21
 
 ### Changed
